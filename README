@@ -1,5 +1,5 @@
-s6-linux-init - an s6-based Linux init system
----------------------------------------------
+s6-linux-init - tools to create an s6-based Linux init system
+-------------------------------------------------------------
 
  s6-linux-init is a suite of tools designed to provide an init program
  for the Linux kernel - i.e., the first program run at boot time.

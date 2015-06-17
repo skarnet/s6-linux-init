@@ -1,0 +1,142 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>s6-linux-init: quickstart and FAQ</title>
+    <meta name="Description" content="s6-linux-init: quickstart and FAQ" />
+    <meta name="Keywords" content="s6-linux-init installation quickstart faq" />
+    <!-- <link rel="stylesheet" type="text/css" href="http://skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="index.html">s6-linux-init</a><br />
+<a href="http://skarnet.org/software/">Software</a><br />
+<a href="http://skarnet.org/">skarnet.org</a>
+</p>
+
+<h1> Quickstart and FAQ for s6-linux-init </h1>
+
+<h2> Quickstart </h2>
+
+<ul>
+ <li> Install all the s6-linux-init dependencies:
+  <ul>
+   <li> <a href="http://skarnet.org/software/skalibs/">skalibs</a> </li>
+   <li> <a href="http://skarnet.org/software/execline/">execline</a> </li>
+   <li> <a href="http://skarnet.org/software/s6-portable-utils/">s6-portable-utils</a> </li>
+   <li> <a href="http://skarnet.org/software/s6-linux-utils/">s6-linux-utils</a> </li>
+   <li> <a href="http://skarnet.org/software/s6/">s6</a> </li>
+  </ul> </li>
+ <li> Install <a href="index.html">s6-linux-init</a> itself </li>
+ <li> Save your old <tt>/sbin/init</tt> binary </li>
+ <li> Save and remove your old <tt>/etc/s6-linux-init</tt> directory, if you have one </li>
+ <li> Make sure you have a <tt>/run</tt> directory </li>
+ <li> Write a machine initialization script in <tt>/etc/rc.init</tt> and
+ a machine shutdown script in <tt>/etc/rc.shutdown</tt>. Make them executable. </li>
+ <li> Check that your devtmpfs is automounted by your kernel at boot time. If it is not,
+add the <tt>-d 1</tt> option to the <tt>s6-linux-init-maker</tt> command line below. </li>
+ <li> As root, run: <pre>
+     rm -rf /tmp/s6-linux-init /tmp/init
+     s6-linux-init-maker /tmp/s6-linux-init &gt; /tmp/init
+     chmod 0700 /tmp/init
+     mv /tmp/s6-linux-init /etc/
+     mv /tmp/init /sbin/ </pre> </li>
+ <li> Reboot. </li>
+ <li> Congratulations! your machine is now running a s6-based init system. </li>
+</ul>
+
+<h2> FAQ </h2>
+
+<h4> Why is it so complicated to use s6 as an init process? It's much
+simpler with runit. </h4>
+
+<p>
+ Yes, runit is simpler, because it provides a simple
+<a href="http://smarden.org/runit/runit.8.html">runit</a> binary
+suitable as a <tt>/sbin/init</tt> program and calls scripts to
+handle the three stages of init. However, the runit design has a
+few perfectible points:
+</p>
+
+<ul>
+ <li> The one-time initialization is performed in <tt>/etc/runit/1</tt>, but
+the supervision tree is not run until <tt>/etc/runit/2</tt>, which means
+means that it is impossible to start supervised services during the
+one-time initialization. Early daemons such as <tt>udevd</tt>, for
+instance, have to remain unsupervised. </li>
+ <li> runit runs with its descriptors pointing to <tt>/dev/console</tt>,
+which means that error messages from the supervision tree, and uncaught
+logs, will be displayed on the system console; they are not saved beyond
+the console buffer capabilities. </li>
+ <li> The runit supervision tree is of height 3
+(runit, runsvdir, runsv), when height 2 is enough - some init
+systems, like sysvinit, systemd or launchd, even provide a
+supervision tree of height 1! (At the expense of complexity in the init
+process, of course.) Height 3 is a bit redundant, because the supervision
+capabilities of the root will be redundant with either those of the trunk
+or those of the branches. Its display is also aesthetically less pleasing than
+height 2: try out <tt>ps afuxww</tt> on a runit-based system.
+Yes, this point is extremely minor, but still deserves a mention. :-) </li>
+</ul>
+
+<p>
+ Running a s6-based init addresses those issues:
+</p>
+
+<ul>
+ <li> Save for the initial tmpfs mount, <em>all</em> of the machine
+initialization runs in the stage 2 script, i.e. <tt>/etc/rc.init</tt>,
+and the supervision tree is already available at that point. This
+makes it possible to start one-shot services as well as long-run
+services in the desired order while ensuring that every long-run service
+is properly supervised, i.e. it lays the ground for a proper dependency
+management system. </li>
+ <li> s6-linux-init solves the problem of uncaught logs in a clean
+way, and any error message from any process in the system is
+guaranteed to end up in a logging directory. The <em>only</em>
+exception is error messages from the catch-all logger process itself:
+those naturally go to <tt>/dev/console</tt>. </li>
+ <li> When s6-svscan runs as process 1, the supervision tree is of
+height 2, and <tt>ps afuxww</tt> looks clean. </li>
+</ul>
+
+<p>
+ To sum up, a s6-based init is cleaner than a runit-based
+init; it's a bit more complex to set up, but it organizes the system
+in a better way, without using more resources. And the goal of
+s6-linux-init is to make the setup more accessible.
+</p>
+
+<h4> My <tt>/etc/rc.init</tt> script is not printing anything! </h4>
+
+<p>
+ You probably gave the <tt>-r</tt> option to
+<a href="s6-linux-init-maker.html">s6-linux-init-maker</a>, and
+your <tt>/etc/rc.init</tt>'s output is being logged into the
+<tt>/run/uncaught-logs</tt> directory instead of printed to
+<tt>/dev/console</tt>.
+</p>
+
+<h4> I want to run s6 in a container, and I just want to log
+to stdout/stderr, without this tmpfs and <tt>/dev/console</tt>
+stuff and
+without having a catch-all logger inside the container. Is it
+possible&nbsp;? </h4>
+
+<p>
+ Yes, it is possible, but then s6-linux-init may not be what you
+are looking for. For your case, it will be simpler to run s6-svscan
+directly!
+</p>
+
+<p>
+ If you are using
+<a href="https://www.docker.com/">Docker</a>, there is a
+<a href="https://github.com/just-containers/s6-overlay">s6-overlay</a>
+project specifically made for integrating s6 into Docker images.
+</p>
+
+</body>
+</html>

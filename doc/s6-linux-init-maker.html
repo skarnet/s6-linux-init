@@ -49,6 +49,7 @@ machine</em> - else the scripts will crash.
        [ -u <em>log_user</em> ] \
        [ -g <em>early_getty</em> ] \
        [ -2 <em>stage2</em> ] \
+       [ -r ] \
        [ -3 <em>stage3</em> ] \
        [ -p <em>initial_path</em> ] \
        [ -m <em>initial_umask</em> ] \
@@ -74,7 +75,7 @@ declared as <em>basedir</em>. Be careful: it contains fifos, files with
 precise uid/gid permissions, and files with non-standard access rights,
 so be sure to copy it verbatim. The
 <a href="http://skarnet.org/software/s6-portable-utils/s6-hiercopy.html">s6-hiercopy</a>
-tool can do it, as well as the GNU or busybox <tt>cp -a</tt> command.
+tool can do it, as well as the GNU or busybox <tt>cp -a</tt> or <tt>mv</tt> commands.
 </p>
 
 <p>
@@ -133,11 +134,10 @@ system. When <em>stage2</em> is executed, the machine state is as follows:
 
 <ul>
  <li> <em>stage2</em>'s working directory is <tt>/</tt> and its stdin
-is <tt>/dev/null</tt>. <em>stage2</em>'s
-stdout and stderr both point to the pipe to the catch-all logger, so
-unless redirected, <em>stage2</em>'s output will be logged into the
-<tt><em>tmpfsdir/uncaught-logs</em></tt> directory. </li>
- <li> The system has a valid device directory mounted on <tt>/dev</tt>.
+is <tt>/dev/null</tt>. Its
+stdout and stderr both point either to <tt>/dev/console</tt> or to the pipe
+to the catch-all logger, depending on the <tt>-r</tt> option. </li>
+ <li> The system has a valid device directory mounted on <tt>/dev</tt>. </li>
  <li> Depending on the kernel boot command line, the root filesystem
 may be in read-only mode. </li>
  <li> There is a tmpfs available for root only in <em>tmpfsdir</em>. </li>
@@ -227,6 +227,14 @@ the location of the stage 2 script that will be run when the
 system has an operational supervision tree. It must be absolute. Default is
 <strong><tt>/etc/rc.init</tt></strong>. </li> <p />
 
+ <li> <tt>-r</tt>&nbsp;: redirect. By default, <em>stage2</em> is
+run with stdout and stderr pointing to <tt>/dev/console</tt>, so that
+users can see what init scripts print. However, it may conflict
+with an early getty, or be undesirable for other reasons. The
+<tt>-r</tt> option redirects <em>stage2</em>'s stdout and stderr
+to the catch-all logger, so the output will be made available
+in the <tt><em>tmpfsdir</em>/uncaught-logs</tt> directory. </li> <p />
+
  <li> <tt>-3</tt>&nbsp;<em>stage3</em>&nbsp;: <em>stage3</em> is
 the location of the stage 3 script that will be run at the end of
 the machine lifetime, when s6-svscan is told to terminate.
@@ -235,8 +243,14 @@ It must be absolute. Default is
 
  <li> <tt>-p</tt>&nbsp;<em>initial_path</em>&nbsp;: the value to
 set the PATH environment variable to, for all the starting processes.
-This will be done as early as possible in <em>stage1</em>. Default is
-the value that has been compiled in
+This will be done as early as possible in <em>stage1</em>. It is
+absolutely necessary for
+<a href="http://skarnet.org/software/execline/">execline</a>,
+<a href="http://skarnet.org/software/s6/">s6</a>,
+<a href="http://skarnet.org/software/s6-portable-utils/">s6-portable-utils</a> and
+<a href="http://skarnet.org/software/s6-linux-utils/">s6-linux-utils</a>
+binaries to be accessible via <em>initial_path</em>, else the machine
+will not boot. Default is the value that has been compiled in
 <a href="http://skarnet.org/software/skalibs/">skalibs</a> via the
 <tt>--with-default-path</tt> configure option, i.e. by default
 <strong><tt>/usr/bin:/bin</tt></strong>. </li> <p />
@@ -271,6 +285,39 @@ environment variable <em>VAR</em> with the value <em>VALUE</em>.
 The TZ variable, for instance, is a good candidate to be set in
 the global environment. </li> <p />
 </ul>
+
+<h2> Notes </h2>
+
+<p>
+ The difficult parts of
+<a href="http://skarnet.org/software/s6/s6-svscan-1.html">running
+s6-svscan as process 1</a> are:
+</p>
+
+<ul>
+ <li> The fact that the supervision tree requires writable directories,
+so in order to accommodate read-only root filesystems, there needs to
+be a tmpfs mounted before s6-svscan is run. </li>
+ <li> The catch-22 coming for the need to redirect the supervision
+tree's output away from <tt>/dev/console</tt> (which is fine for a
+first process invocation but impractical for log management of a
+whole process tree) and into a logger that is itself managed by the
+supervision tree it's reading data from. </li>
+</ul>
+
+<p>
+ The main benefit of s6-linux-init-maker is that it automates those
+parts. This means that it has been designed for <em>real hardware</em>
+where the above issues apply.
+ If you are building an init system for a
+virtual machine, a container, or anything similar that does not
+have the <tt>/dev/console</tt> issue or the read-only rootfs issue,
+you will probably not reap much benefit from using s6-linux-init-maker:
+you could probably invoke
+<a href="http://skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
+directly as your process 1, or build a script by hand, which
+would result in a simpler init with less dependencies.
+</p>
 
 </body>
 </html>

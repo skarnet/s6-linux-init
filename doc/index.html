@@ -20,9 +20,9 @@
 <h2> What is it&nbsp;? </h2>
 
 <p>
- s6-linux-init is a set of minimalistic tools to create and manage
-the init process on a Linux system - i.e. the first process created
-by the kernel at boot time.
+ s6-linux-init is a set of minimalistic tools to create a
+<a href="http://skarnet.org/software/s6/">s6</a>-based init
+system, including a <tt>/sbin/init</tt> binary, on a Linux kernel.
 </p>
 
 <p>
@@ -61,11 +61,12 @@ and then you can <em>boot</em> your system on that init script.
 </p>
 
 <p>
- The listed dependencies are all <em>build-time</em> dependencies and also
-<em>boot-time</em> dependencies, i.e. you need the tools installed to build
-s6-linux-init and to boot your system. There are no <em>run-time</em>
-dependencies, except skalibs if you linked against the shared version of
-the library.
+ skalibs and execline are <em>build-time</em> dependencies.
+ There are no <em>run-time</em> dependencies.
+ And every listed package, save skalibs, is a <em>boot-time</em> dependency.
+ If you are using the shared version of the skalibs library,
+then skalibs also becomes a <em>run-time</em> and a
+<em>boot-time</em> dependency.
 </p>
 
 <h3> Licensing </h3>
@@ -100,6 +101,13 @@ the previous versions of s6-linux-init and the current one. </li>
 <hr />
 
 <h2> Reference </h2>
+
+<h3> Quickstart guide and FAQ </h3>
+
+<p>
+ There is one,
+ <a href="quickstart.html">here</a>&nbsp;!
+</p>
 
 <h3> Commands </h3>
 

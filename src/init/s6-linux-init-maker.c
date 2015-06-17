@@ -18,26 +18,22 @@
 #include <skalibs/sgetopt.h>
 #include <skalibs/skamisc.h>
 #include <execline/config.h>
-#include <s6-portable-utils/config.h>
-#include <s6-linux-utils/config.h>
 #include <s6/config.h>
 
-#define USAGE "s6-linux-init-maker [ -c basedir ] [ -l tmpfsdir ] [ -b execline_bindir ] [ -u log_user ] [ -g early_getty_cmd ] [ -2 stage2_script ] [ -3 stage3_script ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d dev_style ] [ -e initial_envvar ... ] dir"
+#define USAGE "s6-linux-init-maker [ -c basedir ] [ -l tmpfsdir ] [ -b execline_bindir ] [ -u log_user ] [ -g early_getty_cmd ] [ -2 stage2_script ] [ -r ] [ -3 stage3_script ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d dev_style ] [ -e initial_envvar ... ] dir"
 #define dieusage() strerr_dieusage(100, USAGE)
 #define dienomem() strerr_diefu1sys(111, "stralloc_catb") ;
 
+#define BANNER "*\n* init created by s6-linux-init-maker\n* see http://skarnet.org/software/s6-linux-init/\n*\n"
+
 #define CRASH_SCRIPT \
 "#!" EXECLINE_EXTBINPREFIX "execlineb -P\n\n" \
-EXECLINE_EXTBINPREFIX "redirfd -r 0 /dev/console\n" \
-EXECLINE_EXTBINPREFIX "redirfd -w 1 /dev/console\n" \
-EXECLINE_EXTBINPREFIX "fdmove -c 2 1\n" \
-EXECLINE_EXTBINPREFIX "foreground { " \
-S6_PORTABLE_UTILS_EXTBINPREFIX "s6-echo -- " \
+"redirfd -r 0 /dev/console\n" \
+"redirfd -w 1 /dev/console\n" \
+"fdmove -c 2 1\n" \
+"foreground { s6-echo -- " \
 "\"s6-svscan crashed. Dropping to an interactive shell.\" }\n" \
 "/bin/sh -i\n"
-
-#define BANNER1 "s6-init: stage 1"
-#define BANNER2 "s6-init: stage 2"
 
 static char const *slashrun = "/run" ;
 static char const *robase = "/etc/s6-linux-init" ;
@@ -51,6 +47,7 @@ static gid_t uncaught_logs_gid = 65534 ;
 static unsigned int initial_umask = 022 ;
 static unsigned int timestamp_style = 1 ;
 static unsigned int slashdev_style = 2 ;
+static int redirect_stage2 = 0 ;
 
 typedef int writetobuf_func_t (buffer *) ;
 typedef writetobuf_func_t *writetobuf_func_t_ref ;
@@ -70,12 +67,12 @@ static int s6_svscan_log_script (buffer *b)
   char fmt[UINT64_FMT] ;
   if (buffer_puts(b,
     "#!" EXECLINE_EXTBINPREFIX "execlineb -P\n\n"
-    EXECLINE_EXTBINPREFIX "redirfd -rnb 0 fifo\n"
-    S6_EXTBINPREFIX "s6-applyuidgid -u ") < 0
+    "redirfd -rnb 0 fifo\n"
+    "s6-applyuidgid -u ") < 0
    || buffer_put(b, fmt, uint64_fmt(fmt, uncaught_logs_uid)) < 0
    || buffer_puts(b, " -g ") < 0
    || buffer_put(b, fmt, gid_fmt(fmt, uncaught_logs_gid)) < 0
-   || buffer_puts(b, " --\n" S6_EXTBINPREFIX "s6-log -bp -- ") < 0
+   || buffer_puts(b, " --\ns6-log -bp -- ") < 0
    || buffer_puts(b, timestamp_style & 1 ? "t " : "") < 0
    || buffer_puts(b, timestamp_style & 2 ? "T " : "") < 0) return 0 ;
   if (!string_quote(&satmp, slashrun, str_len(slashrun))) return 0 ;
@@ -240,20 +237,17 @@ static int make_init_script (buffer *b)
   satmp.len = sabase ;
   if (buffer_put(b, "\n", 1) < 0
    || buffer_puts(b, bindir) < 0
-   || buffer_puts(b, "/cd /\n"
-    EXECLINE_EXTBINPREFIX "umask 0") < 0
+   || buffer_puts(b, "/cd /\numask 0") < 0
    || buffer_put(b, fmt, uint_ofmt(fmt, initial_umask)) < 0
-   || buffer_puts(b, "\n"
-    EXECLINE_EXTBINPREFIX "if { "
-    S6_PORTABLE_UTILS_EXTBINPREFIX "s6-echo -- \"" BANNER1 "\" }\n"
-    EXECLINE_EXTBINPREFIX "if { "
-    S6_LINUX_UTILS_EXTBINPREFIX "s6-mount -nwt tmpfs -o mode=0755 tmpfs ") < 0
+   || buffer_puts(b, "\nif { s6-echo -- ") < 0)
+   || !string_quote(&satmp, BANNER, sizeof(BANNER) - 1) < 0) return 0 ;
+  if (buffer_puts(b, satmp.s, satmp.len) < 0) goto err ;
+  satmp.len = sabase ;
+  if (buffer_puts(b, " }\nif { s6-mount -nwt tmpfs -o mode=0755 tmpfs ") < 0
    || !string_quote(&satmp, slashrun, str_len(slashrun))) return 0 ;
   pos = satmp.len ;
   if (buffer_put(b, satmp.s + sabase, pos - sabase) < 0
-   || buffer_puts(b, " }\n"
-    EXECLINE_EXTBINPREFIX "if { "
-    S6_PORTABLE_UTILS_EXTBINPREFIX "s6-hiercopy ") < 0
+   || buffer_puts(b, " }\nif { s6-hiercopy ") < 0
    || !string_quote(&satmp, robase, str_len(robase))) return 0 ;
   pos2 = satmp.len ;
   if (buffer_put(b, satmp.s + pos, pos2 - pos) < 0
@@ -262,42 +256,30 @@ static int make_init_script (buffer *b)
    || buffer_puts(b, " }\n") < 0) goto err ;
   if (slashdev_style == 1)
   {
-    if (buffer_puts(b,
-      EXECLINE_EXTBINPREFIX "if { "
-      S6_LINUX_UTILS_EXTBINPREFIX "s6-mount -nt devtmpfs dev /dev }\n") < 0)
-      goto err ;
+    if (buffer_puts(b, "if { s6-mount -nt devtmpfs dev /dev }\n") < 0) goto err ;
   }
-  if (buffer_puts(b,
-        EXECLINE_EXTBINPREFIX "redirfd -r 0 /dev/null\n"
-        S6_EXTBINPREFIX "s6-envdir -I -- ") < 0
+  if (buffer_puts(b, "redirfd -r 0 /dev/null\ns6-envdir -I -- ") < 0
    || buffer_put(b, satmp.s + pos, pos2 - pos) < 0
-   || buffer_puts(b, "/env\n"
-        EXECLINE_EXTBINPREFIX "background\n{\n  "
-        S6_EXTBINPREFIX "s6-setsid --\n  "
-        EXECLINE_EXTBINPREFIX "redirfd -w 2 ") < 0
-   || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
-   || buffer_puts(b, "/service/s6-svscan-log/fifo\n  "
-        EXECLINE_EXTBINPREFIX "if { "
-        S6_PORTABLE_UTILS_EXTBINPREFIX "s6-echo -- \"" BANNER2 "\" }\n  "
-        EXECLINE_EXTBINPREFIX "fdmove -c 1 2\n  ") < 0
-   || !string_quote(&satmp, init_script, str_len(init_script))
-   || buffer_put(b, satmp.s + pos2, satmp.len - pos2) < 0
-   || buffer_puts(b, "\n}\n"
-        EXECLINE_EXTBINPREFIX "unexport !\n"
-        EXECLINE_EXTBINPREFIX "redirfd -wnb 1 ") < 0
-   || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
-   || buffer_puts(b,
-        "/service/s6-svscan-log/fifo\n"
-        EXECLINE_EXTBINPREFIX "fdmove -c 2 1\n"
-        EXECLINE_EXTBINPREFIX "cd ") < 0
-   || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
-   || buffer_puts(b, "/service\n") < 0) goto err ;
-  if (sizeof(S6_EXTBINPREFIX) > 1)
+   || buffer_puts(b, "/env\nbackground\n{\n  s6-setsid --\n  ") < 0) goto err ;
+  if (redirect_stage2)
   {
-    if (buffer_puts(b, EXECLINE_EXTBINPREFIX "exec -a s6-svscan --\n") < 0)
-      goto err ;
+    if (buffer_puts(b, "redirfd -w 2 ") < 0
+     || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
+     || buffer_puts(b, "/service/s6-svscan-log/fifo\n  fdmove -c 1 2\n  ") < 0) goto err ;
   }
-  if (buffer_puts(b, S6_EXTBINPREFIX "s6-svscan -t0\n") < 0) goto err ;
+  else
+  {
+    if (buffer_puts(b, "redirfd -w 3 ") < 0
+     || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
+     || buffer_puts(b, "/service/s6-svscan-log/fifo\n  fdclose 3\n  ") < 0) goto err ;
+  }
+  if (!string_quote(&satmp, init_script, str_len(init_script))
+   || buffer_put(b, satmp.s + pos2, satmp.len - pos2) < 0
+   || buffer_puts(b, "\n}\nunexport !\nredirfd -wnb 1 ") < 0
+   || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
+   || buffer_puts(b, "/service/s6-svscan-log/fifo\nfdmove -c 2 1\ncd ") < 0
+   || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
+   || buffer_puts(b, "/service\ns6-svscan -t0\n") < 0) goto err ;
   return 1 ;
  err:
   satmp.len = sabase ;
@@ -313,7 +295,7 @@ int main (int argc, char const *const *argv)
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      register int opt = subgetopt_r(argc, argv, "c:l:b:u:g:2:3:p:m:t:d:e:", &l) ;
+      register int opt = subgetopt_r(argc, argv, "c:l:b:u:g:2:r3:p:m:t:d:e:", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
@@ -323,6 +305,7 @@ int main (int argc, char const *const *argv)
         case 'u' : catchall_user = l.arg ; break ;
         case 'g' : early_getty = l.arg ; break ;
         case '2' : init_script = l.arg ; break ;
+        case 'r' : redirect_stage2 = 1 ; break ;
         case '3' : shutdown_script = l.arg ; break ;
         case 'p' : initial_path = l.arg ; break ;
         case 'm' : if (!uint0_oscan(l.arg, &initial_umask)) dieusage() ; break ;

@@ -91,10 +91,7 @@ static int finish_script (buffer *b)
   unsigned int sabase = satmp.len ;
   if (buffer_puts(b, 
     "#!" EXECLINE_EXTBINPREFIX "execlineb -S0\n\n"
-    EXECLINE_EXTBINPREFIX "cd /\n"
-    EXECLINE_EXTBINPREFIX "redirfd -w 2 /dev/console\n"
-    EXECLINE_EXTBINPREFIX "fdmove -c 1 2\n"
-    EXECLINE_EXTBINPREFIX "wait { }\n") < 0
+    "cd /\nredirfd -w 2 /dev/console\nfdmove -c 1 2\nwait { }\n") < 0
    || !string_quote(&satmp, shutdown_script, str_len(shutdown_script))) return 0 ;
   if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0)
   {

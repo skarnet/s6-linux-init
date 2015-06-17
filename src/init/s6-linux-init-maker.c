@@ -67,6 +67,8 @@ static int s6_svscan_log_script (buffer *b)
   char fmt[UINT64_FMT] ;
   if (buffer_puts(b,
     "#!" EXECLINE_EXTBINPREFIX "execlineb -P\n\n"
+    "redirfd -w 2 /dev/console\n"
+    "redirfd -w 1 /dev/null\n"
     "redirfd -rnb 0 fifo\n"
     "s6-applyuidgid -u ") < 0
    || buffer_put(b, fmt, uint64_fmt(fmt, uncaught_logs_uid)) < 0

@@ -196,8 +196,8 @@ static void make_image (char const *base)
   auto_script(base, "run-image/service/s6-svscan-log/run", &s6_svscan_log_script) ;
   if (early_getty)
   {
-    auto_dir(base, "run-image/service/early-getty", 0, 0, 0755) ;
-    auto_script(base, "run-image/service/early-getty/run", &early_getty_script) ;
+    auto_dir(base, "run-image/service/s6-linux-init-early-getty", 0, 0, 0755) ;
+    auto_script(base, "run-image/service/s6-linux-init-early-getty/run", &early_getty_script) ;
   }
 }
 

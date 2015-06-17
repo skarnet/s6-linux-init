@@ -40,7 +40,7 @@ S6_PORTABLE_UTILS_EXTBINPREFIX "s6-echo -- " \
 #define BANNER2 "s6-init: stage 2"
 
 static char const *slashrun = "/run" ;
-static char const *robase = "/etc/s6" ;
+static char const *robase = "/etc/s6-linux-init" ;
 static char const *init_script = "/etc/rc.init" ;
 static char const *shutdown_script = "/etc/rc.shutdown" ;
 static char const *bindir = "/bin" ;

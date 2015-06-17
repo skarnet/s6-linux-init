@@ -239,9 +239,9 @@ static int make_init_script (buffer *b)
    || buffer_puts(b, bindir) < 0
    || buffer_puts(b, "/cd /\numask 0") < 0
    || buffer_put(b, fmt, uint_ofmt(fmt, initial_umask)) < 0
-   || buffer_puts(b, "\nif { s6-echo -- ") < 0)
+   || buffer_puts(b, "\nif { s6-echo -- ") < 0
    || !string_quote(&satmp, BANNER, sizeof(BANNER) - 1) < 0) return 0 ;
-  if (buffer_puts(b, satmp.s, satmp.len) < 0) goto err ;
+  if (buffer_put(b, satmp.s, satmp.len) < 0) goto err ;
   satmp.len = sabase ;
   if (buffer_puts(b, " }\nif { s6-mount -nwt tmpfs -o mode=0755 tmpfs ") < 0
    || !string_quote(&satmp, slashrun, str_len(slashrun))) return 0 ;

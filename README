@@ -1,0 +1,22 @@
+s6-linux-init - an s6-based Linux init system
+---------------------------------------------
+
+ s6-linux-init is a suite of tools designed to provide an init program
+ for the Linux kernel - i.e., the first program run at boot time.
+
+ See http://skarnet.org/software/s6-linux-init/ for details.
+
+
+* Installation
+  ------------
+
+ See the INSTALL file.
+
+
+* Contact information
+  -------------------
+
+ Laurent Bercot <ska-skaware at skarnet.org>
+
+ Please use the <skaware at list.skarnet.org> mailing-list for
+questions about s6-linux-init.

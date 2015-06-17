@@ -1,0 +1,123 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>s6-linux-init - tools for a Linux init system</title>
+    <meta name="Description" content="s6-linux-init - tools for a Linux init system" />
+    <meta name="Keywords" content="s6 linux init administration root laurent bercot ska skarnet" />
+    <!-- <link rel="stylesheet" type="text/css" href="http://skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="http://skarnet.org/software/">Software</a><br />
+<a href="http://skarnet.org/">skarnet.org</a>
+</p>
+
+<h1> s6-linux-init </h1>
+
+<h2> What is it&nbsp;? </h2>
+
+<p>
+ s6-linux-init is a set of minimalistic tools to create and manage
+the init process on a Linux system - i.e. the first process created
+by the kernel at boot time.
+</p>
+
+<p>
+ s6-linux-init is meant to automate creation of scripts revolving
+around the use of other skarnet.org tools, especially s6, in order
+to provide a complete booting environment with integrated supervision
+and logging without having to hand-craft all the details.
+</p>
+
+<hr />
+
+<h2> Installation </h2>
+
+<h3> Requirements </h3>
+
+<ul>
+ <li> A Linux-based system with a standard C development environment </li>
+ <li> GNU make, version 4.0 or later </li>
+ <li> <a href="http://skarnet.org/software/skalibs/">skalibs</a> version
+2.3.5.1 or later </li>
+ <li> <a href="http://skarnet.org/software/execline/">execline</a> version
+2.1.2.2 or later </li>
+ <li> <a href="http://skarnet.org/software/s6-portable-utils/">s6-portable-utils</a> version
+2.0.5.0 or later </li>
+ <li> <a href="http://skarnet.org/software/s6-linux-utils/">s6-linux-utils</a> version
+2.0.2.0 or later </li>
+ <li> <a href="http://skarnet.org/software/s6/">s6</a> version
+2.1.4.0 or later </li>
+</ul>
+
+<p>
+When you <em>build</em> s6-linux-init, the
+ <a href="s6-linux-init-maker.html">s6-linux-init-maker</a> tool
+is created; then you <em>run</em> that tool to create an init script,
+and then you can <em>boot</em> your system on that init script.
+</p>
+
+<p>
+ The listed dependencies are all <em>build-time</em> dependencies and also
+<em>boot-time</em> dependencies, i.e. you need the tools installed to build
+s6-linux-init and to boot your system. There are no <em>run-time</em>
+dependencies, except skalibs if you linked against the shared version of
+the library.
+</p>
+
+<h3> Licensing </h3>
+
+<p>
+ s6-linux-utils is free software. It is available under the
+<a href="http://opensource.org/licenses/ISC">ISC license</a>.
+</p>
+
+<h3> Download </h3>
+
+<ul>
+ <li> The current released version of s6-linux-init is
+<a href="s6-linux-init-0.0.1.0.tar.gz">0.0.1.0</a>. </li>
+ <li> Alternatively, you can checkout a copy of the s6-linux-init git repository:
+<pre> git clone git://git.skarnet.org/s6-linux-init </pre> </li>
+</ul>
+
+<h3> Compilation </h3>
+
+<ul>
+ <li> See the enclosed INSTALL file for installation details. </li>
+</ul>
+
+<h3> Upgrade notes </h3>
+
+<ul>
+ <li> <a href="upgrade.html">This page</a> lists the differences to be aware of between
+the previous versions of s6-linux-init and the current one. </li>
+</ul>
+
+<hr />
+
+<h2> Reference </h2>
+
+<h3> Commands </h3>
+
+<p>
+ All these commands exit 111 if they encounter a temporary error, and
+100 if they encounter a permanent error - such as a misuse.
+</p>
+
+<ul>
+<li><a href="s6-linux-init-maker.html">The <tt>s6-linux-init-maker</tt> program</a></li>
+</ul>
+
+<h2> Related resources </h2>
+
+<ul>
+ <li> <tt>s6-linux-init</tt> is discussed on the
+<a href="http://skarnet.org/lists.html#skaware">skaware</a> mailing-list. </li>
+</ul>
+
+</body>
+</html>

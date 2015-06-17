@@ -1,0 +1,5 @@
+/package/prog/skalibs
+/package/admin/execline
+/package/admin/s6-portable-utils
+/package/admin/s6-linux-utils
+/package/admin/s6

@@ -1,0 +1,276 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>s6-linux-init: the s6-linux-init-maker program</title>
+    <meta name="Description" content="s6-linux-init: the s6-linux-init-maker program" />
+    <meta name="Keywords" content="s6 linux administration root init maker" />
+    <!-- <link rel="stylesheet" type="text/css" href="http://skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="index.html">s6-linux-init</a><br />
+<a href="http://skarnet.org/software/">Software</a><br />
+<a href="http://skarnet.org/">skarnet.org</a>
+</p>
+
+<h1> The <tt>s6-linux-init-maker</tt> program </h1>
+
+<p>
+<tt>s6-linux-init-maker</tt> reads configuration options on
+the command line, and outputs a directory to place in the
+root filesystem as well as a script suitable as an init program.
+</p>
+
+<p>
+ s6-linux-init-maker only writes scripts. At boot time, these
+scripts will call commands provided by other skarnet.org packages
+such as
+<a href="http://skarnet.org/software/execline/">execline</a> or
+<a href="http://skarnet.org/software/s6/">s6</a>. It is the
+responsibility of the administrator to make sure that all the
+dependencies are properly installed at boot time, and that the
+correct options have been given to s6-linux-init-maker so that
+the programs are found <em>on the root filesystem of the
+machine</em> - else the scripts will crash.
+</p>
+
+</p>
+
+<h2> Interface and usage </h2>
+
+<pre>
+     s6-linux-init-maker \
+       [ -c <em>basedir</em> ] \
+       [ -l <em>tmpfsdir</em> ] \
+       [ -b <em>execline_bindir</em> ] \
+       [ -u <em>log_user</em> ] \
+       [ -g <em>early_getty</em> ] \
+       [ -2 <em>stage2</em> ] \
+       [ -3 <em>stage3</em> ] \
+       [ -p <em>initial_path</em> ] \
+       [ -m <em>initial_umask</em> ] \
+       [ -t <em>timestamp_style</em> ] \
+       [ -d <em>dev_style</em> ] \
+       [ -e <em>initial_envvar</em> ] ... \
+       <em>dir</em> &gt; <em>stage1</em>
+</pre>
+
+<ul>
+ <li> s6-linux-init-maker should be run as root. </li>
+ <li> s6-linux-init-maker parses options on its command line. </li>
+ <li> It writes data into a directory <em>dir</em>, which must not
+exist beforehand. </li>
+ <li> It then prints a script to its standard output. </li>
+ <li> It exits 0 if everything went well, 100 if a user error occurred,
+and 111 if a problem occurred during the directory or script creation. </li>
+</ul>
+
+<p>
+ <em>dir</em> should then be copied by the administrator to the place
+declared as <em>basedir</em>. Be careful: it contains fifos, files with
+precise uid/gid permissions, and files with non-standard access rights,
+so be sure to copy it verbatim. The
+<a href="http://skarnet.org/software/s6-portable-utils/s6-hiercopy.html">s6-hiercopy</a>
+tool can do it, as well as the GNU or busybox <tt>cp -a</tt> command.
+</p>
+
+<p>
+ The <em>stage1</em> script printed by s6-linux-init-maker on its
+stdout is then suitable as an init program. The administrator should
+copy it to <tt>/sbin/init</tt> and make it executable.
+</p>
+
+<h2> Boot sequence </h2>
+
+<p>
+ When the kernel boots, it runs the <em>stage1</em> script, and this is
+what happens:
+</p>
+
+<ul>
+ <li> <em>stage1</em> is an
+<a href="http://skarnet.org/software/execline/">execline</a> script, so
+the first process run by the kernel is the
+<a href="http://skarnet.org/software/execline/execlineb.html">execlineb</a>
+program launcher. </li>
+ <li> <em>stage1</em> mounts a
+<a href="https://www.kernel.org/doc/Documentation/filesystems/tmpfs.txt">tmpfs</a>
+filesystem on <em>tmpfsdir</em>. </li>
+ <li> <em>stage1</em> copies <tt><em>basedir</em>/run-image</tt> verbatim to
+<em>tmpfsdir</em>. </li>
+ <li> <em>stage1</em> reads a global set of environment variables from the
+<tt><em>basedir</em>/env</tt>
+<a href="http://skarnet.org/software/s6/s6-envdir.html">environment directory</a>. </li>
+ <li> <em>stage1</em> forks a child that will block until
+<a href="http://skarnet.org/software/s6/s6-svscan.html">s6-svscan</a> is running. </li>
+ <li> <em>stage1</em> executes, as process 1, into
+<a href="http://skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>,
+with <tt><em>tmpfsdir</em>/service</tt> as a
+<a href="http://skarnet.org/software/s6/scandir.html">scan directory</a>. </li>
+ <li> This scan directory already contains at least one service, which is the
+<em>catch-all logger</em>: error messages from the supervision tree, and
+from services that do not have a dedicated logger, are handled by a
+special <a href="http://skarnet.org/software/s6/s6-log.html">s6-log</a>
+instance and made available in <tt><em>tmpfsdir</em>/uncaught-logs</tt>
+instead of clogging the system console. </li>
+ <li> If the <tt>-g</tt> option has been given to s6-linux-init-maker, the
+scan directory will also contain a service for an early getty. </li>
+ <li> s6-svscan starts all the services defined in the scan directory,
+and unblocks the child forked by <em>stage1</em>. </li>
+ <li> This child executes into <em>stage2</em>. </li>
+</ul>
+
+<p>
+ <em>stage2</em> is the responsibility of the administrator - it will
+not be written automatically!
+It should
+contain all the necessary initialization sequence to bring up a proper
+system. When <em>stage2</em> is executed, the machine state is as follows:
+</p>
+
+<ul>
+ <li> <em>stage2</em>'s working directory is <tt>/</tt> and its stdin
+is <tt>/dev/null</tt>. <em>stage2</em>'s
+stdout and stderr both point to the pipe to the catch-all logger, so
+unless redirected, <em>stage2</em>'s output will be logged into the
+<tt><em>tmpfsdir/uncaught-logs</em></tt> directory. </li>
+ <li> The system has a valid device directory mounted on <tt>/dev</tt>.
+ <li> Depending on the kernel boot command line, the root filesystem
+may be in read-only mode. </li>
+ <li> There is a tmpfs available for root only in <em>tmpfsdir</em>. </li>
+ <li> <a href="http://skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
+is running as process 1. At any time, it is possible to make it supervise a long-lived
+process by linking the appropriate
+<a href="http://skarnet.org/software/s6/servicedir.html">service directory</a>
+into <tt><em>tmpfsdir</em>/service</tt>, then running the command
+<tt>s6-svscanctl -a <em>tmpfsdir</em>/service</tt>. Services without a
+dedicated logger will send their output to the catch-all logger. </li>
+ <li> A getty service may already be available. The point of this early
+getty is essentially to make it easier to debug if <em>stage2</em> fails. </li>
+</ul>
+
+<p>
+ There is <em>nothing else</em>. In particular, no filesystem has been
+mounted yet, including <tt>/proc</tt> and <tt>/sys</tt>; and no one-time
+initialization
+has been performed. The point of <em>stage1</em> is only to make it
+possible to run <em>stage2</em> with a logging infrastructure and a
+supervision infrastructure already available, and all the
+real machine and service initialization should happen in <em>stage2</em>.
+</p>
+
+<h2> Shutdown sequence </h2>
+
+<p>
+ When s6-svscan is told to exit via an appropriate
+<a href="http://skarnet.org/software/s6/s6-svscanctl.html">s6-svscanctl</a>
+command, it executes into the <em>stage3</em> script, which, like
+<em>stage2</em>, is the responsibility of the administrator. <em>stage3</em>
+is run in the following state:
+</p>
+
+<ul>
+ <li> It runs as process 1. (Doing so makes it easier to recover after
+killing all processes by <tt>kill -9 -1</tt> or
+<a href="http://skarnet.org/software/s6-portable-utils/s6-nuke.html">s6-nuke</a>). </li>
+ <li> Its working directory is <tt>/</tt> and its stdin is <tt>/dev/null</tt> </li>
+ <li> Its stdout and stderr are both <tt>/dev/console</tt> </li>
+ <li> Depending on the exact s6-svscanctl command that terminated s6-svscan,
+and what has happened before that command was sent, there may or may not be
+long-running services that remain alive. The catch-all logger and its
+supervisor will <em>always</em> be alive, which is not a problem because they
+do not hold any file descriptor to a filesystem that would need to be
+unmounted. </li>
+</ul>
+
+<h2> s6-linux-init-maker options </h2>
+
+<ul>
+ <li> <tt>-c</tt>&nbsp;<em>basedir</em>&nbsp;: at boot time, <em>stage1</em>
+will read its read-only data from <em>basedir</em>. After running
+s6-linux-init-maker, the administrator should make sure to copy the
+created directory <em>dir</em> to <em>basedir</em>. <em>basedir</em>
+must be absolute. Default is
+<strong><tt>/etc/s6</tt></strong>. </li> <p />
+
+ <li> <tt>-l</tt>&nbsp;<em>tmpfsdir</em>&nbsp;: at boot time, a tmpfs will
+be mounted on <em>tmpfsdir</em>. The directory should already exist in
+the root filesystem, and be empty. <em>tmpfsdir</em> must be absolute. Default is
+<strong><tt>/run</tt></strong>. </li> <p />
+
+ <li> <tt>-b</tt>&nbsp;<em>execline_bindir</em>&nbsp;: init is run by the kernel
+without a PATH, and since it is a script, it is necessary to tell it where
+to find the
+<a href="http://skarnet.org/software/execline/execlineb.html">execlineb</a>
+launcher and the first few early commands before PATH can be set.
+<em>execline_bindir</em> is the location where the execline binaries can be
+found. It must be absolute. Default is
+<strong><tt>/bin</tt></strong>. </li> <p />
+
+ <li> <tt>-u</tt>&nbsp;<em>log_user</em>&nbsp;: the catch-all
+logger will not run as root, but as <em>log_user</em>. Default is
+<strong><tt>nobody</tt></strong>. </li> <p />
+
+ <li> <tt>-g</tt>&nbsp;<em>early_getty</em>&nbsp;: if this option
+is set, s6-linux-init-maker will define a service that will run
+very early, before <em>stage2</em> is executed. This early service
+should be a getty, to allow logins even if <em>stage2</em> fails.
+<em>early_getty</em> should be a simple command line: for instance,
+<tt>"/sbin/getty 38400 tty1"</tt>. By default, no early service
+is defined. </li> <p />
+
+ <li> <tt>-2</tt>&nbsp;<em>stage2</em>&nbsp;: <em>stage2</em> is
+the location of the stage 2 script that will be run when the
+system has an operational supervision tree. It must be absolute. Default is
+<strong><tt>/etc/rc.init</tt></strong>. </li> <p />
+
+ <li> <tt>-3</tt>&nbsp;<em>stage3</em>&nbsp;: <em>stage3</em> is
+the location of the stage 3 script that will be run at the end of
+the machine lifetime, when s6-svscan is told to terminate.
+It must be absolute. Default is
+<strong><tt>/etc/rc.shutdown</tt></strong>. </li> <p />
+
+ <li> <tt>-p</tt>&nbsp;<em>initial_path</em>&nbsp;: the value to
+set the PATH environment variable to, for all the starting processes.
+This will be done as early as possible in <em>stage1</em>. Default is
+the value that has been compiled in
+<a href="http://skarnet.org/software/skalibs/">skalibs</a> via the
+<tt>--with-default-path</tt> configure option, i.e. by default
+<strong><tt>/usr/bin:/bin</tt></strong>. </li> <p />
+
+ <li> <tt>-m</tt>&nbsp;<em>initial_umask</em>&nbsp;: the value of
+the initial file umask for all the starting processes, in octal.
+Default is
+<strong><tt>022</tt></strong>. </li> <p />
+
+ <li> <tt>-t</tt>&nbsp;<em>timestamp_style</em>&nbsp;: how
+logs are timestamped by the catch-all logger. 0 means no
+timestamp, 1 means
+<a href="http://cr.yp.to/libtai/tai64.html">external TAI64N format</a>,
+2 means
+<a href="http://www.iso.org/iso/home/standards/iso8601.htm">ISO 8601 format</a>,
+and 3 means both. Default is
+<strong><tt>1</tt></strong>. </li> <p />
+
+ <li> <tt>-d</tt>&nbsp;<em>dev_style</em>&nbsp;: how <tt>/dev</tt> is
+handled on this system. 0 means a static <tt>/dev</tt>, 1 means
+devtmpfs but not automounted by the kernel at boot time, and 2 means
+devtmpfs automounted by the kernel at boot time. Default is
+<strong><tt>2</tt></strong>. </li> <p />
+
+ <li> <tt>-e</tt>&nbsp;<em>initial_envvar</em>&nbsp;: this option
+can be repeated. For every <em>initial_envvar</em>, s6-linux-init-maker
+will adjust the global environment directory in <em>dir</em>/env.
+<em>initial_envvar</em> must either be of the form <em>VAR</em>,
+to make sure that <em>VAR</em> does not appear in the global
+environment, or of the form <em>VAR=VALUE</em>, to add an
+environment variable <em>VAR</em> with the value <em>VALUE</em>.
+The TZ variable, for instance, is a good candidate to be set in
+the global environment. </li> <p />
+</ul>
+
+</body>
+</html>

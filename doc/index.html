@@ -69,12 +69,10 @@ and then you can <em>boot</em> your system on that init script.
 </p>
 
 <p>
- skalibs and execline are <em>build-time</em> dependencies.
- There are no <em>run-time</em> dependencies.
- And every listed package, save skalibs, is a <em>boot-time</em> dependency.
- If you are using the shared version of the skalibs library,
-then skalibs also becomes a <em>run-time</em> and a
-<em>boot-time</em> dependency.
+ skalibs is a <em>build-time</em> dependency. If you are linking binaries
+against the shared version of the skalibs library, it also becomes a
+<em>run-time</em> and <em>boot-time</em> dependency. <br />
+ All the other listed packages are <em>boot-time</em> dependencies only.
 </p>
 
 <h3> Licensing </h3>

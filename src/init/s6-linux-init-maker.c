@@ -17,8 +17,6 @@
 #include <skalibs/djbunix.h>
 #include <skalibs/sgetopt.h>
 #include <skalibs/skamisc.h>
-#include <execline/config.h>
-#include <s6/config.h>
 
 #define USAGE "s6-linux-init-maker [ -c basedir ] [ -l tmpfsdir ] [ -b execline_bindir ] [ -u log_user ] [ -g early_getty_cmd ] [ -2 stage2_script ] [ -r ] [ -3 stage3_script ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d dev_style ] [ -e initial_envvar ... ] dir"
 #define dieusage() strerr_dieusage(100, USAGE)
@@ -27,7 +25,6 @@
 #define BANNER "*\n* init created by s6-linux-init-maker\n* see http://skarnet.org/software/s6-linux-init/\n*\n"
 
 #define CRASH_SCRIPT \
-"#!" EXECLINE_EXTBINPREFIX "execlineb -P\n\n" \
 "redirfd -r 0 /dev/console\n" \
 "redirfd -w 1 /dev/console\n" \
 "fdmove -c 2 1\n" \
@@ -42,8 +39,8 @@ static char const *shutdown_script = "/etc/rc.shutdown" ;
 static char const *bindir = "/bin" ;
 static char const *initial_path = SKALIBS_DEFAULTPATH ;
 static char const *early_getty = 0 ;
-static uid_t uncaught_logs_uid = 65534 ;
-static gid_t uncaught_logs_gid = 65534 ;
+static uid_t uncaught_logs_uid ;
+static gid_t uncaught_logs_gid ;
 static unsigned int initial_umask = 022 ;
 static unsigned int timestamp_style = 1 ;
 static unsigned int slashdev_style = 2 ;
@@ -52,21 +49,32 @@ static int redirect_stage2 = 0 ;
 typedef int writetobuf_func_t (buffer *) ;
 typedef writetobuf_func_t *writetobuf_func_t_ref ;
 
+static int put_shebang (buffer *b)
+{
+  return buffer_puts(b, "#!") >= 0
+   && buffer_puts(b, bindir) >= 0
+   && buffer_puts(b, "/execlineb -P\n\n") >= 0 ;
+}
+
 static int early_getty_script (buffer *b)
 {
-  if (buffer_puts(b, "#!" EXECLINE_EXTBINPREFIX "execlineb -P\n\n") < 0
-   || buffer_puts(b, early_getty) < 0
-   || buffer_put(b, "\n", 1) < 0)
-    return 0 ;
-  return 1 ;
+  return put_shebang(b)
+   && buffer_puts(b, early_getty) >= 0
+   && buffer_put(b, "\n", 1) >= 0 ;
+}
+
+static int crash_script (buffer *b)
+{
+  return put_shebang(b)
+   && buffer_puts(b, CRASH_SCRIPT) ;
 }
 
 static int s6_svscan_log_script (buffer *b)
 {
   unsigned int sabase = satmp.len ;
   char fmt[UINT64_FMT] ;
-  if (buffer_puts(b,
-    "#!" EXECLINE_EXTBINPREFIX "execlineb -P\n\n"
+  if (!put_shebang(b)
+   || buffer_puts(b,
     "redirfd -w 2 /dev/console\n"
     "redirfd -w 1 /dev/null\n"
     "redirfd -rnb 0 fifo\n"
@@ -91,8 +99,9 @@ static int s6_svscan_log_script (buffer *b)
 static int finish_script (buffer *b)
 {
   unsigned int sabase = satmp.len ;
-  if (buffer_puts(b, 
-    "#!" EXECLINE_EXTBINPREFIX "execlineb -S0\n\n"
+  if (buffer_puts(b, "#!") < 0
+   || buffer_puts(b, bindir) < 0
+   || buffer_puts(b, "/execlineb -S0\n\n"
     "cd /\nredirfd -w 2 /dev/console\nfdmove -c 1 2\nwait { }\n") < 0
    || !string_quote(&satmp, shutdown_script, str_len(shutdown_script))) return 0 ;
   if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0)
@@ -191,7 +200,7 @@ static void make_image (char const *base)
   auto_dir(base, "run-image/uncaught-logs", uncaught_logs_uid, uncaught_logs_gid, 02700) ;
   auto_dir(base, "run-image/service", 0, 0, 0755) ;
   auto_dir(base, "run-image/service/.s6-svscan", 0, 0, 0755) ;
-  auto_file(base, "run-image/service/.s6-svscan/crash", CRASH_SCRIPT, sizeof(CRASH_SCRIPT) - 1, 1) ;
+  auto_script(base, "run-image/service/.s6-svscan/crash", &crash_script) ;
   auto_script(base, "run-image/service/.s6-svscan/finish", &finish_script) ;
   auto_dir(base, "run-image/service/s6-svscan-log", 0, 0, 0755) ;
   auto_fifo(base, "run-image/service/s6-svscan-log/fifo") ;
@@ -226,9 +235,7 @@ static int make_init_script (buffer *b)
 {
   unsigned int sabase = satmp.len, pos, pos2 ;
   char fmt[UINT_OFMT] ;
-  if (buffer_puts(b, "#!") < 0
-   || buffer_puts(b, bindir) < 0
-   || buffer_puts(b, "/execlineb -P\n\n") < 0
+  if (!put_shebang(b)
    || buffer_puts(b, bindir) < 0
    || buffer_puts(b, "/export PATH ") < 0
    || !string_quote(&satmp, initial_path, str_len(initial_path))) return 0 ;

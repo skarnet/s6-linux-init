@@ -102,16 +102,19 @@ static int finish_script (buffer *b)
   if (buffer_puts(b, "#!") < 0
    || buffer_puts(b, bindir) < 0
    || buffer_puts(b, "/execlineb -S0\n\n"
-    "cd /\nredirfd -w 2 /dev/console\nfdmove -c 1 2\nwait { }\n") < 0
+    "cd /\nredirfd -w 2 /dev/console\nfdmove -c 1 2\nif { s6-svc -xh -- ") < 0
+   || !string_quote(&satmp, slashrun, str_len(slashrun))) return 0 ;
+  if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
+  satmp.len = sabase ;
+  if (buffer_puts(b, "/service/s6-svscan-log }\nwait { }\n") < 0
    || !string_quote(&satmp, shutdown_script, str_len(shutdown_script))) return 0 ;
-  if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0)
-  {
-    satmp.len = sabase ;
-    return 0 ;
-  }
+  if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
   if (buffer_puts(b, " ${@}\n") < 0) return 0 ;
   return 1 ;
+ err:
+  satmp.len = sabase ;
+  return 0 ;
 }
 
 static void cleanup (char const *base)

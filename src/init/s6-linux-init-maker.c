@@ -267,28 +267,20 @@ static int make_init_script (buffer *b)
   {
     if (buffer_puts(b, "if { s6-mount -nt devtmpfs dev /dev }\n") < 0) goto err ;
   }
-  if (buffer_puts(b, "redirfd -r 0 /dev/null\ns6-envdir -I -- ") < 0
+  if (buffer_puts(b, "s6-envdir -I -- ") < 0
    || buffer_put(b, satmp.s + pos, pos2 - pos) < 0
-   || buffer_puts(b, "/env\nbackground\n{\n  s6-setsid --\n  ") < 0) goto err ;
-  if (redirect_stage2)
-  {
-    if (buffer_puts(b, "redirfd -w 2 ") < 0
-     || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
-     || buffer_puts(b, "/service/s6-svscan-log/fifo\n  fdmove -c 1 2\n  ") < 0) goto err ;
-  }
-  else
-  {
-    if (buffer_puts(b, "redirfd -w 3 ") < 0
-     || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
-     || buffer_puts(b, "/service/s6-svscan-log/fifo\n  fdclose 3\n  ") < 0) goto err ;
-  }
-  if (!string_quote(&satmp, init_script, str_len(init_script))
+   || buffer_puts(b, "/env\nredirfd -r 0 /dev/null\nredirfd -wnb 1 ") < 0
+   || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
+   || buffer_puts(b, "/service/s6-svscan-log/fifo\nbackground\n{\n  s6-setsid --\n  redirfd -w 1 ") < 0
+   || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
+   || buffer_puts(b, "/service/s6-svscan-log/fifo\n  fdmove -c ") < 0
+   || buffer_puts(b, redirect_stage2 ? "2 1" : "1 2") < 0
+   || buffer_puts(b, "\n  ") < 0
+   || !string_quote(&satmp, init_script, str_len(init_script))
    || buffer_put(b, satmp.s + pos2, satmp.len - pos2) < 0
-   || buffer_puts(b, "\n}\nunexport !\nredirfd -wnb 1 ") < 0
+   || buffer_puts(b, "\n}\nunexport !\ncd ") < 0
    || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
-   || buffer_puts(b, "/service/s6-svscan-log/fifo\nfdmove -c 2 1\ncd ") < 0
-   || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
-   || buffer_puts(b, "/service\ns6-svscan -t0\n") < 0) goto err ;
+   || buffer_puts(b, "/service\nfdmove -c 2 1\ns6-svscan -t0\n") < 0) goto err ;
   return 1 ;
  err:
   satmp.len = sabase ;

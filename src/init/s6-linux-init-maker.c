@@ -22,7 +22,7 @@
 #define dieusage() strerr_dieusage(100, USAGE)
 #define dienomem() strerr_diefu1sys(111, "stralloc_catb") ;
 
-#define BANNER "*\n* init created by s6-linux-init-maker\n* see http://skarnet.org/software/s6-linux-init/\n*\n"
+#define BANNER "\n  init created by s6-linux-init-maker\n  see http://skarnet.org/software/s6-linux-init/\n\n"
 
 #define CRASH_SCRIPT \
 "redirfd -r 0 /dev/console\n" \
@@ -66,7 +66,7 @@ static int early_getty_script (buffer *b)
 static int crash_script (buffer *b)
 {
   return put_shebang(b)
-   && buffer_puts(b, CRASH_SCRIPT) ;
+   && buffer_puts(b, CRASH_SCRIPT) >= 0 ;
 }
 
 static int s6_svscan_log_script (buffer *b)
@@ -197,7 +197,7 @@ static void auto_script (char const *base, char const *file, writetobuf_func_t_r
   close(fd) ;
 }
 
-static void make_image (char const *base)
+static inline void make_image (char const *base)
 {
   auto_dir(base, "run-image", 0, 0, 0755) ;
   auto_dir(base, "run-image/uncaught-logs", uncaught_logs_uid, uncaught_logs_gid, 02700) ;
@@ -215,7 +215,7 @@ static void make_image (char const *base)
   }
 }
 
-static void make_env (char const *base, char const *modif, unsigned int modiflen)
+static inline void make_env (char const *base, char const *modif, unsigned int modiflen)
 {
   auto_dir(base, "env", 0, 0, 0755) ;
   while (modiflen)
@@ -234,7 +234,7 @@ static void make_env (char const *base, char const *modif, unsigned int modiflen
   }
 }
 
-static int make_init_script (buffer *b)
+static inline int make_init_script (buffer *b)
 {
   unsigned int sabase = satmp.len, pos, pos2 ;
   char fmt[UINT_OFMT] ;
@@ -290,7 +290,6 @@ static int make_init_script (buffer *b)
 int main (int argc, char const *const *argv)
 {
   char const *catchall_user = "nobody" ;
-  stralloc modif = STRALLOC_ZERO ;
   PROG = "s6-linux-init-maker" ;
   {
     subgetopt_t l = SUBGETOPT_ZERO ;
@@ -312,7 +311,7 @@ int main (int argc, char const *const *argv)
         case 'm' : if (!uint0_oscan(l.arg, &initial_umask)) dieusage() ; break ;
         case 't' : if (!uint0_scan(l.arg, &timestamp_style)) dieusage() ; break ;
         case 'd' : if (!uint0_scan(l.arg, &slashdev_style)) dieusage() ; break ;
-        case 'e' : if (!stralloc_catb(&modif, l.arg, str_len(l.arg) + 1)) dienomem() ; break ;
+        case 'e' : if (!stralloc_catb(&satmp, l.arg, str_len(l.arg) + 1)) dienomem() ; break ;
         default : dieusage() ;
       }
     }
@@ -335,7 +334,6 @@ int main (int argc, char const *const *argv)
   if (slashdev_style > 2)
     strerr_dief1x(100, "-d dev_style must be 0, 1 or 2") ;
 
-
   {
     struct passwd *pw = getpwnam(catchall_user) ;
     if (!pw)
@@ -352,8 +350,8 @@ int main (int argc, char const *const *argv)
   if (mkdir(argv[0], 0755) < 0)
     strerr_diefu2sys(111, "mkdir ", argv[0]) ;
 
-  make_env(argv[0], modif.s, modif.len) ;
-  stralloc_free(&modif) ;
+  make_env(argv[0], satmp.s, satmp.len) ;
+  satmp.len = 0 ;
   make_image(argv[0]) ;
   if (!make_init_script(buffer_1) || !buffer_flush(buffer_1))
     strerr_diefu1sys(111, "write to stdout") ;

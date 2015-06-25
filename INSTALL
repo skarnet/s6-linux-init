@@ -10,7 +10,7 @@ Build Instructions
   - execline version 2.1.2.2 or later: http://skarnet.org/software/execline/
   - s6-portable-utils version 2.0.5.0 or later: http://skarnet.org/software/s6-portable-utils/
   - s6-linux-utils version 2.0.2.1 or later: http://skarnet.org/software/s6-linux-utils/
-  - s6 version 2.1.5.0 or later: http://skarnet.org/software/s6/
+  - s6 version 2.1.6.0 or later: http://skarnet.org/software/s6/
 
  Note that all those are build-time dependencies, and they are
 *also* run-time dependencies when you use the init binary created

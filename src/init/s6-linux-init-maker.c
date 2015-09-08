@@ -246,7 +246,7 @@ static inline int make_init_script (buffer *b)
   satmp.len = sabase ;
   if (buffer_put(b, "\n", 1) < 0
    || buffer_puts(b, bindir) < 0
-   || buffer_puts(b, "/cd /\numask 0") < 0
+   || buffer_puts(b, "/cd /\ns6-setsid -qb --\numask 0") < 0
    || buffer_put(b, fmt, uint_ofmt(fmt, initial_umask)) < 0
    || buffer_puts(b, "\nif { s6-echo -- ") < 0
    || !string_quote(&satmp, BANNER, sizeof(BANNER) - 1) < 0) return 0 ;

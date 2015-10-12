@@ -4,5 +4,5 @@
 
 src/init/s6-linux-init-maker.o src/init/s6-linux-init-maker.lo: src/init/s6-linux-init-maker.c
 
-s6-linux-init-maker: private EXTRA_LIBS :=
+s6-linux-init-maker: EXTRA_LIBS :=
 s6-linux-init-maker: src/init/s6-linux-init-maker.o -lskarnet

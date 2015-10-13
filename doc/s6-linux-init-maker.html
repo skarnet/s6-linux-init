@@ -50,6 +50,7 @@ machine</em> - else the scripts will crash.
        [ -g <em>early_getty</em> ] \
        [ -2 <em>stage2</em> ] \
        [ -r ] \
+       [ -Z ] <em>stage2_finish</em> \
        [ -3 <em>stage3</em> ] \
        [ -p <em>initial_path</em> ] \
        [ -m <em>initial_umask</em> ] \
@@ -186,6 +187,37 @@ do not hold any file descriptor to a filesystem that would need to be
 unmounted. </li>
 </ul>
 
+<p>
+ When s6-svscan receives a signal such as SIGINT, typically sent by the
+Ctrl-Alt-Del key combination or a <tt>reboot</tt> or <tt>poweroff</tt>
+command, it will run the corresponding script in
+<tt><em>tmpfsdir</em>/service/.s6-svscan</tt>, which will first run
+<em>stage2_finish</em>, then send an exit command to s6-svscan as
+described above. This is useful if some commands need to be run before
+s6-svscan executes into <em>stage3</em>: for instance, if the machine
+state is maintained by a service manager such as
+<a href="http://skarnet.org/software/s6-rc/">s6-rc</a>, all the
+services can be turned off in <em>stage2_finish</em> while s6-svscan
+is still alive, and then the last steps of the shutdown procedure can
+be performed in <em>stage3</em>.
+</p>
+
+<p>
+ Generally speaking, <em>stage2_finish</em> should undo what
+<em>stage2</em> has done at boot time, so <em>stage3</em> has very
+little work to do.
+</p>
+
+<p>
+ The <tt>examples/</tt> subdirectory of the s6-linux-init package
+contains an example of <tt>/etc/rc.init</tt>, <tt>/etc/rc.tini</tt>
+and <tt>/etc/rc.shutdown</tt> scripts, suitable for
+<em>stage2</em>, <em>stage2_finish</em> and <em>stage3</em>
+respectively. Those scripts can practically be used as is if the machine
+is managed by the <a href="http://skarnet.org/software/s6-rc/">s6-rc</a>
+service manager.
+</p>
+
 <h2> s6-linux-init-maker options </h2>
 
 <ul>
@@ -234,6 +266,12 @@ with an early getty, or be undesirable for other reasons. The
 <tt>-r</tt> option redirects <em>stage2</em>'s stdout and stderr
 to the catch-all logger, so the output will be made available
 in the <tt><em>tmpfsdir</em>/uncaught-logs</tt> directory. </li> <p />
+
+ <li> <tt>-Z</tt>&nbsp;<em>stage2_finish</em>&nbsp;:
+<em>stage2_finish</em> is the location of the script that will be
+run when s6-svscan receives a signal that tells it to stop the
+machine, before it executes into <em>stage3</em>. It must be
+absolute. Default is <strong><tt>/etc/rc.tini</tt></strong>. </li> <p />
 
  <li> <tt>-3</tt>&nbsp;<em>stage3</em>&nbsp;: <em>stage3</em> is
 the location of the stage 3 script that will be run at the end of

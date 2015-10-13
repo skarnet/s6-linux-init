@@ -18,7 +18,7 @@
 #include <skalibs/sgetopt.h>
 #include <skalibs/skamisc.h>
 
-#define USAGE "s6-linux-init-maker [ -c basedir ] [ -l tmpfsdir ] [ -b execline_bindir ] [ -u log_user ] [ -g early_getty_cmd ] [ -2 stage2_script ] [ -r ] [ -3 stage3_script ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d dev_style ] [ -e initial_envvar ... ] dir"
+#define USAGE "s6-linux-init-maker [ -c basedir ] [ -l tmpfsdir ] [ -b execline_bindir ] [ -u log_user ] [ -g early_getty_cmd ] [ -2 stage2_script ] [ -r ] [ -Z finish_script ] [ -3 stage3_script ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d dev_style ] [ -e initial_envvar ... ] dir"
 #define dieusage() strerr_dieusage(100, USAGE)
 #define dienomem() strerr_diefu1sys(111, "stralloc_catb") ;
 
@@ -35,6 +35,7 @@
 static char const *slashrun = "/run" ;
 static char const *robase = "/etc/s6-linux-init" ;
 static char const *init_script = "/etc/rc.init" ;
+static char const *tini_script = "/etc/rc.tini" ;
 static char const *shutdown_script = "/etc/rc.shutdown" ;
 static char const *bindir = "/bin" ;
 static char const *initial_path = SKALIBS_DEFAULTPATH ;
@@ -115,6 +116,57 @@ static int finish_script (buffer *b)
  err:
   satmp.len = sabase ;
   return 0 ;
+}
+
+static int sig_script (buffer *b, char c)
+{
+  unsigned int sabase = satmp.len ;
+  if (!put_shebang(b)
+   || buffer_puts(b, "foreground { ") < 0
+   || !string_quote(&satmp, tini_script, str_len(tini_script))) return 0 ;
+  if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
+  satmp.len = sabase ;
+  if (buffer_puts(b, " }\ns6-svscanctl -") < 0
+   || buffer_put(b, &c, 1) < 0
+   || buffer_puts(b, " -- ") < 0
+   || !string_quote(&satmp, slashrun, str_len(slashrun))) return 0 ;
+  if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
+  satmp.len = sabase ;
+  if (buffer_puts(b, "/service\n") < 0) return 0 ;
+  return 1 ;
+ err:
+  satmp.len = sabase ;
+  return 0 ;
+}
+
+static int sigterm_script (buffer *b)
+{
+  return sig_script(b, 't') ;
+}
+
+static int sighup_script (buffer *b)
+{
+  return sig_script(b, 'h') ;
+}
+
+static int sigquit_script (buffer *b)
+{
+  return sig_script(b, 'q') ;
+}
+
+static int sigint_script (buffer *b)
+{
+  return sig_script(b, '6') ;
+}
+
+static int sigusr1_script (buffer *b)
+{
+  return sig_script(b, '7') ;
+}
+
+static int sigusr2_script (buffer *b)
+{
+  return sig_script(b, '0') ;
 }
 
 static void cleanup (char const *base)
@@ -205,6 +257,12 @@ static inline void make_image (char const *base)
   auto_dir(base, "run-image/service/.s6-svscan", 0, 0, 0755) ;
   auto_script(base, "run-image/service/.s6-svscan/crash", &crash_script) ;
   auto_script(base, "run-image/service/.s6-svscan/finish", &finish_script) ;
+  auto_script(base, "run-image/service/.s6-svscan/SIGTERM", &sigterm_script) ;
+  auto_script(base, "run-image/service/.s6-svscan/SIGHUP", &sighup_script) ;
+  auto_script(base, "run-image/service/.s6-svscan/SIGQUIT", &sigquit_script) ;
+  auto_script(base, "run-image/service/.s6-svscan/SIGINT", &sigint_script) ;
+  auto_script(base, "run-image/service/.s6-svscan/SIGUSR1", &sigusr1_script) ;
+  auto_script(base, "run-image/service/.s6-svscan/SIGUSR2", &sigusr2_script) ;
   auto_dir(base, "run-image/service/s6-svscan-log", 0, 0, 0755) ;
   auto_fifo(base, "run-image/service/s6-svscan-log/fifo") ;
   auto_script(base, "run-image/service/s6-svscan-log/run", &s6_svscan_log_script) ;
@@ -280,7 +338,7 @@ static inline int make_init_script (buffer *b)
    || buffer_put(b, satmp.s + pos2, satmp.len - pos2) < 0
    || buffer_puts(b, "\n}\nunexport !\ncd ") < 0
    || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
-   || buffer_puts(b, "/service\nfdmove -c 2 1\ns6-svscan -t0\n") < 0) goto err ;
+   || buffer_puts(b, "/service\nfdmove -c 2 1\ns6-svscan -st0\n") < 0) goto err ;
   return 1 ;
  err:
   satmp.len = sabase ;
@@ -295,7 +353,7 @@ int main (int argc, char const *const *argv)
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      register int opt = subgetopt_r(argc, argv, "c:l:b:u:g:2:r3:p:m:t:d:e:", &l) ;
+      register int opt = subgetopt_r(argc, argv, "c:l:b:u:g:2:rZ:3:p:m:t:d:e:", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
@@ -306,6 +364,7 @@ int main (int argc, char const *const *argv)
         case 'g' : early_getty = l.arg ; break ;
         case '2' : init_script = l.arg ; break ;
         case 'r' : redirect_stage2 = 1 ; break ;
+        case 'Z' : tini_script = l.arg ; break ;
         case '3' : shutdown_script = l.arg ; break ;
         case 'p' : initial_path = l.arg ; break ;
         case 'm' : if (!uint0_oscan(l.arg, &initial_umask)) dieusage() ; break ;
@@ -327,6 +386,8 @@ int main (int argc, char const *const *argv)
     strerr_dief3x(100, "initial location for binaries ", bindir, " is not absolute") ;
   if (init_script[0] != '/')
     strerr_dief3x(100, "stage 2 script location ", init_script, " is not absolute") ;
+  if (tini_script[0] != '/')
+    strerr_dief3x(100, "stage 2 finish script location ", tini_script, " is not absolute") ;
   if (shutdown_script[0] != '/')
     strerr_dief3x(100, "stage 3 script location ", shutdown_script, " is not absolute") ;
   if (timestamp_style > 3)

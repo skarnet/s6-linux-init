@@ -18,7 +18,7 @@
 #include <skalibs/sgetopt.h>
 #include <skalibs/skamisc.h>
 
-#define USAGE "s6-linux-init-maker [ -c basedir ] [ -l tmpfsdir ] [ -b execline_bindir ] [ -u log_user ] [ -g early_getty_cmd ] [ -2 stage2_script ] [ -r ] [ -Z finish_script ] [ -3 stage3_script ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d dev_style ] [ -e initial_envvar ... ] dir"
+#define USAGE "s6-linux-init-maker [ -c basedir ] [ -l tmpfsdir ] [ -b execline_bindir ] [ -u log_user ] [ -g early_getty_cmd ] [ -2 stage2_script ] [ -r ] [ -Z finish_script ] [ -3 stage3_script ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d dev_style ] [ -s env_store ] [ -e initial_envvar ... ] dir"
 #define dieusage() strerr_dieusage(100, USAGE)
 #define dienomem() strerr_diefu1sys(111, "stralloc_catb") ;
 
@@ -39,6 +39,7 @@ static char const *tini_script = "/etc/rc.tini" ;
 static char const *shutdown_script = "/etc/rc.shutdown" ;
 static char const *bindir = "/bin" ;
 static char const *initial_path = SKALIBS_DEFAULTPATH ;
+static char const *env_store = 0 ;
 static char const *early_getty = 0 ;
 static uid_t uncaught_logs_uid ;
 static gid_t uncaught_logs_gid ;
@@ -325,7 +326,16 @@ static inline int make_init_script (buffer *b)
   {
     if (buffer_puts(b, "if { s6-mount -nt devtmpfs dev /dev }\n") < 0) goto err ;
   }
-  if (buffer_puts(b, "s6-envdir -I -- ") < 0
+  if (env_store)
+  {
+    unsigned int base = satmp.len ;
+    if (!string_quote(&satmp, env_store, str_len(env_store))) return 0 ;
+    if (buffer_puts(b, "if { unexport PATH s6-dumpenv -- ") < 0
+     || buffer_put(b, satmp.s + base, satmp.len - base) < 0
+     || buffer_puts(b, " }\n") < 0) goto err ;
+    satmp.len = base ;
+  }
+  if (buffer_puts(b, "emptyenv -p\ns6-envdir -I -- ") < 0
    || buffer_put(b, satmp.s + pos, pos2 - pos) < 0
    || buffer_puts(b, "/env\nredirfd -r 0 /dev/null\nredirfd -wnb 1 ") < 0
    || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
@@ -353,7 +363,7 @@ int main (int argc, char const *const *argv)
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      register int opt = subgetopt_r(argc, argv, "c:l:b:u:g:2:rZ:3:p:m:t:d:e:", &l) ;
+      register int opt = subgetopt_r(argc, argv, "c:l:b:u:g:2:rZ:3:p:m:t:d:s:e:", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
@@ -370,6 +380,7 @@ int main (int argc, char const *const *argv)
         case 'm' : if (!uint0_oscan(l.arg, &initial_umask)) dieusage() ; break ;
         case 't' : if (!uint0_scan(l.arg, &timestamp_style)) dieusage() ; break ;
         case 'd' : if (!uint0_scan(l.arg, &slashdev_style)) dieusage() ; break ;
+        case 's' : env_store = l.arg ; break ;
         case 'e' : if (!stralloc_catb(&satmp, l.arg, str_len(l.arg) + 1)) dienomem() ; break ;
         default : dieusage() ;
       }

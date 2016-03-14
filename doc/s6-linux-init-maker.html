@@ -56,6 +56,7 @@ machine</em> - else the scripts will crash.
        [ -m <em>initial_umask</em> ] \
        [ -t <em>timestamp_style</em> ] \
        [ -d <em>dev_style</em> ] \
+       [ -s <em>env_store</em> ] \
        [ -e <em>initial_envvar</em> ] ... \
        <em>dir</em> &gt; <em>stage1</em>
 </pre>
@@ -103,7 +104,7 @@ program launcher. </li>
 filesystem on <em>tmpfsdir</em>. </li>
  <li> <em>stage1</em> copies <tt><em>basedir</em>/run-image</tt> verbatim to
 <em>tmpfsdir</em>. </li>
- <li> <em>stage1</em> reads a global set of environment variables from the
+ <li> <em>stage1</em> empties its environment, then reads a global set of environment variables from the
 <tt><em>basedir</em>/env</tt>
 <a href="http://skarnet.org/software/s6/s6-envdir.html">environment directory</a>. </li>
  <li> <em>stage1</em> forks a child that will block until
@@ -312,6 +313,20 @@ handled on this system. 0 means a static <tt>/dev</tt>, 1 means
 devtmpfs but not automounted by the kernel at boot time, and 2 means
 devtmpfs automounted by the kernel at boot time. Default is
 <strong><tt>2</tt></strong>. </li> <p />
+
+ <li> <tt>-s</tt>&nbsp;<em>env_store</em>&nbsp;: stage1 init sometimes
+inherits a few environment variables from the kernel. It empties its
+environment before spawning stage2 and executing into s6-svscan, in
+order to prevent those "kernel" environment variables from leaking
+into the whole process tree. However, sometimes those variables are
+needed at a later time; in that case, giving the <tt>-s</tt> option
+to s6-linux-init-maker makes stage1 init dump the "kernel" environment
+variables into the <em>env_store</em> directory, via the
+<a href="http://skarnet.org/software/s6-portable-utils/s6-dumpenv.html">s6-dumpenv</a>
+program, before erasing them. <em>env_store</em> should obviously be
+a writable directory, so it should be located under <em>tmpfsdir</em>!
+If this option is not given (which is the default), the environment
+inherited from the kernel isn't saved anywhere. </li>
 
  <li> <tt>-e</tt>&nbsp;<em>initial_envvar</em>&nbsp;: this option
 can be repeated. For every <em>initial_envvar</em>, s6-linux-init-maker

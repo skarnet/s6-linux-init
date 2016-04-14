@@ -16,4 +16,4 @@ foreground { s6-umount -a }
 foreground { s6-mount -o ro,remount /dev/root / }
 
 foreground { s6-echo "\nPerforming "${1}"." }
-s6-${1}
+s6-${1} -f

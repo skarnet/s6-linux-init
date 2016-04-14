@@ -21,7 +21,12 @@
 <p>
 <tt>s6-linux-init-maker</tt> reads configuration options on
 the command line, and outputs a directory to place in the
-root filesystem as well as a script suitable as an init program.
+root filesystem. That directory contains a script suitable
+as an init program, as well as support file hierarchies to
+get a complete
+<a href="http://skarnet.org/software/s6/">s6</a>
+infrastructure running when the system is booted on that
+script.
 </p>
 
 <p>
@@ -58,7 +63,7 @@ machine</em> - else the scripts will crash.
        [ -d <em>dev_style</em> ] \
        [ -s <em>env_store</em> ] \
        [ -e <em>initial_envvar</em> ] ... \
-       <em>dir</em> &gt; <em>stage1</em>
+       <em>dir</em>
 </pre>
 
 <ul>
@@ -66,9 +71,9 @@ machine</em> - else the scripts will crash.
  <li> s6-linux-init-maker parses options on its command line. </li>
  <li> It writes data into a directory <em>dir</em>, which must not
 exist beforehand. </li>
- <li> It then prints a script to its standard output. </li>
  <li> It exits 0 if everything went well, 100 if a user error occurred,
-and 111 if a problem occurred during the directory or script creation. </li>
+and 111 if a problem occurred during the creation of the directory
+or its contents. </li>
 </ul>
 
 <p>
@@ -81,35 +86,37 @@ tool can do it, as well as the GNU or busybox <tt>cp -a</tt> or <tt>mv</tt> comm
 </p>
 
 <p>
- The <em>stage1</em> script printed by s6-linux-init-maker on its
-stdout is then suitable as an init program. The administrator should
-copy it to <tt>/sbin/init</tt> and make it executable.
+ The <tt><em>basedir</em>/init</tt> script
+is then suitable as a "stage 1" init program, i.e. the first program
+run by the kernel. The administrator should make a symbolic link
+from <tt>/sbin/init</tt> to <tt><em>basedir</em>/init</tt>; the
+machine will then be ready to boot 
 </p>
 
 <h2> Boot sequence </h2>
 
 <p>
- When the kernel boots, it runs the <em>stage1</em> script, and this is
-what happens:
+ When the kernel boots, it runs the <tt><em>basedir</em>/init</tt> script,
+also known as <em>stage 1</em>. and this is what happens:
 </p>
 
 <ul>
- <li> <em>stage1</em> is an
+ <li> <em>stage 1</em> is an
 <a href="http://skarnet.org/software/execline/">execline</a> script, so
 the first process run by the kernel is the
 <a href="http://skarnet.org/software/execline/execlineb.html">execlineb</a>
 program launcher. </li>
- <li> <em>stage1</em> mounts a
+ <li> <em>stage 1</em> mounts a
 <a href="https://www.kernel.org/doc/Documentation/filesystems/tmpfs.txt">tmpfs</a>
 filesystem on <em>tmpfsdir</em>. </li>
- <li> <em>stage1</em> copies <tt><em>basedir</em>/run-image</tt> verbatim to
+ <li> <em>stage 1</em> copies <tt><em>basedir</em>/run-image</tt> verbatim to
 <em>tmpfsdir</em>. </li>
- <li> <em>stage1</em> empties its environment, then reads a global set of environment variables from the
+ <li> <em>stage 1</em> empties its environment, then reads a global set of environment variables from the
 <tt><em>basedir</em>/env</tt>
 <a href="http://skarnet.org/software/s6/s6-envdir.html">environment directory</a>. </li>
- <li> <em>stage1</em> forks a child that will block until
+ <li> <em>stage 1</em> forks a child that will block until
 <a href="http://skarnet.org/software/s6/s6-svscan.html">s6-svscan</a> is running. </li>
- <li> <em>stage1</em> executes, as process 1, into
+ <li> <em>stage 1</em> executes, as process 1, into
 <a href="http://skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>,
 with <tt><em>tmpfsdir</em>/service</tt> as a
 <a href="http://skarnet.org/software/s6/scandir.html">scan directory</a>. </li>
@@ -122,7 +129,7 @@ instead of clogging the system console. </li>
  <li> If the <tt>-g</tt> option has been given to s6-linux-init-maker, the
 scan directory will also contain a service for an early getty. </li>
  <li> s6-svscan starts all the services defined in the scan directory,
-and unblocks the child forked by <em>stage1</em>. </li>
+and unblocks the child forked by <em>stage 1</em>. </li>
  <li> This child executes into <em>stage2</em>. </li>
 </ul>
 
@@ -158,7 +165,7 @@ getty is essentially to make it easier to debug if <em>stage2</em> fails. </li>
  There is <em>nothing else</em>. In particular, no filesystem has been
 mounted yet, including <tt>/proc</tt> and <tt>/sys</tt>; and no one-time
 initialization
-has been performed. The point of <em>stage1</em> is only to make it
+has been performed. The point of <em>stage 1</em> is only to make it
 possible to run <em>stage2</em> with a logging infrastructure and a
 supervision infrastructure already available, and all the
 real machine and service initialization should happen in <em>stage2</em>.
@@ -222,7 +229,8 @@ service manager.
 <h2> s6-linux-init-maker options </h2>
 
 <ul>
- <li> <tt>-c</tt>&nbsp;<em>basedir</em>&nbsp;: at boot time, <em>stage1</em>
+ <li> <tt>-c</tt>&nbsp;<em>basedir</em>&nbsp;: at boot time, <em>stage 1</em>,
+which should be accessible as <tt><em>basedir</em>/init</tt>,
 will read its read-only data from <em>basedir</em>. After running
 s6-linux-init-maker, the administrator should make sure to copy the
 created directory <em>dir</em> to <em>basedir</em>. <em>basedir</em>
@@ -282,7 +290,7 @@ It must be absolute. Default is
 
  <li> <tt>-p</tt>&nbsp;<em>initial_path</em>&nbsp;: the value to
 set the PATH environment variable to, for all the starting processes.
-This will be done as early as possible in <em>stage1</em>. It is
+This will be done as early as possible in <em>stage 1</em>. It is
 absolutely necessary for
 <a href="http://skarnet.org/software/execline/">execline</a>,
 <a href="http://skarnet.org/software/s6/">s6</a>,
@@ -314,13 +322,13 @@ devtmpfs but not automounted by the kernel at boot time, and 2 means
 devtmpfs automounted by the kernel at boot time. Default is
 <strong><tt>2</tt></strong>. </li> <p />
 
- <li> <tt>-s</tt>&nbsp;<em>env_store</em>&nbsp;: stage1 init sometimes
+ <li> <tt>-s</tt>&nbsp;<em>env_store</em>&nbsp;: stage 1 init sometimes
 inherits a few environment variables from the kernel. It empties its
 environment before spawning stage2 and executing into s6-svscan, in
 order to prevent those "kernel" environment variables from leaking
 into the whole process tree. However, sometimes those variables are
 needed at a later time; in that case, giving the <tt>-s</tt> option
-to s6-linux-init-maker makes stage1 init dump the "kernel" environment
+to s6-linux-init-maker makes stage 1 init dump the "kernel" environment
 variables into the <em>env_store</em> directory, via the
 <a href="http://skarnet.org/software/s6-portable-utils/s6-dumpenv.html">s6-dumpenv</a>
 program, before erasing them. <em>env_store</em> should obviously be

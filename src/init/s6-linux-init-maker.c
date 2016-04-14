@@ -170,6 +170,68 @@ static int sigusr2_script (buffer *b)
   return sig_script(b, '0') ;
 }
 
+static inline int stage1_script (buffer *b)
+{
+  unsigned int sabase = satmp.len, pos, pos2 ;
+  char fmt[UINT_OFMT] ;
+  if (!put_shebang(b)
+   || buffer_puts(b, bindir) < 0
+   || buffer_puts(b, "/export PATH ") < 0
+   || !string_quote(&satmp, initial_path, str_len(initial_path))) return 0 ;
+  if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
+  satmp.len = sabase ;
+  if (buffer_put(b, "\n", 1) < 0
+   || buffer_puts(b, bindir) < 0
+   || buffer_puts(b, "/cd /\ns6-setsid -qb --\numask 0") < 0
+   || buffer_put(b, fmt, uint_ofmt(fmt, initial_umask)) < 0
+   || buffer_puts(b, "\nif { s6-echo -- ") < 0
+   || !string_quote(&satmp, BANNER, sizeof(BANNER) - 1)) return 0 ;
+  if (buffer_put(b, satmp.s, satmp.len) < 0) goto err ;
+  satmp.len = sabase ;
+  if (buffer_puts(b, " }\nif { s6-mount -nwt tmpfs -o mode=0755 tmpfs ") < 0
+   || !string_quote(&satmp, slashrun, str_len(slashrun))) return 0 ;
+  pos = satmp.len ;
+  if (buffer_put(b, satmp.s + sabase, pos - sabase) < 0
+   || buffer_puts(b, " }\nif { s6-hiercopy ") < 0
+   || !string_quote(&satmp, robase, str_len(robase))) return 0 ;
+  pos2 = satmp.len ;
+  if (buffer_put(b, satmp.s + pos, pos2 - pos) < 0
+   || buffer_puts(b, "/run-image ") < 0
+   || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
+   || buffer_puts(b, " }\n") < 0) goto err ;
+  if (slashdev_style == 1)
+  {
+    if (buffer_puts(b, "if { s6-mount -nt devtmpfs dev /dev }\n") < 0) goto err ;
+  }
+  if (env_store)
+  {
+    unsigned int base = satmp.len ;
+    if (!string_quote(&satmp, env_store, str_len(env_store))) return 0 ;
+    if (buffer_puts(b, "if { unexport PATH s6-dumpenv -- ") < 0
+     || buffer_put(b, satmp.s + base, satmp.len - base) < 0
+     || buffer_puts(b, " }\n") < 0) goto err ;
+    satmp.len = base ;
+  }
+  if (buffer_puts(b, "emptyenv -p\ns6-envdir -I -- ") < 0
+   || buffer_put(b, satmp.s + pos, pos2 - pos) < 0
+   || buffer_puts(b, "/env\nredirfd -r 0 /dev/null\nredirfd -wnb 1 ") < 0
+   || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
+   || buffer_puts(b, "/service/s6-svscan-log/fifo\nbackground\n{\n  s6-setsid --\n  redirfd -w 1 ") < 0
+   || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
+   || buffer_puts(b, "/service/s6-svscan-log/fifo\n  fdmove -c ") < 0
+   || buffer_puts(b, redirect_stage2 ? "2 1" : "1 2") < 0
+   || buffer_puts(b, "\n  ") < 0
+   || !string_quote(&satmp, init_script, str_len(init_script))
+   || buffer_put(b, satmp.s + pos2, satmp.len - pos2) < 0
+   || buffer_puts(b, "\n}\nunexport !\ncd ") < 0
+   || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
+   || buffer_puts(b, "/service\nfdmove -c 2 1\ns6-svscan -st0\n") < 0) goto err ;
+  return 1 ;
+ err:
+  satmp.len = sabase ;
+  return 0 ;
+}
+
 static void cleanup (char const *base)
 {
   int e = errno ;
@@ -250,6 +312,25 @@ static void auto_script (char const *base, char const *file, writetobuf_func_t_r
   close(fd) ;
 }
 
+static inline void make_env (char const *base, char const *modif, unsigned int modiflen)
+{
+  auto_dir(base, "env", 0, 0, 0755) ;
+  while (modiflen)
+  {
+    unsigned int len = str_len(modif) ;
+    unsigned int pos = byte_chr(modif, len, '=') ;
+    char fn[5 + pos] ;
+    byte_copy(fn, 4, "env/") ;
+    byte_copy(fn + 4, pos, modif) ;
+    fn[4 + pos] = 0 ;
+    
+    if (pos + 1 < len) auto_file(base, fn, modif + pos + 1, len - pos - 1, 0) ;
+    else if (pos + 1 == len) auto_file(base, fn, "\n", 1, 0) ;
+    else auto_file(base, fn, "", 0, 0) ;
+    modif += len+1 ; modiflen -= len+1 ;
+  }
+}
+
 static inline void make_image (char const *base)
 {
   auto_dir(base, "run-image", 0, 0, 0755) ;
@@ -272,87 +353,7 @@ static inline void make_image (char const *base)
     auto_dir(base, "run-image/service/s6-linux-init-early-getty", 0, 0, 0755) ;
     auto_script(base, "run-image/service/s6-linux-init-early-getty/run", &early_getty_script) ;
   }
-}
-
-static inline void make_env (char const *base, char const *modif, unsigned int modiflen)
-{
-  auto_dir(base, "env", 0, 0, 0755) ;
-  while (modiflen)
-  {
-    unsigned int len = str_len(modif) ;
-    unsigned int pos = byte_chr(modif, len, '=') ;
-    char fn[5 + pos] ;
-    byte_copy(fn, 4, "env/") ;
-    byte_copy(fn + 4, pos, modif) ;
-    fn[4 + pos] = 0 ;
-    
-    if (pos + 1 < len) auto_file(base, fn, modif + pos + 1, len - pos - 1, 0) ;
-    else if (pos + 1 == len) auto_file(base, fn, "\n", 1, 0) ;
-    else auto_file(base, fn, "", 0, 0) ;
-    modif += len+1 ; modiflen -= len+1 ;
-  }
-}
-
-static inline int make_init_script (buffer *b)
-{
-  unsigned int sabase = satmp.len, pos, pos2 ;
-  char fmt[UINT_OFMT] ;
-  if (!put_shebang(b)
-   || buffer_puts(b, bindir) < 0
-   || buffer_puts(b, "/export PATH ") < 0
-   || !string_quote(&satmp, initial_path, str_len(initial_path))) return 0 ;
-  if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
-  satmp.len = sabase ;
-  if (buffer_put(b, "\n", 1) < 0
-   || buffer_puts(b, bindir) < 0
-   || buffer_puts(b, "/cd /\ns6-setsid -qb --\numask 0") < 0
-   || buffer_put(b, fmt, uint_ofmt(fmt, initial_umask)) < 0
-   || buffer_puts(b, "\nif { s6-echo -- ") < 0
-   || !string_quote(&satmp, BANNER, sizeof(BANNER) - 1)) return 0 ;
-  if (buffer_put(b, satmp.s, satmp.len) < 0) goto err ;
-  satmp.len = sabase ;
-  if (buffer_puts(b, " }\nif { s6-mount -nwt tmpfs -o mode=0755 tmpfs ") < 0
-   || !string_quote(&satmp, slashrun, str_len(slashrun))) return 0 ;
-  pos = satmp.len ;
-  if (buffer_put(b, satmp.s + sabase, pos - sabase) < 0
-   || buffer_puts(b, " }\nif { s6-hiercopy ") < 0
-   || !string_quote(&satmp, robase, str_len(robase))) return 0 ;
-  pos2 = satmp.len ;
-  if (buffer_put(b, satmp.s + pos, pos2 - pos) < 0
-   || buffer_puts(b, "/run-image ") < 0
-   || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
-   || buffer_puts(b, " }\n") < 0) goto err ;
-  if (slashdev_style == 1)
-  {
-    if (buffer_puts(b, "if { s6-mount -nt devtmpfs dev /dev }\n") < 0) goto err ;
-  }
-  if (env_store)
-  {
-    unsigned int base = satmp.len ;
-    if (!string_quote(&satmp, env_store, str_len(env_store))) return 0 ;
-    if (buffer_puts(b, "if { unexport PATH s6-dumpenv -- ") < 0
-     || buffer_put(b, satmp.s + base, satmp.len - base) < 0
-     || buffer_puts(b, " }\n") < 0) goto err ;
-    satmp.len = base ;
-  }
-  if (buffer_puts(b, "emptyenv -p\ns6-envdir -I -- ") < 0
-   || buffer_put(b, satmp.s + pos, pos2 - pos) < 0
-   || buffer_puts(b, "/env\nredirfd -r 0 /dev/null\nredirfd -wnb 1 ") < 0
-   || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
-   || buffer_puts(b, "/service/s6-svscan-log/fifo\nbackground\n{\n  s6-setsid --\n  redirfd -w 1 ") < 0
-   || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
-   || buffer_puts(b, "/service/s6-svscan-log/fifo\n  fdmove -c ") < 0
-   || buffer_puts(b, redirect_stage2 ? "2 1" : "1 2") < 0
-   || buffer_puts(b, "\n  ") < 0
-   || !string_quote(&satmp, init_script, str_len(init_script))
-   || buffer_put(b, satmp.s + pos2, satmp.len - pos2) < 0
-   || buffer_puts(b, "\n}\nunexport !\ncd ") < 0
-   || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
-   || buffer_puts(b, "/service\nfdmove -c 2 1\ns6-svscan -st0\n") < 0) goto err ;
-  return 1 ;
- err:
-  satmp.len = sabase ;
-  return 0 ;
+  auto_script(base, "init", &stage1_script) ;
 }
 
 int main (int argc, char const *const *argv)
@@ -425,7 +426,5 @@ int main (int argc, char const *const *argv)
   make_env(argv[0], satmp.s, satmp.len) ;
   satmp.len = 0 ;
   make_image(argv[0]) ;
-  if (!make_init_script(buffer_1) || !buffer_flush(buffer_1))
-    strerr_diefu1sys(111, "write to stdout") ;
   return 0 ;
 }

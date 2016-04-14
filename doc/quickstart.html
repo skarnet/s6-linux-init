@@ -39,10 +39,9 @@
 add the <tt>-d 1</tt> option to the <tt>s6-linux-init-maker</tt> command line below. </li>
  <li> As root, run: <pre>
      rm -rf /tmp/s6-linux-init /tmp/init
-     s6-linux-init-maker /tmp/s6-linux-init &gt; /tmp/init
-     chmod 0700 /tmp/init
+     s6-linux-init-maker /tmp/s6-linux-init
      mv /tmp/s6-linux-init /etc/
-     mv /tmp/init /sbin/ </pre> </li>
+     ln -sf /etc/s6-linux-init/init /sbin/init </pre> </li>
  <li> Reboot. </li>
  <li> Congratulations! your machine is now running a s6-based init system. </li>
 </ul>

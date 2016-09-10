@@ -20,7 +20,7 @@
 
 <h2> Quickstart </h2>
 
-<ul>
+<ol>
  <li> Install all the s6-linux-init dependencies:
   <ul>
    <li> <a href="http://skarnet.org/software/skalibs/">skalibs</a> </li>
@@ -35,6 +35,11 @@
  <li> Make sure you have a <tt>/run</tt> directory </li>
  <li> Write a machine initialization script in <tt>/etc/rc.init</tt> and
  a machine shutdown script in <tt>/etc/rc.shutdown</tt>. Make them executable. </li>
+ <li> If, at shutdown time, you need to run a script <em>before</em> the
+supervision tree is torn down (for instance if you're using
+<a href="http://skarnet.org/software/s6-rc/">s6-rc</a> and want to
+cleanly stop all your services), write that script in
+<tt>/etc/rc.tini</tt>. </li>
  <li> Check that your devtmpfs is automounted by your kernel at boot time. If it is not,
 add the <tt>-d 1</tt> option to the <tt>s6-linux-init-maker</tt> command line below. </li>
  <li> As root, run: <pre>
@@ -44,6 +49,10 @@ add the <tt>-d 1</tt> option to the <tt>s6-linux-init-maker</tt> command line be
      ln -sf /etc/s6-linux-init/init /sbin/init </pre> </li>
  <li> Reboot. </li>
  <li> Congratulations! your machine is now running a s6-based init system. </li>
+ <li> To shut the machine down, use the
+<a href="s6-halt.html">s6-halt</a>,
+<a href="s6-poweroff.html">s6-poweroff</a> or
+<a href="s6-reboot.html">s6-reboot</a> command as appropriate. </li>
 </ul>
 
 <h2> FAQ </h2>

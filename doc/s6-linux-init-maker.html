@@ -51,8 +51,8 @@ machine</em> - else the scripts will crash.
        [ -c <em>basedir</em> ] \
        [ -l <em>tmpfsdir</em> ] \
        [ -b <em>execline_bindir</em> ] \
-       [ -u <em>log_user</em> ] \
-       [ -g <em>early_getty</em> ] \
+       [ -u <em>log_uid</em> -g <em>log_gid</em> | -U ] \
+       [ -G <em>early_getty</em> ] \
        [ -2 <em>stage2</em> ] \
        [ -r ] \
        [ -Z ] <em>stage2_finish</em> \
@@ -173,48 +173,63 @@ real machine and service initialization should happen in <em>stage2</em>.
 
 <h2> Shutdown sequence </h2>
 
-<p>
- When s6-svscan is told to exit via an appropriate
-<a href="http://skarnet.org/software/s6/s6-svscanctl.html">s6-svscanctl</a>
-command, it executes into the <em>stage3</em> script, which, like
-<em>stage2</em>, is the responsibility of the administrator. <em>stage3</em>
-is run in the following state:
-</p>
+<ul>
+
+ <li> A shutdown is performed when the administrator runs one of the
+<a href="s6-halt.html">s6-halt</a>,
+<a href="s6-poweroff.html">s6-poweroff</a> or
+<a href="s6-reboot.html">s6-reboot</a> commands. </li>
+
+ <li> Those commands send a signal to the
+<a href="http://skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
+process running as pid 1; this signal is caught and s6-svscan runs the
+corresponding "signal handler" script that has been placed by
+s6-linux-init-maker into the
+<tt><em>basedir</em>/run-image/service/.s6-svscan</tt> directory (and that
+has been copied at boot time to <tt><em>tmpfsdir</em>/service/.s6-svscan</tt>). </li>
+
+ <li> That script first spawns the <em>stage2_finish</em> script, who
+must have been written by the administrator. The purpose of
+<em>stage2_finish</em> is to perform the high-level shutdown sequence
+while the supervision tree is still alive. Typically, when using a
+service manager, <em>stage2_finish</em> would tell the service manager
+to bring all services down. When using
+<a href="http://skarnet.org/software/s6-rc/">s6-rc</a>, a typical
+<em>stage2_finish</em> script just contains <tt>s6-rc -da change</tt>.
+ More generally speaking, <em>stage2_finish</em> should undo what
+<em>stage2</em> has done at boot time. </li>
+
+ <li> The "signal handler" script then tells s6-svscan to exit via an
+appropriate <a href="http://skarnet.org/software/s6/s6-svscanctl.html">s6-svscanctl</a>
+command: s6-svscan then executes into the <em>stage3</em> script, which, like
+<em>stage2</em> and <em>stage2_finish</em>, is the responsibility of the
+administrator. When <em>stage3</em> runs, the machine is in the following
+state:
 
 <ul>
- <li> It runs as process 1. (Doing so makes it easier to recover after
-killing all processes by <tt>kill -9 -1</tt> or
-<a href="http://skarnet.org/software/s6-portable-utils/s6-nuke.html">s6-nuke</a>). </li>
+ <li> The supervision tree has been torn down: it is not operational
+anymore. (So, commands such as
+<a href="http://skarnet.org/software/s6-rc/s6-rc.html">s6-rc</a>, which
+require a live supervision tree, will not work.)
+ <li> <em>stage3</em> runs as process 1. Doing so makes it easier to recover
+after killing all processes by <tt>kill -9 -1</tt> or
+<a href="http://skarnet.org/software/s6-portable-utils/s6-nuke.html">s6-nuke</a>. </li>
  <li> Its working directory is <tt>/</tt> and its stdin is <tt>/dev/null</tt> </li>
  <li> Its stdout and stderr are both <tt>/dev/console</tt> </li>
- <li> Depending on the exact s6-svscanctl command that terminated s6-svscan,
-and what has happened before that command was sent, there may or may not be
+ <li> Depending on the exact configuration and what the administrator has
+written in <em>stage2_finish</em>, there may or may not be
 long-running services that remain alive. The catch-all logger and its
-supervisor will <em>always</em> be alive, which is not a problem because they
+supervisor will <em>always</em> be alive; this is not a problem because they
 do not hold any file descriptor to a filesystem that would need to be
 unmounted. </li>
+</ul> </li>
+
+<li> The last command that <em>stage3</em> executes should be
+<tt>s6-$1 -f</tt>, <tt>$1</tt> being the first argument that has been
+given to it. This command will instantly execute the hard system halt,
+poweroff or reboot that has initially been asked by the admin. </li>
+
 </ul>
-
-<p>
- When s6-svscan receives a signal such as SIGINT, typically sent by the
-Ctrl-Alt-Del key combination or a <tt>reboot</tt> or <tt>poweroff</tt>
-command, it will run the corresponding script in
-<tt><em>tmpfsdir</em>/service/.s6-svscan</tt>, which will first run
-<em>stage2_finish</em>, then send an exit command to s6-svscan as
-described above. This is useful if some commands need to be run before
-s6-svscan executes into <em>stage3</em>: for instance, if the machine
-state is maintained by a service manager such as
-<a href="http://skarnet.org/software/s6-rc/">s6-rc</a>, all the
-services can be turned off in <em>stage2_finish</em> while s6-svscan
-is still alive, and then the last steps of the shutdown procedure can
-be performed in <em>stage3</em>.
-</p>
-
-<p>
- Generally speaking, <em>stage2_finish</em> should undo what
-<em>stage2</em> has done at boot time, so <em>stage3</em> has very
-little work to do.
-</p>
 
 <p>
  The <tt>examples/</tt> subdirectory of the s6-linux-init package
@@ -251,11 +266,24 @@ launcher and the first few early commands before PATH can be set.
 found. It must be absolute. Default is
 <strong><tt>/bin</tt></strong>. </li> <p />
 
- <li> <tt>-u</tt>&nbsp;<em>log_user</em>&nbsp;: the catch-all
-logger will not run as root, but as <em>log_user</em>. Default is
-<strong><tt>nobody</tt></strong>. </li> <p />
+ <li> <tt>-u</tt>&nbsp;<em>log_uid</em>&nbsp;: the catch-all
+logger will run with the uid <em>log_uid</em>. Default is 0. <li> <p />
 
- <li> <tt>-g</tt>&nbsp;<em>early_getty</em>&nbsp;: if this option
+ <li> <tt>-g</tt>&nbsp;<em>log_gid</em>&nbsp;: the catch-all
+logger will run with the gid <em>log_gid</em>. Default is 0. <li> <p />
+
+ <li> <tt>-U</tt>&nbsp;: the correct <em>log_uid</em> and
+<em>log_gid</em> values for the catch-all logger will be read from the
+UID and GID environment variables that have been passed to
+s6-linux-init-maker. This allows for invocations such as
+<tt>s6-envuidgid nobody s6-linux-init-maker -U ...</tt> so that
+the catch-all logger runs as the <tt>nobody</tt> user. Be aware that
+this option is only safe when the user database on the
+<em>boot-time</em> machine is the same as on the <em>run-time</em>
+machine, else the catch-all logger may run with an unexpected uid
+and gid. </li>
+
+ <li> <tt>-G</tt>&nbsp;<em>early_getty</em>&nbsp;: if this option
 is set, s6-linux-init-maker will define a service that will run
 very early, before <em>stage2</em> is executed. This early service
 should be a getty, to allow logins even if <em>stage2</em> fails.
@@ -297,9 +325,7 @@ absolutely necessary for
 <a href="http://skarnet.org/software/s6-portable-utils/">s6-portable-utils</a> and
 <a href="http://skarnet.org/software/s6-linux-utils/">s6-linux-utils</a>
 binaries to be accessible via <em>initial_path</em>, else the machine
-will not boot. Default is the value that has been compiled in
-<a href="http://skarnet.org/software/skalibs/">skalibs</a> via the
-<tt>--with-default-path</tt> configure option, i.e. by default
+will not boot. Default is
 <strong><tt>/usr/bin:/bin</tt></strong>. </li> <p />
 
  <li> <tt>-m</tt>&nbsp;<em>initial_umask</em>&nbsp;: the value of

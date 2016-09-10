@@ -1,0 +1,55 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>s6-linux-init: the s6-reboot program</title>
+    <meta name="Description" content="s6-linux-init: the s6-reboot program" />
+    <meta name="Keywords" content="s6 linux init administration root utilities shutdown halt poweroff reboot" />
+    <!-- <link rel="stylesheet" type="text/css" href="http://skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="index.html">s6-linux-init</a><br />
+<a href="http://skarnet.org/software/">Software</a><br />
+<a href="http://skarnet.org/">skarnet.org</a>
+</p>
+
+<h1> The <tt>s6-reboot</tt> program </h1>
+
+<p>
+<tt>s6-reboot</tt> sends a signal to process 1 in order to reboot the machine;
+or, with the <tt>-f</tt> option, it performs an immediate reboot.
+</p>
+
+<h2> Interface </h2>
+
+<pre>
+     s6-reboot [ -h | -p | -r ] [ -f ]
+</pre>
+
+<ul>
+ <li> s6-reboot sends a signal to process 1. </li>
+ <li> It then exits 0. </li>
+</ul>
+
+<h2> Options </h2>
+
+<ul>
+ <li> <tt>-h</tt>&nbsp;: halt. The command will order a halt (i.e. the system will
+be shut down, but the power will remain up), which means
+sending a SIGUSR2 to process 1. </li>
+ <li> <tt>-p</tt>&nbsp;: poweroff. The command will order a power off, which means
+sending a SIGUSR1 to process 1. </li>
+ <li> <tt>-r</tt>&nbsp;: reboot. The command will order a reboot, which means
+sending a SIGINT to process 1. This is the default. </li>
+ <li> <tt>-f</tt>&nbsp;: force. The command will not send any signal to process 1;
+it will just sync the filesystems then tell the kernel to halt, poweroff or reboot.
+<tt>s6-reboot -f</tt> or <tt>s6-poweroff -f</tt> should be the last program
+executed in the lifetime of a machine, at the end of the shutdown script called
+by process 1 when it receives a signal telling it to shut down. </li>
+</ul>
+
+</body>
+</html>

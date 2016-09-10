@@ -4,8 +4,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
-#include <pwd.h>
-#include <skalibs/config.h>
 #include <skalibs/uint64.h>
 #include <skalibs/uint.h>
 #include <skalibs/gidstuff.h>
@@ -13,12 +11,13 @@
 #include <skalibs/allreadwrite.h>
 #include <skalibs/buffer.h>
 #include <skalibs/strerr2.h>
+#include <skalibs/env.h>
 #include <skalibs/stralloc.h>
 #include <skalibs/djbunix.h>
 #include <skalibs/sgetopt.h>
 #include <skalibs/skamisc.h>
 
-#define USAGE "s6-linux-init-maker [ -c basedir ] [ -l tmpfsdir ] [ -b execline_bindir ] [ -u log_user ] [ -g early_getty_cmd ] [ -2 stage2_script ] [ -r ] [ -Z finish_script ] [ -3 stage3_script ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d dev_style ] [ -s env_store ] [ -e initial_envvar ... ] dir"
+#define USAGE "s6-linux-init-maker [ -c basedir ] [ -l tmpfsdir ] [ -b execline_bindir ] [ -u log_uid -g log_gid | -U ] [ -G early_getty_cmd ] [ -2 stage2_script ] [ -r ] [ -Z finish_script ] [ -3 stage3_script ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d dev_style ] [ -s env_store ] [ -e initial_envvar ... ] dir"
 #define dieusage() strerr_dieusage(100, USAGE)
 #define dienomem() strerr_diefu1sys(111, "stralloc_catb") ;
 
@@ -38,11 +37,11 @@ static char const *init_script = "/etc/rc.init" ;
 static char const *tini_script = "/etc/rc.tini" ;
 static char const *shutdown_script = "/etc/rc.shutdown" ;
 static char const *bindir = "/bin" ;
-static char const *initial_path = SKALIBS_DEFAULTPATH ;
+static char const *initial_path = "/usr/bin:/bin" ;
 static char const *env_store = 0 ;
 static char const *early_getty = 0 ;
-static uid_t uncaught_logs_uid ;
-static gid_t uncaught_logs_gid ;
+static uid_t uncaught_logs_uid = 0 ;
+static gid_t uncaught_logs_gid = 0 ;
 static unsigned int initial_umask = 022 ;
 static unsigned int timestamp_style = 1 ;
 static unsigned int slashdev_style = 2 ;
@@ -356,23 +355,32 @@ static inline void make_image (char const *base)
   auto_script(base, "init", &stage1_script) ;
 }
 
-int main (int argc, char const *const *argv)
+int main (int argc, char const *const *argv, char const *const *envp)
 {
-  char const *catchall_user = "nobody" ;
   PROG = "s6-linux-init-maker" ;
   {
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      register int opt = subgetopt_r(argc, argv, "c:l:b:u:g:2:rZ:3:p:m:t:d:s:e:", &l) ;
+      register int opt = subgetopt_r(argc, argv, "c:l:b:u:g:UG:2:rZ:3:p:m:t:d:s:e:", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
         case 'c' : robase = l.arg ; break ;
         case 'l' : slashrun = l.arg ; break ;
         case 'b' : bindir = l.arg ; break ;
-        case 'u' : catchall_user = l.arg ; break ;
-        case 'g' : early_getty = l.arg ; break ;
+        case 'u' : if (!uint0_scan(l.arg, &uncaught_logs_uid)) dieusage() ; break ;
+        case 'g' : if (!uint0_scan(l.arg, &uncaught_logs_gid)) dieusage() ; break ;
+        case 'U' :
+        {
+          char const *x = env_get2(envp, "UID") ;
+          if (!x) strerr_dienotset(100, "UID") ;
+          if (!uint0_scan(x, &uncaught_logs_uid)) strerr_dieinvalid(100, "UID") ;
+          x = env_get2(envp, "GID") ;
+          if (!x) strerr_dienotset(100, "GID") ;
+          if (!uint0_scan(x, &uncaught_logs_gid)) strerr_dieinvalid(100, "GID") ;
+        }
+        case 'G' : early_getty = l.arg ; break ;
         case '2' : init_script = l.arg ; break ;
         case 'r' : redirect_stage2 = 1 ; break ;
         case 'Z' : tini_script = l.arg ; break ;
@@ -406,19 +414,6 @@ int main (int argc, char const *const *argv)
     strerr_dief1x(100, "-t timestamp_style must be 0, 1, 2 or 3") ;
   if (slashdev_style > 2)
     strerr_dief1x(100, "-d dev_style must be 0, 1 or 2") ;
-
-  {
-    struct passwd *pw = getpwnam(catchall_user) ;
-    if (!pw)
-    {
-      if (errno)
-        strerr_diefu2sys(111, "getpwnam for ", catchall_user) ;
-      else
-        strerr_dief3x(100, "getpwnam for ", catchall_user, ": no such user") ;
-    }
-    uncaught_logs_uid = pw->pw_uid ;
-    uncaught_logs_gid = pw->pw_gid ;
-  }
 
   if (mkdir(argv[0], 0755) < 0)
     strerr_diefu2sys(111, "mkdir ", argv[0]) ;

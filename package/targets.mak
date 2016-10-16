@@ -1,6 +1,4 @@
-BIN_TARGETS :=
-
-SBIN_TARGETS := \
+BIN_TARGETS := \
 s6-linux-init-maker \
 s6-halt \
 s6-poweroff \

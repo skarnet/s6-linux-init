@@ -32,7 +32,7 @@ scripts will not run properly on another OS.
   ./configure && make && sudo make install
 
  will work for most users.
- It will install the s6-linux-init-maker binary in /sbin.
+ It will install the binaries in /bin.
 
  You can strip the binaries and libraries of their extra symbols via
 "make strip" before the "make install" phase. It will shave a few bytes

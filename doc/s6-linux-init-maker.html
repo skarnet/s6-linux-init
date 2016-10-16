@@ -326,7 +326,7 @@ absolutely necessary for
 <a href="http://skarnet.org/software/s6-linux-utils/">s6-linux-utils</a>
 binaries to be accessible via <em>initial_path</em>, else the machine
 will not boot. Default is
-<strong><tt>/usr/bin:/usr/sbin:/bin:/sbin</tt></strong>. </li> <p />
+<strong><tt>/usr/bin:/bin</tt></strong>. </li> <p />
 
  <li> <tt>-m</tt>&nbsp;<em>initial_umask</em>&nbsp;: the value of
 the initial file umask for all the starting processes, in octal.
@@ -360,7 +360,7 @@ variables into the <em>env_store</em> directory, via the
 program, before erasing them. <em>env_store</em> should obviously be
 a writable directory, so it should be located under <em>tmpfsdir</em>!
 If this option is not given (which is the default), the environment
-inherited from the kernel isn't saved anywhere. </li>
+inherited from the kernel isn't saved anywhere. </li> <p />
 
  <li> <tt>-e</tt>&nbsp;<em>initial_envvar</em>&nbsp;: this option
 can be repeated. For every <em>initial_envvar</em>, s6-linux-init-maker

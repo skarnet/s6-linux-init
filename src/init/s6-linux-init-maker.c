@@ -72,7 +72,7 @@ static int crash_script (buffer *b)
 
 static int s6_svscan_log_script (buffer *b)
 {
-  unsigned int sabase = satmp.len ;
+  size_t sabase = satmp.len ;
   char fmt[UINT64_FMT] ;
   if (!put_shebang(b)
    || buffer_puts(b,
@@ -99,7 +99,7 @@ static int s6_svscan_log_script (buffer *b)
 
 static int finish_script (buffer *b)
 {
-  unsigned int sabase = satmp.len ;
+  size_t sabase = satmp.len ;
   if (buffer_puts(b, "#!") < 0
    || buffer_puts(b, bindir) < 0
    || buffer_puts(b, "/execlineb -S0\n\n"
@@ -120,7 +120,7 @@ static int finish_script (buffer *b)
 
 static int sig_script (buffer *b, char c)
 {
-  unsigned int sabase = satmp.len ;
+  size_t sabase = satmp.len ;
   if (!put_shebang(b)
    || buffer_puts(b, "foreground { ") < 0
    || !string_quote(&satmp, tini_script, str_len(tini_script))) return 0 ;
@@ -171,7 +171,7 @@ static int sigusr2_script (buffer *b)
 
 static inline int stage1_script (buffer *b)
 {
-  unsigned int sabase = satmp.len, pos, pos2 ;
+  size_t sabase = satmp.len, pos, pos2 ;
   char fmt[UINT_OFMT] ;
   if (!put_shebang(b)
    || buffer_puts(b, bindir) < 0
@@ -204,7 +204,7 @@ static inline int stage1_script (buffer *b)
   }
   if (env_store)
   {
-    unsigned int base = satmp.len ;
+    size_t base = satmp.len ;
     if (!string_quote(&satmp, env_store, str_len(env_store))) return 0 ;
     if (buffer_puts(b, "if { unexport PATH s6-dumpenv -- ") < 0
      || buffer_put(b, satmp.s + base, satmp.len - base) < 0
@@ -240,8 +240,8 @@ static void cleanup (char const *base)
 
 static void auto_dir (char const *base, char const *dir, uid_t uid, gid_t gid, unsigned int mode)
 {
-  unsigned int clen = str_len(base) ;
-  unsigned int dlen = str_len(dir) ;
+  size_t clen = str_len(base) ;
+  size_t dlen = str_len(dir) ;
   char fn[clen + dlen + 2] ;
   byte_copy(fn, clen, base) ;
   fn[clen] = dlen ? '/' : 0 ;
@@ -256,8 +256,8 @@ static void auto_dir (char const *base, char const *dir, uid_t uid, gid_t gid, u
 
 static void auto_file (char const *base, char const *file, char const *s, unsigned int n, int executable)
 {
-  unsigned int clen = str_len(base) ;
-  unsigned int flen = str_len(file) ;
+  size_t clen = str_len(base) ;
+  size_t flen = str_len(file) ;
   char fn[clen + flen + 2] ;
   byte_copy(fn, clen, base) ;
   fn[clen] = '/' ;
@@ -272,8 +272,8 @@ static void auto_file (char const *base, char const *file, char const *s, unsign
 
 static void auto_fifo (char const *base, char const *fifo)
 {
-  unsigned int baselen = str_len(base) ;
-  unsigned int fifolen = str_len(fifo) ;
+  size_t baselen = str_len(base) ;
+  size_t fifolen = str_len(fifo) ;
   char fn[baselen + fifolen + 2] ;
   byte_copy(fn, baselen, base) ;
   fn[baselen] = '/' ;
@@ -289,9 +289,9 @@ static void auto_script (char const *base, char const *file, writetobuf_func_t_r
 {
   char buf[4096] ;
   buffer b ;
+  size_t baselen = str_len(base) ;
+  size_t filelen = str_len(file) ;
   int fd ;
-  unsigned int baselen = str_len(base) ;
-  unsigned int filelen = str_len(file) ;
   char fn[baselen + filelen + 2] ;
   byte_copy(fn, baselen, base) ;
   fn[baselen] = '/' ;
@@ -316,8 +316,8 @@ static inline void make_env (char const *base, char const *modif, unsigned int m
   auto_dir(base, "env", 0, 0, 0755) ;
   while (modiflen)
   {
-    unsigned int len = str_len(modif) ;
-    unsigned int pos = byte_chr(modif, len, '=') ;
+    size_t len = str_len(modif) ;
+    size_t pos = byte_chr(modif, len, '=') ;
     char fn[5 + pos] ;
     byte_copy(fn, 4, "env/") ;
     byte_copy(fn + 4, pos, modif) ;

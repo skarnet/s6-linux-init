@@ -126,7 +126,7 @@ from services that do not have a dedicated logger, are handled by a
 special <a href="http://skarnet.org/software/s6/s6-log.html">s6-log</a>
 instance and made available in <tt><em>tmpfsdir</em>/uncaught-logs</tt>
 instead of clogging the system console. </li>
- <li> If the <tt>-g</tt> option has been given to s6-linux-init-maker, the
+ <li> If the <tt>-G</tt> option has been given to s6-linux-init-maker, the
 scan directory will also contain a service for an early getty. </li>
  <li> s6-svscan starts all the services defined in the scan directory,
 and unblocks the child forked by <em>stage 1</em>. </li>

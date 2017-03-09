@@ -5,8 +5,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <skalibs/uint64.h>
-#include <skalibs/uint.h>
-#include <skalibs/gidstuff.h>
+#include <skalibs/types.h>
 #include <skalibs/bytestr.h>
 #include <skalibs/allreadwrite.h>
 #include <skalibs/buffer.h>
@@ -80,7 +79,7 @@ static int s6_svscan_log_script (buffer *b)
     "redirfd -w 1 /dev/null\n"
     "redirfd -rnb 0 fifo\n"
     "s6-applyuidgid -u ") < 0
-   || buffer_put(b, fmt, uint64_fmt(fmt, uncaught_logs_uid)) < 0
+   || buffer_put(b, fmt, uid_fmt(fmt, uncaught_logs_uid)) < 0
    || buffer_puts(b, " -g ") < 0
    || buffer_put(b, fmt, gid_fmt(fmt, uncaught_logs_gid)) < 0
    || buffer_puts(b, " --\ns6-log -bp -- ") < 0
@@ -302,7 +301,7 @@ static void auto_script (char const *base, char const *file, writetobuf_func_t_r
     cleanup(base) ;
     strerr_diefu3sys(111, "open ", fn, " for script writing") ;
   }
-  buffer_init(&b, &fd_writesv, fd, buf, 4096) ;
+  buffer_init(&b, &fd_writev, fd, buf, 4096) ;
   if (!(*scriptf)(&b) || !buffer_flush(&b))
   {
     cleanup(base) ;

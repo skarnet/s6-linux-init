@@ -1,7 +1,7 @@
 /* ISC license. */
 
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <string.h>
 #include <unistd.h>
 #include <errno.h>
 #include <skalibs/uint64.h>
@@ -86,7 +86,7 @@ static int s6_svscan_log_script (buffer *b)
    || buffer_puts(b, " --\ns6-log -bp -- ") < 0
    || buffer_puts(b, timestamp_style & 1 ? "t " : "") < 0
    || buffer_puts(b, timestamp_style & 2 ? "T " : "") < 0) return 0 ;
-  if (!string_quote(&satmp, slashrun, str_len(slashrun))) return 0 ;
+  if (!string_quote(&satmp, slashrun, strlen(slashrun))) return 0 ;
   if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0)
   {
     satmp.len = sabase ;
@@ -104,11 +104,11 @@ static int finish_script (buffer *b)
    || buffer_puts(b, bindir) < 0
    || buffer_puts(b, "/execlineb -S0\n\n"
     "cd /\nredirfd -w 2 /dev/console\nfdmove -c 1 2\nforeground { s6-svc -X -- ") < 0
-   || !string_quote(&satmp, slashrun, str_len(slashrun))) return 0 ;
+   || !string_quote(&satmp, slashrun, strlen(slashrun))) return 0 ;
   if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
   if (buffer_puts(b, "/service/s6-svscan-log }\nunexport ?\nwait -r -- { }\n") < 0
-   || !string_quote(&satmp, shutdown_script, str_len(shutdown_script))) return 0 ;
+   || !string_quote(&satmp, shutdown_script, strlen(shutdown_script))) return 0 ;
   if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
   if (buffer_puts(b, " ${@}\n") < 0) return 0 ;
@@ -123,13 +123,13 @@ static int sig_script (buffer *b, char c)
   size_t sabase = satmp.len ;
   if (!put_shebang(b)
    || buffer_puts(b, "foreground { ") < 0
-   || !string_quote(&satmp, tini_script, str_len(tini_script))) return 0 ;
+   || !string_quote(&satmp, tini_script, strlen(tini_script))) return 0 ;
   if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
   if (buffer_puts(b, " }\ns6-svscanctl -") < 0
    || buffer_put(b, &c, 1) < 0
    || buffer_puts(b, " -- ") < 0
-   || !string_quote(&satmp, slashrun, str_len(slashrun))) return 0 ;
+   || !string_quote(&satmp, slashrun, strlen(slashrun))) return 0 ;
   if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
   if (buffer_puts(b, "/service\n") < 0) return 0 ;
@@ -176,7 +176,7 @@ static inline int stage1_script (buffer *b)
   if (!put_shebang(b)
    || buffer_puts(b, bindir) < 0
    || buffer_puts(b, "/export PATH ") < 0
-   || !string_quote(&satmp, initial_path, str_len(initial_path))) return 0 ;
+   || !string_quote(&satmp, initial_path, strlen(initial_path))) return 0 ;
   if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
   if (buffer_put(b, "\n", 1) < 0
@@ -188,11 +188,11 @@ static inline int stage1_script (buffer *b)
   if (buffer_put(b, satmp.s, satmp.len) < 0) goto err ;
   satmp.len = sabase ;
   if (buffer_puts(b, " }\nif { s6-mount -nwt tmpfs -o mode=0755 tmpfs ") < 0
-   || !string_quote(&satmp, slashrun, str_len(slashrun))) return 0 ;
+   || !string_quote(&satmp, slashrun, strlen(slashrun))) return 0 ;
   pos = satmp.len ;
   if (buffer_put(b, satmp.s + sabase, pos - sabase) < 0
    || buffer_puts(b, " }\nif { s6-hiercopy ") < 0
-   || !string_quote(&satmp, robase, str_len(robase))) return 0 ;
+   || !string_quote(&satmp, robase, strlen(robase))) return 0 ;
   pos2 = satmp.len ;
   if (buffer_put(b, satmp.s + pos, pos2 - pos) < 0
    || buffer_puts(b, "/run-image ") < 0
@@ -205,7 +205,7 @@ static inline int stage1_script (buffer *b)
   if (env_store)
   {
     size_t base = satmp.len ;
-    if (!string_quote(&satmp, env_store, str_len(env_store))) return 0 ;
+    if (!string_quote(&satmp, env_store, strlen(env_store))) return 0 ;
     if (buffer_puts(b, "if { unexport PATH s6-dumpenv -- ") < 0
      || buffer_put(b, satmp.s + base, satmp.len - base) < 0
      || buffer_puts(b, " }\n") < 0) goto err ;
@@ -220,7 +220,7 @@ static inline int stage1_script (buffer *b)
    || buffer_puts(b, "/service/s6-svscan-log/fifo\n  fdmove -c ") < 0
    || buffer_puts(b, redirect_stage2 ? "2 1" : "1 2") < 0
    || buffer_puts(b, "\n  ") < 0
-   || !string_quote(&satmp, init_script, str_len(init_script))
+   || !string_quote(&satmp, init_script, strlen(init_script))
    || buffer_put(b, satmp.s + pos2, satmp.len - pos2) < 0
    || buffer_puts(b, "\n}\nunexport !\ncd ") < 0
    || buffer_put(b, satmp.s + sabase, pos - sabase) < 0
@@ -240,12 +240,12 @@ static void cleanup (char const *base)
 
 static void auto_dir (char const *base, char const *dir, uid_t uid, gid_t gid, unsigned int mode)
 {
-  size_t clen = str_len(base) ;
-  size_t dlen = str_len(dir) ;
+  size_t clen = strlen(base) ;
+  size_t dlen = strlen(dir) ;
   char fn[clen + dlen + 2] ;
-  byte_copy(fn, clen, base) ;
+  memcpy(fn, base, clen) ;
   fn[clen] = dlen ? '/' : 0 ;
-  byte_copy(fn + clen + 1, dlen + 1, dir) ;
+  memcpy(fn + clen + 1, dir, dlen + 1) ;
   if (mkdir(fn, mode) < 0
    || ((uid || gid) && (chown(fn, uid, gid) < 0 || chmod(fn, mode) < 0)))
   {
@@ -256,12 +256,12 @@ static void auto_dir (char const *base, char const *dir, uid_t uid, gid_t gid, u
 
 static void auto_file (char const *base, char const *file, char const *s, unsigned int n, int executable)
 {
-  size_t clen = str_len(base) ;
-  size_t flen = str_len(file) ;
+  size_t clen = strlen(base) ;
+  size_t flen = strlen(file) ;
   char fn[clen + flen + 2] ;
-  byte_copy(fn, clen, base) ;
+  memcpy(fn, base, clen) ;
   fn[clen] = '/' ;
-  byte_copy(fn + clen + 1, flen + 1, file) ;
+  memcpy(fn + clen + 1, file, flen + 1) ;
   if (!openwritenclose_unsafe(fn, s, n)
    || (executable && chmod(fn, 0755) < 0))
   {
@@ -272,12 +272,12 @@ static void auto_file (char const *base, char const *file, char const *s, unsign
 
 static void auto_fifo (char const *base, char const *fifo)
 {
-  size_t baselen = str_len(base) ;
-  size_t fifolen = str_len(fifo) ;
+  size_t baselen = strlen(base) ;
+  size_t fifolen = strlen(fifo) ;
   char fn[baselen + fifolen + 2] ;
-  byte_copy(fn, baselen, base) ;
+  memcpy(fn, base, baselen) ;
   fn[baselen] = '/' ;
-  byte_copy(fn + baselen + 1, fifolen + 1, fifo) ;
+  memcpy(fn + baselen + 1, fifo, fifolen + 1) ;
   if (mkfifo(fn, 0600) < 0)
   {
     cleanup(base) ;
@@ -289,13 +289,13 @@ static void auto_script (char const *base, char const *file, writetobuf_func_t_r
 {
   char buf[4096] ;
   buffer b ;
-  size_t baselen = str_len(base) ;
-  size_t filelen = str_len(file) ;
+  size_t baselen = strlen(base) ;
+  size_t filelen = strlen(file) ;
   int fd ;
   char fn[baselen + filelen + 2] ;
-  byte_copy(fn, baselen, base) ;
+  memcpy(fn, base, baselen) ;
   fn[baselen] = '/' ;
-  byte_copy(fn + baselen + 1, filelen + 1, file) ;
+  memcpy(fn + baselen + 1, file, filelen + 1) ;
   fd = open_trunc(fn) ;
   if (fd < 0 || ndelay_off(fd) < 0 || fchmod(fd, 0755) < 0)
   {
@@ -311,16 +311,16 @@ static void auto_script (char const *base, char const *file, writetobuf_func_t_r
   close(fd) ;
 }
 
-static inline void make_env (char const *base, char const *modif, unsigned int modiflen)
+static inline void make_env (char const *base, char const *modif, size_t modiflen)
 {
   auto_dir(base, "env", 0, 0, 0755) ;
   while (modiflen)
   {
-    size_t len = str_len(modif) ;
+    size_t len = strlen(modif) ;
     size_t pos = byte_chr(modif, len, '=') ;
     char fn[5 + pos] ;
-    byte_copy(fn, 4, "env/") ;
-    byte_copy(fn + 4, pos, modif) ;
+    memcpy(fn, "env/", 4) ;
+    memcpy(fn + 4, modif, pos) ;
     fn[4 + pos] = 0 ;
     
     if (pos + 1 < len) auto_file(base, fn, modif + pos + 1, len - pos - 1, 0) ;
@@ -362,7 +362,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      register int opt = subgetopt_r(argc, argv, "c:l:b:u:g:UG:2:rZ:3:p:m:t:d:s:e:", &l) ;
+      int opt = subgetopt_r(argc, argv, "c:l:b:u:g:UG:2:rZ:3:p:m:t:d:s:e:", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
@@ -390,7 +390,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
         case 't' : if (!uint0_scan(l.arg, &timestamp_style)) dieusage() ; break ;
         case 'd' : if (!uint0_scan(l.arg, &slashdev_style)) dieusage() ; break ;
         case 's' : env_store = l.arg ; break ;
-        case 'e' : if (!stralloc_catb(&satmp, l.arg, str_len(l.arg) + 1)) dienomem() ; break ;
+        case 'e' : if (!stralloc_catb(&satmp, l.arg, strlen(l.arg) + 1)) dienomem() ; break ;
         default : dieusage() ;
       }
     }

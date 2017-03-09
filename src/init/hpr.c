@@ -18,7 +18,7 @@ int main (int argc, char const *const *argv)
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      register int opt = subgetopt_r(argc, argv, "hprf", &l) ;
+      int opt = subgetopt_r(argc, argv, "hprf", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {

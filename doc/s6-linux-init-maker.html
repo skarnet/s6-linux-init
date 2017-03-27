@@ -308,7 +308,10 @@ in the <tt><em>tmpfsdir</em>/uncaught-logs</tt> directory. </li> <p />
 <em>stage2_finish</em> is the location of the script that will be
 run when s6-svscan receives a signal that tells it to stop the
 machine, before it executes into <em>stage3</em>. It must be
-absolute. Default is <strong><tt>/etc/rc.tini</tt></strong>. </li> <p />
+absolute. Default is <strong><tt>/etc/rc.tini</tt></strong>.
+Note that this script is run with its stdout and stderr
+redirected to the <tt><em>tmpfsdir</em>/uncaught-logs</tt> logging
+directory, so its output will not appear on the system's console. </li> <p />
 
  <li> <tt>-3</tt>&nbsp;<em>stage3</em>&nbsp;: <em>stage3</em> is
 the location of the stage 3 script that will be run at the end of

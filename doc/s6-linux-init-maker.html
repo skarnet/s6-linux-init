@@ -6,14 +6,14 @@
     <title>s6-linux-init: the s6-linux-init-maker program</title>
     <meta name="Description" content="s6-linux-init: the s6-linux-init-maker program" />
     <meta name="Keywords" content="s6 linux administration root init maker" />
-    <!-- <link rel="stylesheet" type="text/css" href="http://skarnet.org/default.css" /> -->
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
   </head>
 <body>
 
 <p>
 <a href="index.html">s6-linux-init</a><br />
-<a href="http://skarnet.org/software/">Software</a><br />
-<a href="http://skarnet.org/">skarnet.org</a>
+<a href="//skarnet.org/software/">Software</a><br />
+<a href="//skarnet.org/">skarnet.org</a>
 </p>
 
 <h1> The <tt>s6-linux-init-maker</tt> program </h1>
@@ -24,7 +24,7 @@ the command line, and outputs a directory to place in the
 root filesystem. That directory contains a script suitable
 as an init program, as well as support file hierarchies to
 get a complete
-<a href="http://skarnet.org/software/s6/">s6</a>
+<a href="//skarnet.org/software/s6/">s6</a>
 infrastructure running when the system is booted on that
 script.
 </p>
@@ -33,8 +33,8 @@ script.
  s6-linux-init-maker only writes scripts. At boot time, these
 scripts will call commands provided by other skarnet.org packages
 such as
-<a href="http://skarnet.org/software/execline/">execline</a> or
-<a href="http://skarnet.org/software/s6/">s6</a>. It is the
+<a href="//skarnet.org/software/execline/">execline</a> or
+<a href="//skarnet.org/software/s6/">s6</a>. It is the
 responsibility of the administrator to make sure that all the
 dependencies are properly installed at boot time, and that the
 correct options have been given to s6-linux-init-maker so that
@@ -81,7 +81,7 @@ or its contents. </li>
 declared as <em>basedir</em>. Be careful: it contains fifos, files with
 precise uid/gid permissions, and files with non-standard access rights,
 so be sure to copy it verbatim. The
-<a href="http://skarnet.org/software/s6-portable-utils/s6-hiercopy.html">s6-hiercopy</a>
+<a href="//skarnet.org/software/s6-portable-utils/s6-hiercopy.html">s6-hiercopy</a>
 tool can do it, as well as the GNU or busybox <tt>cp -a</tt> or <tt>mv</tt> commands.
 </p>
 
@@ -102,9 +102,9 @@ also known as <em>stage 1</em>. and this is what happens:
 
 <ul>
  <li> <em>stage 1</em> is an
-<a href="http://skarnet.org/software/execline/">execline</a> script, so
+<a href="//skarnet.org/software/execline/">execline</a> script, so
 the first process run by the kernel is the
-<a href="http://skarnet.org/software/execline/execlineb.html">execlineb</a>
+<a href="//skarnet.org/software/execline/execlineb.html">execlineb</a>
 program launcher. </li>
  <li> <em>stage 1</em> mounts a
 <a href="https://www.kernel.org/doc/Documentation/filesystems/tmpfs.txt">tmpfs</a>
@@ -113,17 +113,17 @@ filesystem on <em>tmpfsdir</em>. </li>
 <em>tmpfsdir</em>. </li>
  <li> <em>stage 1</em> empties its environment, then reads a global set of environment variables from the
 <tt><em>basedir</em>/env</tt>
-<a href="http://skarnet.org/software/s6/s6-envdir.html">environment directory</a>. </li>
+<a href="//skarnet.org/software/s6/s6-envdir.html">environment directory</a>. </li>
  <li> <em>stage 1</em> forks a child that will block until
-<a href="http://skarnet.org/software/s6/s6-svscan.html">s6-svscan</a> is running. </li>
+<a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a> is running. </li>
  <li> <em>stage 1</em> executes, as process 1, into
-<a href="http://skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>,
+<a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>,
 with <tt><em>tmpfsdir</em>/service</tt> as a
-<a href="http://skarnet.org/software/s6/scandir.html">scan directory</a>. </li>
+<a href="//skarnet.org/software/s6/scandir.html">scan directory</a>. </li>
  <li> This scan directory already contains at least one service, which is the
 <em>catch-all logger</em>: error messages from the supervision tree, and
 from services that do not have a dedicated logger, are handled by a
-special <a href="http://skarnet.org/software/s6/s6-log.html">s6-log</a>
+special <a href="//skarnet.org/software/s6/s6-log.html">s6-log</a>
 instance and made available in <tt><em>tmpfsdir</em>/uncaught-logs</tt>
 instead of clogging the system console. </li>
  <li> If the <tt>-G</tt> option has been given to s6-linux-init-maker, the
@@ -150,10 +150,10 @@ to the catch-all logger, depending on the <tt>-r</tt> option. </li>
  <li> Depending on the kernel boot command line, the root filesystem
 may be in read-only mode. </li>
  <li> There is a tmpfs available for root only in <em>tmpfsdir</em>. </li>
- <li> <a href="http://skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
+ <li> <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
 is running as process 1. At any time, it is possible to make it supervise a long-lived
 process by linking the appropriate
-<a href="http://skarnet.org/software/s6/servicedir.html">service directory</a>
+<a href="//skarnet.org/software/s6/servicedir.html">service directory</a>
 into <tt><em>tmpfsdir</em>/service</tt>, then running the command
 <tt>s6-svscanctl -a <em>tmpfsdir</em>/service</tt>. Services without a
 dedicated logger will send their output to the catch-all logger. </li>
@@ -181,7 +181,7 @@ real machine and service initialization should happen in <em>stage2</em>.
 <a href="s6-reboot.html">s6-reboot</a> commands. </li>
 
  <li> Those commands send a signal to the
-<a href="http://skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
+<a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
 process running as pid 1; this signal is caught and s6-svscan runs the
 corresponding "signal handler" script that has been placed by
 s6-linux-init-maker into the
@@ -194,13 +194,13 @@ must have been written by the administrator. The purpose of
 while the supervision tree is still alive. Typically, when using a
 service manager, <em>stage2_finish</em> would tell the service manager
 to bring all services down. When using
-<a href="http://skarnet.org/software/s6-rc/">s6-rc</a>, a typical
+<a href="//skarnet.org/software/s6-rc/">s6-rc</a>, a typical
 <em>stage2_finish</em> script just contains <tt>s6-rc -da change</tt>.
  More generally speaking, <em>stage2_finish</em> should undo what
 <em>stage2</em> has done at boot time. </li>
 
  <li> The "signal handler" script then tells s6-svscan to exit via an
-appropriate <a href="http://skarnet.org/software/s6/s6-svscanctl.html">s6-svscanctl</a>
+appropriate <a href="//skarnet.org/software/s6/s6-svscanctl.html">s6-svscanctl</a>
 command: s6-svscan then executes into the <em>stage3</em> script, which, like
 <em>stage2</em> and <em>stage2_finish</em>, is the responsibility of the
 administrator. When <em>stage3</em> runs, the machine is in the following
@@ -209,11 +209,11 @@ state:
 <ul>
  <li> The supervision tree has been torn down: it is not operational
 anymore. (So, commands such as
-<a href="http://skarnet.org/software/s6-rc/s6-rc.html">s6-rc</a>, which
+<a href="//skarnet.org/software/s6-rc/s6-rc.html">s6-rc</a>, which
 require a live supervision tree, will not work.)
  <li> <em>stage3</em> runs as process 1. Doing so makes it easier to recover
 after killing all processes by <tt>kill -9 -1</tt> or
-<a href="http://skarnet.org/software/s6-portable-utils/s6-nuke.html">s6-nuke</a>. </li>
+<a href="//skarnet.org/software/s6-portable-utils/s6-nuke.html">s6-nuke</a>. </li>
  <li> Its working directory is <tt>/</tt> and its stdin is <tt>/dev/null</tt> </li>
  <li> Its stdout and stderr are both <tt>/dev/console</tt> </li>
  <li> Depending on the exact configuration and what the administrator has
@@ -237,7 +237,7 @@ contains an example of <tt>/etc/rc.init</tt>, <tt>/etc/rc.tini</tt>
 and <tt>/etc/rc.shutdown</tt> scripts, suitable for
 <em>stage2</em>, <em>stage2_finish</em> and <em>stage3</em>
 respectively. Those scripts can practically be used as is if the machine
-is managed by the <a href="http://skarnet.org/software/s6-rc/">s6-rc</a>
+is managed by the <a href="//skarnet.org/software/s6-rc/">s6-rc</a>
 service manager.
 </p>
 
@@ -260,7 +260,7 @@ the root filesystem, and be empty. <em>tmpfsdir</em> must be absolute. Default i
  <li> <tt>-b</tt>&nbsp;<em>execline_bindir</em>&nbsp;: init is run by the kernel
 without a PATH, and since it is a script, it is necessary to tell it where
 to find the
-<a href="http://skarnet.org/software/execline/execlineb.html">execlineb</a>
+<a href="//skarnet.org/software/execline/execlineb.html">execlineb</a>
 launcher and the first few early commands before PATH can be set.
 <em>execline_bindir</em> is the location where the execline binaries can be
 found. It must be absolute. Default is
@@ -323,10 +323,10 @@ It must be absolute. Default is
 set the PATH environment variable to, for all the starting processes.
 This will be done as early as possible in <em>stage 1</em>. It is
 absolutely necessary for
-<a href="http://skarnet.org/software/execline/">execline</a>,
-<a href="http://skarnet.org/software/s6/">s6</a>,
-<a href="http://skarnet.org/software/s6-portable-utils/">s6-portable-utils</a> and
-<a href="http://skarnet.org/software/s6-linux-utils/">s6-linux-utils</a>
+<a href="//skarnet.org/software/execline/">execline</a>,
+<a href="//skarnet.org/software/s6/">s6</a>,
+<a href="//skarnet.org/software/s6-portable-utils/">s6-portable-utils</a> and
+<a href="//skarnet.org/software/s6-linux-utils/">s6-linux-utils</a>
 binaries to be accessible via <em>initial_path</em>, else the machine
 will not boot. Default is
 <strong><tt>/usr/bin:/bin</tt></strong>. </li> <p />
@@ -359,7 +359,7 @@ into the whole process tree. However, sometimes those variables are
 needed at a later time; in that case, giving the <tt>-s</tt> option
 to s6-linux-init-maker makes stage 1 init dump the "kernel" environment
 variables into the <em>env_store</em> directory, via the
-<a href="http://skarnet.org/software/s6-portable-utils/s6-dumpenv.html">s6-dumpenv</a>
+<a href="//skarnet.org/software/s6-portable-utils/s6-dumpenv.html">s6-dumpenv</a>
 program, before erasing them. <em>env_store</em> should obviously be
 a writable directory, so it should be located under <em>tmpfsdir</em>!
 If this option is not given (which is the default), the environment
@@ -380,7 +380,7 @@ the global environment. </li> <p />
 
 <p>
  The difficult parts of
-<a href="http://skarnet.org/software/s6/s6-svscan-1.html">running
+<a href="//skarnet.org/software/s6/s6-svscan-1.html">running
 s6-svscan as process 1</a> are:
 </p>
 
@@ -404,7 +404,7 @@ virtual machine, a container, or anything similar that does not
 have the <tt>/dev/console</tt> issue or the read-only rootfs issue,
 you will probably not reap much benefit from using s6-linux-init-maker:
 you could probably invoke
-<a href="http://skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
+<a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
 directly as your process 1, or build a script by hand, which
 would result in a simpler init with less dependencies.
 </p>

@@ -1,19 +1,20 @@
 #!/bin/execlineb -S0
 
+foreground { s6-echo "Giving dying processes some grace time." }
+foreground { s6-sleep 2 }
 foreground { s6-echo "Syncing disks." }
 foreground { s6-sync }
 foreground { s6-echo "Sending all processes the TERM signal." }
 foreground { s6-nuke -th }
-s6-sleep 2
+foreground { s6-sleep 2 }
 foreground { s6-echo "Sending all processes the KILL signal." }
 foreground { s6-nuke -k }
 wait { }
 
-foreground { s6-echo "Syncing disks." }
+foreground { s6-echo "Syncing and unmounting disks." }
 foreground { s6-sync }
-foreground { s6-echo "Unmounting disks." }
 foreground { s6-umount -a }
-foreground { s6-mount -o ro,remount /dev/root / }
+foreground { s6-mount -ro remount /dev/root / }
 
 foreground { s6-echo "\nPerforming "${1}"." }
 s6-${1} -f

@@ -63,6 +63,7 @@ machine</em> - else the scripts will crash.
        [ -d <em>dev_style</em> ] \
        [ -s <em>env_store</em> ] \
        [ -e <em>initial_envvar</em> ] ... \
+       [ -n ] \
        <em>dir</em>
 </pre>
 
@@ -374,6 +375,14 @@ environment, or of the form <em>VAR=VALUE</em>, to add an
 environment variable <em>VAR</em> with the value <em>VALUE</em>.
 The TZ variable, for instance, is a good candidate to be set in
 the global environment. </li> <p />
+
+ <li> <tt>-n</tt>&nbsp;: tells s6-linux-init-maker that the init script
+is going to run in a container, as pid 1 in a non-root namespace.
+This modifies the <tt>.s6-svscan/finish</tt>, <tt>.s6-svscan/SIGHUP</tt>
+and <tt>.s6-svscan/SIGINT</tt> scripts slightly, in order to provide
+adequate functionality when the containerized system is asked to
+shutdown. Do not add this option if the init script is going to run
+in the root pid namespace. </li> <p />
 </ul>
 
 <h2> Notes </h2>
@@ -407,6 +416,8 @@ you could probably invoke
 <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
 directly as your process 1, or build a script by hand, which
 would result in a simpler init with less dependencies.
+Nevertheless, if you prefer using s6-linux-init-maker, it
+supports this case via the <tt>-n</tt> option.
 </p>
 
 </body>

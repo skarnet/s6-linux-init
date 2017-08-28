@@ -16,11 +16,12 @@
 #include <skalibs/sgetopt.h>
 #include <skalibs/skamisc.h>
 
-#define USAGE "s6-linux-init-maker [ -c basedir ] [ -l tmpfsdir ] [ -b execline_bindir ] [ -u log_uid -g log_gid | -U ] [ -G early_getty_cmd ] [ -2 stage2_script ] [ -r ] [ -Z finish_script ] [ -3 stage3_script ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d dev_style ] [ -s env_store ] [ -e initial_envvar ... ] dir"
+#define USAGE "s6-linux-init-maker [ -c basedir ] [ -l tmpfsdir ] [ -b execline_bindir ] [ -u log_uid -g log_gid | -U ] [ -G early_getty_cmd ] [ -2 stage2_script ] [ -r ] [ -Z finish_script ] [ -3 stage3_script ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d dev_style ] [ -s env_store ] [ -e initial_envvar ... ] [ -n ] dir"
 #define dieusage() strerr_dieusage(100, USAGE)
 #define dienomem() strerr_diefu1sys(111, "stralloc_catb") ;
 
 #define BANNER "\n  init created by s6-linux-init-maker\n  see http://skarnet.org/software/s6-linux-init/\n\n"
+#define EXITCODENAME "file\\ created\\ by\\ s6-linux-init,\\ storing\\ a\\ container's\\ exit\\ code"
 
 #define CRASH_SCRIPT \
 "redirfd -r 0 /dev/console\n" \
@@ -45,6 +46,7 @@ static unsigned int initial_umask = 022 ;
 static unsigned int timestamp_style = 1 ;
 static unsigned int slashdev_style = 2 ;
 static int redirect_stage2 = 0 ;
+static int in_namespace = 0 ;
 
 typedef int writetobuf_func_t (buffer *) ;
 typedef writetobuf_func_t *writetobuf_func_t_ref ;
@@ -101,10 +103,22 @@ static int finish_script (buffer *b)
   size_t sabase = satmp.len ;
   if (buffer_puts(b, "#!") < 0
    || buffer_puts(b, bindir) < 0
-   || buffer_puts(b, "/execlineb -S0\n\n"
-    "cd /\nredirfd -w 2 /dev/console\nfdmove -c 1 2\nforeground { s6-svc -X -- ") < 0
+   || buffer_puts(b, "/execlineb -S0\n\n") < 0
    || !string_quote(&satmp, slashrun, strlen(slashrun))) return 0 ;
-  if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
+
+  if (in_namespace)
+  {
+    if (buffer_puts(b, "ifelse { redirfd -r 0 ") < 0
+     || buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0
+     || buffer_puts(b, "/" EXITCODENAME " exit 0 }\n{ redirfd -r 0 ") < 0
+     || buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0
+     || buffer_puts(b, "/" EXITCODENAME " withstdinas -in CODE foreground { s6-rmrf ") < 0
+     || buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0
+     || buffer_puts(b, "/" EXITCODENAME " } importas -ui CODE CODE exit ${CODE} }\n") < 0) goto err ;
+  }
+
+  if (buffer_puts(b, "cd /\nredirfd -w 2 /dev/console\nfdmove -c 1 2\nforeground { s6-svc -X -- ") < 0
+   || buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
   if (buffer_puts(b, "/service/s6-svscan-log }\nunexport ?\nwait -r -- { }\n") < 0
    || !string_quote(&satmp, shutdown_script, strlen(shutdown_script))) return 0 ;
@@ -138,6 +152,25 @@ static int sig_script (buffer *b, char c)
   return 0 ;
 }
 
+static int onlyexit (buffer *b, char c)
+{
+  size_t sabase = satmp.len ;
+  if (!put_shebang(b)
+   || buffer_puts(b, "foreground { redirfd -w 1 ") < 0
+   || !string_quote(&satmp, slashrun, strlen(slashrun))
+   || buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0
+   || buffer_puts(b, "/" EXITCODENAME " s6-echo -- ") < 0
+   || buffer_put(b, &c, 1) < 0
+   || buffer_puts(b, " }\ns6-svscanctl -b ") < 0
+   || buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0
+   || buffer_puts(b, "/service\n") < 0) goto err ;
+  satmp.len = sabase ;
+  return 1 ;
+ err:
+  satmp.len = sabase ;
+  return 0 ;
+}
+
 static int sigterm_script (buffer *b)
 {
   return sig_script(b, 't') ;
@@ -145,7 +178,7 @@ static int sigterm_script (buffer *b)
 
 static int sighup_script (buffer *b)
 {
-  return sig_script(b, 'h') ;
+  return in_namespace ? onlyexit(b, '0') : sig_script(b, 'h') ;
 }
 
 static int sigquit_script (buffer *b)
@@ -155,7 +188,7 @@ static int sigquit_script (buffer *b)
 
 static int sigint_script (buffer *b)
 {
-  return sig_script(b, '6') ;
+  return in_namespace ? onlyexit(b, '1') : sig_script(b, '6') ;
 }
 
 static int sigusr1_script (buffer *b)
@@ -361,7 +394,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "c:l:b:u:g:UG:2:rZ:3:p:m:t:d:s:e:", &l) ;
+      int opt = subgetopt_r(argc, argv, "c:l:b:u:g:UG:2:rZ:3:p:m:t:d:s:e:n", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
@@ -390,6 +423,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
         case 'd' : if (!uint0_scan(l.arg, &slashdev_style)) dieusage() ; break ;
         case 's' : env_store = l.arg ; break ;
         case 'e' : if (!stralloc_catb(&satmp, l.arg, strlen(l.arg) + 1)) dienomem() ; break ;
+        case 'n' : in_namespace = 1 ; break ;
         default : dieusage() ;
       }
     }

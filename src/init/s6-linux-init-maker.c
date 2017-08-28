@@ -108,7 +108,7 @@ static int finish_script (buffer *b)
 
   if (in_namespace)
   {
-    if (buffer_puts(b, "ifelse { redirfd -r 0 ") < 0
+    if (buffer_puts(b, "ifelse { redirfd -w 2 /dev/null redirfd -r 0 ") < 0
      || buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0
      || buffer_puts(b, "/" EXITCODENAME " exit 0 }\n{ redirfd -r 0 ") < 0
      || buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0

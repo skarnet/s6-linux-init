@@ -23,7 +23,7 @@ static int test_in_namespace (void)
   int r ;
   int fd = open_read("/proc/1/ns/pid") ;
   if (fd < 0) return 0 ;
-  r = ioctl(myfd, NS_GET_PARENT) ;
+  r = ioctl(fd, NS_GET_PARENT) ;
   close(fd) ;
   return r >= 0 ;
 }

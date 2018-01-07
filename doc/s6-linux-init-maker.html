@@ -268,10 +268,10 @@ found. It must be absolute. Default is
 <strong><tt>/bin</tt></strong>. </li> <p />
 
  <li> <tt>-u</tt>&nbsp;<em>log_uid</em>&nbsp;: the catch-all
-logger will run with the uid <em>log_uid</em>. Default is 0. <li> <p />
+logger will run with the uid <em>log_uid</em>. Default is 0. </li> <p />
 
  <li> <tt>-g</tt>&nbsp;<em>log_gid</em>&nbsp;: the catch-all
-logger will run with the gid <em>log_gid</em>. Default is 0. <li> <p />
+logger will run with the gid <em>log_gid</em>. Default is 0. </li> <p />
 
  <li> <tt>-U</tt>&nbsp;: the correct <em>log_uid</em> and
 <em>log_gid</em> values for the catch-all logger will be read from the
@@ -282,7 +282,7 @@ the catch-all logger runs as the <tt>nobody</tt> user. Be aware that
 this option is only safe when the user database on the
 <em>boot-time</em> machine is the same as on the <em>run-time</em>
 machine, else the catch-all logger may run with an unexpected uid
-and gid. </li>
+and gid. </li> <p />
 
  <li> <tt>-G</tt>&nbsp;<em>early_getty</em>&nbsp;: if this option
 is set, s6-linux-init-maker will define a service that will run
@@ -397,7 +397,7 @@ s6-svscan as process 1</a> are:
  <li> The fact that the supervision tree requires writable directories,
 so in order to accommodate read-only root filesystems, there needs to
 be a tmpfs mounted before s6-svscan is run. </li>
- <li> The catch-22 coming for the need to redirect the supervision
+ <li> The catch-22 coming from the need to redirect the supervision
 tree's output away from <tt>/dev/console</tt> (which is fine for a
 first process invocation but impractical for log management of a
 whole process tree) and into a logger that is itself managed by the

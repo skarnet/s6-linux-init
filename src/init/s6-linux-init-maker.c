@@ -16,7 +16,7 @@
 #include <skalibs/sgetopt.h>
 #include <skalibs/skamisc.h>
 
-#define USAGE "s6-linux-init-maker [ -c basedir ] [ -l tmpfsdir ] [ -b execline_bindir ] [ -u log_uid -g log_gid | -U ] [ -G early_getty_cmd ] [ -2 stage2_script ] [ -r ] [ -Z finish_script ] [ -3 stage3_script ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d dev_style ] [ -s env_store ] [ -e initial_envvar ... ] [ -n ] dir"
+#define USAGE "s6-linux-init-maker [ -c basedir ] [ -l tmpfsdir ] [ -b execline_bindir ] [ -u log_uid -g log_gid | -U ] [ -G early_getty_cmd ] [ -2 stage2_script ] [ -r ] [ -Z shutdownscript ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d dev_style ] [ -s env_store ] [ -e initial_envvar ... ] [ -n ] [ -q final_sleep_time ] dir"
 #define dieusage() strerr_dieusage(100, USAGE)
 #define dienomem() strerr_diefu1sys(111, "stralloc_catb") ;
 
@@ -34,8 +34,7 @@
 static char const *slashrun = "/run" ;
 static char const *robase = "/etc/s6-linux-init" ;
 static char const *init_script = "/etc/rc.init" ;
-static char const *tini_script = "/etc/rc.tini" ;
-static char const *shutdown_script = "/etc/rc.shutdown" ;
+static char const *tini_script = "/etc/rc.shutdown" ;
 static char const *bindir = "/bin" ;
 static char const *initial_path = "/usr/bin:/usr/sbin:/bin:/sbin" ;
 static char const *env_store = 0 ;
@@ -45,6 +44,7 @@ static gid_t uncaught_logs_gid = 0 ;
 static unsigned int initial_umask = 022 ;
 static unsigned int timestamp_style = 1 ;
 static unsigned int slashdev_style = 2 ;
+static unsigned int finalsleep = 2000 ;
 static int redirect_stage2 = 0 ;
 static int in_namespace = 0 ;
 
@@ -101,6 +101,8 @@ static int s6_svscan_log_script (buffer *b)
 static int finish_script (buffer *b)
 {
   size_t sabase = satmp.len ;
+  char fmt[UINT_FMT] ;
+  fmt[uint_fmt(fmt, finalsleep)] = 0 ;
   if (buffer_puts(b, "#!") < 0
    || buffer_puts(b, bindir) < 0
    || buffer_puts(b, "/execlineb -S0\n\n") < 0
@@ -120,11 +122,21 @@ static int finish_script (buffer *b)
   if (buffer_puts(b, "cd /\nredirfd -w 2 /dev/console\nfdmove -c 1 2\nforeground { s6-svc -X -- ") < 0
    || buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
-  if (buffer_puts(b, "/service/s6-svscan-log }\nunexport ?\nwait -r -- { }\n") < 0
-   || !string_quote(&satmp, shutdown_script, strlen(shutdown_script))) return 0 ;
-  if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
-  satmp.len = sabase ;
-  if (buffer_puts(b, " ${@}\n") < 0) return 0 ;
+  if (buffer_puts(b, "/service/s6-svscan-log }\n"
+                     "unexport ?\nwait -r -- { }\n"
+                     "foreground { s6-echo \"Syncing disks.\" }\n"
+                     "foreground { s6-sync }\n"
+                     "foreground { s6-echo \"Sending all processes the TERM signal.\" }\n"
+                     "foreground { s6-nuke -th }\n"
+                     "s6-sleep -m -- ") < 0
+   || buffer_puts(b, fmt) < 0
+   || buffer_puts(b, "\nforeground { s6-echo \"Sending all processes the KILL signal.\" }\n"
+                     "foreground { s6-nuke -k }\n"
+                     "wait { }\n"
+                     "foreground { s6-echo \"Unmounting disks.\" }\n"
+                     "foreground { s6-umount -a }\n"
+                     "foreground { s6-mount -ro remount /dev/root / }\n"
+                     "s6-${1} -f\n") < 0) return 0 ;
   return 1 ;
  err:
   satmp.len = sabase ;
@@ -394,7 +406,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "c:l:b:u:g:UG:2:rZ:3:p:m:t:d:s:e:n", &l) ;
+      int opt = subgetopt_r(argc, argv, "c:l:b:u:g:UG:2:rZ:p:m:t:d:s:e:nq:", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
@@ -416,7 +428,6 @@ int main (int argc, char const *const *argv, char const *const *envp)
         case '2' : init_script = l.arg ; break ;
         case 'r' : redirect_stage2 = 1 ; break ;
         case 'Z' : tini_script = l.arg ; break ;
-        case '3' : shutdown_script = l.arg ; break ;
         case 'p' : initial_path = l.arg ; break ;
         case 'm' : if (!uint0_oscan(l.arg, &initial_umask)) dieusage() ; break ;
         case 't' : if (!uint0_scan(l.arg, &timestamp_style)) dieusage() ; break ;
@@ -424,6 +435,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
         case 's' : env_store = l.arg ; break ;
         case 'e' : if (!stralloc_catb(&satmp, l.arg, strlen(l.arg) + 1)) dienomem() ; break ;
         case 'n' : in_namespace = 1 ; break ;
+        case 'q' : if (!uint0_scan(l.arg, &finalsleep)) dieusage() ; break ;
         default : dieusage() ;
       }
     }
@@ -440,9 +452,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
   if (init_script[0] != '/')
     strerr_dief3x(100, "stage 2 script location ", init_script, " is not absolute") ;
   if (tini_script[0] != '/')
-    strerr_dief3x(100, "stage 2 finish script location ", tini_script, " is not absolute") ;
-  if (shutdown_script[0] != '/')
-    strerr_dief3x(100, "stage 3 script location ", shutdown_script, " is not absolute") ;
+    strerr_dief3x(100, "shutdown script location ", tini_script, " is not absolute") ;
   if (timestamp_style > 3)
     strerr_dief1x(100, "-t timestamp_style must be 0, 1, 2 or 3") ;
   if (slashdev_style > 2)

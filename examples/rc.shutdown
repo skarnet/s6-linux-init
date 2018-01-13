@@ -1,20 +1,16 @@
-#!/bin/execlineb -S0
+#!/bin/execlineb -P
 
-foreground { s6-echo "Giving dying processes some grace time." }
-foreground { s6-sleep 2 }
-foreground { s6-echo "Syncing disks." }
-foreground { s6-sync }
-foreground { s6-echo "Sending all processes the TERM signal." }
-foreground { s6-nuke -th }
-foreground { s6-sleep 2 }
-foreground { s6-echo "Sending all processes the KILL signal." }
-foreground { s6-nuke -k }
-wait { }
 
-foreground { s6-echo "Syncing and unmounting disks." }
-foreground { s6-sync }
-foreground { s6-umount -a }
-foreground { s6-mount -ro remount /dev/root / }
+# Write a message to /var/log/syslogd
 
-foreground { s6-echo "\nPerforming "${1}"." }
-s6-${1} -f
+foreground
+{
+  s6-ipcclient -l0 /dev/log
+  fdmove 1 7
+  s6-echo "/etc/rc.shutdown: shutdown requested"
+}
+
+
+# Shut down all services
+
+s6-rc -da change

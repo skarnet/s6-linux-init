@@ -29,17 +29,13 @@
    <li> <a href="//skarnet.org/software/s6-linux-utils/">s6-linux-utils</a> </li>
    <li> <a href="//skarnet.org/software/s6/">s6</a> </li>
   </ul> </li>
- <li> Install <a href="index.html">s6-linux-init</a> itself </li>
- <li> Save your old <tt>/sbin/init</tt> binary </li>
- <li> Save and remove your old <tt>/etc/s6-linux-init</tt> directory, if you have one </li>
- <li> Make sure you have a <tt>/run</tt> directory </li>
+ <li> Install <a href="index.html">s6-linux-init</a> itself. </li>
+ <li> Save your old <tt>/sbin/init</tt> binary. </li>
+ <li> Save and remove your old <tt>/etc/s6-linux-init</tt> directory, if you have one. </li>
+ <li> Make sure you have a <tt>/run</tt> directory. </li>
  <li> Write a machine initialization script in <tt>/etc/rc.init</tt> and
- a machine shutdown script in <tt>/etc/rc.shutdown</tt>. Make them executable. </li>
- <li> If, at shutdown time, you need to run a script <em>before</em> the
-supervision tree is torn down (for instance if you're using
-<a href="//skarnet.org/software/s6-rc/">s6-rc</a> and want to
-cleanly stop all your services), write that script in
-<tt>/etc/rc.tini</tt>. </li>
+a machine shutdown script in <tt>/etc/rc.shutdown</tt>. Make sure they are
+executable. See below for more information on how to write these scripts. </li>
  <li> Check that your devtmpfs is automounted by your kernel at boot time. If it is not,
 add the <tt>-d 1</tt> option to the <tt>s6-linux-init-maker</tt> command line below. </li>
  <li> As root, run: <pre>
@@ -53,7 +49,60 @@ add the <tt>-d 1</tt> option to the <tt>s6-linux-init-maker</tt> command line be
 <a href="s6-halt.html">s6-halt</a>,
 <a href="s6-poweroff.html">s6-poweroff</a> or
 <a href="s6-reboot.html">s6-reboot</a> command as appropriate. </li>
+</ol>
+
+<h3> What should go into <tt>/etc/rc.init</tt> and <tt>/etc/rc.shutdown</tt>&nbsp;? </h3>
+
+<h4> <tt>/etc/rc.init</tt> </h4>
+
+<p>
+ This script will be run after s6-linux-init has done is job, i.e.
+<a href="//skarnet.org/software/s6/">s6-svscan</a> is running as process 1, and it
+is now up to <tt>/etc/rc.init</tt> to get the machine to its usable state.
+It normally contains a call to the service manager to bring up all the services;
+for instance, if you're using
+<a href="//skarnet.org/software/s6-rc/">s6-rc</a> as your service manager, and
+your top bundle (containing all the services you want to bring up) is named
+<tt>ok-all</tt>, a proper <tt>/etc/rc.init</tt> could look like this:
+</p>
+
+<pre>#!/bin/sh
+s6-rc-init /run/service &amp;&amp; exec s6-rc -u change ok-all
+</pre>
+
+<p>
+ The script can assume that:
+</p>
+
+<ul>
+ <li> There is a tmpfs partition, only writable by root, mounted on <tt>/run</tt> </li>
+ <li> There is a <a href="//skarnet.org/software/s6/">s6</a> supervision tree
+running on <tt>/run/service</tt> </li>
+ <li> <tt>/dev</tt> is mounted, but <tt>/proc</tt> and <tt>/sys</tt> are not </li>
 </ul>
+
+<h4> <tt>/etc/rc.shutdown</tt> </h4>
+
+<p>
+ This script is spawned by <a href="//skarnet.org/software/s6/">s6-svscan</a>
+when the administrator calls <a href="s6-halt.html">s6-halt</a>,
+<a href="s6-poweroff.html">s6-poweroff</a> or
+<a href="s6-reboot.html">s6-reboot</a>. When this script exits, the final
+shutdown sequence is run, which means that the supervision tree is dismantled,
+all processes are killed, the file systems are umounted and the system
+undergoes a hardware shutdown or reboot. So the goal of this script is to
+bring services down in an orderly fashion and perform all the necessary
+cleanups before all remaining processes are summarily killed.
+</p>
+
+<p>
+ If you're using <a href="//skarnet.org/software/s6-rc/">s6-rc</a> as your
+service manager, a proper <tt>/etc/rc.shutdown</tt> could look like this:
+</p>
+
+<pre>#!/bin/sh
+exec s6-rc -da change
+</pre>
 
 <h2> FAQ </h2>
 

@@ -1,5 +1,15 @@
 Changelog for s6-linux-init.
 
+In 0.4.0.0
+----------
+
+ - The old /etc/rc.shutdown is now created by s6-linux-init-maker
+and is not the user's responsibility anymore.
+ - /etc/rc.tini is now named /etc/rc.shutdown. In summary:
+now, /etc/rc.shutdown marks the end of stage 2, not stage 3,
+and stage 3 is all automatically generated.
+
+
 In 0.3.1.1
 ----------
 

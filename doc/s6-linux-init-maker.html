@@ -53,10 +53,9 @@ machine</em> - else the scripts will crash.
        [ -b <em>execline_bindir</em> ] \
        [ -u <em>log_uid</em> -g <em>log_gid</em> | -U ] \
        [ -G <em>early_getty</em> ] \
-       [ -2 <em>stage2</em> ] \
+       [ -2 <em>initscript</em> ] \
        [ -r ] \
-       [ -Z ] <em>stage2_finish</em> \
-       [ -3 <em>stage3</em> ] \
+       [ -Z ] <em>shutdownscript</em> \
        [ -p <em>initial_path</em> ] \
        [ -m <em>initial_umask</em> ] \
        [ -t <em>timestamp_style</em> ] \
@@ -64,6 +63,7 @@ machine</em> - else the scripts will crash.
        [ -s <em>env_store</em> ] \
        [ -e <em>initial_envvar</em> ] ... \
        [ -n ] \
+       [ -q ] <em>finalsleeptime</em>
        <em>dir</em>
 </pre>
 
@@ -131,19 +131,19 @@ instead of clogging the system console. </li>
 scan directory will also contain a service for an early getty. </li>
  <li> s6-svscan starts all the services defined in the scan directory,
 and unblocks the child forked by <em>stage 1</em>. </li>
- <li> This child executes into <em>stage2</em>. </li>
+ <li> This child executes into <em>initscript</em>. </li>
 </ul>
 
 <p>
- <em>stage2</em> is the responsibility of the administrator - it will
+ <em>initscript</em> is the responsibility of the administrator - it will
 not be written automatically!
 It should
 contain all the necessary initialization sequence to bring up a proper
-system. When <em>stage2</em> is executed, the machine state is as follows:
+system. When <em>initscript</em> is executed, the machine state is as follows:
 </p>
 
 <ul>
- <li> <em>stage2</em>'s working directory is <tt>/</tt> and its stdin
+ <li> <em>initscript</em>'s working directory is <tt>/</tt> and its stdin
 is <tt>/dev/null</tt>. Its
 stdout and stderr both point either to <tt>/dev/console</tt> or to the pipe
 to the catch-all logger, depending on the <tt>-r</tt> option. </li>
@@ -159,7 +159,7 @@ into <tt><em>tmpfsdir</em>/service</tt>, then running the command
 <tt>s6-svscanctl -a <em>tmpfsdir</em>/service</tt>. Services without a
 dedicated logger will send their output to the catch-all logger. </li>
  <li> A getty service may already be available. The point of this early
-getty is essentially to make it easier to debug if <em>stage2</em> fails. </li>
+getty is essentially to make it easier to debug if <em>initscript</em> fails. </li>
 </ul>
 
 <p>
@@ -167,9 +167,10 @@ getty is essentially to make it easier to debug if <em>stage2</em> fails. </li>
 mounted yet, including <tt>/proc</tt> and <tt>/sys</tt>; and no one-time
 initialization
 has been performed. The point of <em>stage 1</em> is only to make it
-possible to run <em>stage2</em> with a logging infrastructure and a
+possible to run <em>initscript</em> with a logging infrastructure and a
 supervision infrastructure already available, and all the
-real machine and service initialization should happen in <em>stage2</em>.
+real machine and service initialization should happen in <em>initscript</em>,
+also known as <em>stage 2</em>.
 </p>
 
 <h2> Shutdown sequence </h2>
@@ -189,54 +190,46 @@ s6-linux-init-maker into the
 <tt><em>basedir</em>/run-image/service/.s6-svscan</tt> directory (and that
 has been copied at boot time to <tt><em>tmpfsdir</em>/service/.s6-svscan</tt>). </li>
 
- <li> That script first spawns the <em>stage2_finish</em> script, who
+ <li> That script first spawns the <em>shutdownscript</em> script, who
 must have been written by the administrator. The purpose of
-<em>stage2_finish</em> is to perform the high-level shutdown sequence
+<em>shutdownscript</em> is to perform the high-level shutdown sequence
 while the supervision tree is still alive. Typically, when using a
-service manager, <em>stage2_finish</em> would tell the service manager
+service manager, <em>shutdownscript</em> would tell the service manager
 to bring all services down. When using
 <a href="//skarnet.org/software/s6-rc/">s6-rc</a>, a typical
 <em>stage2_finish</em> script just contains <tt>s6-rc -da change</tt>.
- More generally speaking, <em>stage2_finish</em> should undo what
+ More generally speaking, <em>shutdownscript</em> should undo what
 <em>stage2</em> has done at boot time. </li>
 
  <li> The "signal handler" script then tells s6-svscan to exit via an
 appropriate <a href="//skarnet.org/software/s6/s6-svscanctl.html">s6-svscanctl</a>
-command: s6-svscan then executes into the <em>stage3</em> script, which, like
-<em>stage2</em> and <em>stage2_finish</em>, is the responsibility of the
-administrator. When <em>stage3</em> runs, the machine is in the following
-state:
+command: s6-svscan then executes into the final shutdown sequence. This
+sequence is made of the following actions:
 
 <ul>
- <li> The supervision tree has been torn down: it is not operational
-anymore. (So, commands such as
-<a href="//skarnet.org/software/s6-rc/s6-rc.html">s6-rc</a>, which
-require a live supervision tree, will not work.)
- <li> <em>stage3</em> runs as process 1. Doing so makes it easier to recover
-after killing all processes by <tt>kill -9 -1</tt> or
-<a href="//skarnet.org/software/s6-portable-utils/s6-nuke.html">s6-nuke</a>. </li>
- <li> Its working directory is <tt>/</tt> and its stdin is <tt>/dev/null</tt> </li>
- <li> Its stdout and stderr are both <tt>/dev/console</tt> </li>
- <li> Depending on the exact configuration and what the administrator has
-written in <em>stage2_finish</em>, there may or may not be
-long-running services that remain alive. The catch-all logger and its
-supervisor will <em>always</em> be alive; this is not a problem because they
-do not hold any file descriptor to a filesystem that would need to be
-unmounted. </li>
+ <li> The supervision tree gets torn down. </li>
+ <li> All data is flushed to disk. </li>
+ <li> All processes get a SIGTERM, a SIGHUP, and a SIGCONT. This should
+allow all processes to die gracefully. Note that most processes should
+already have been killed during the <tt>/etc/rc.shutdown</tt> execution;
+this phase only catches stragglers, background processs, etc. </li>
+ <li> The sequence sleeps for <em>finalsleeptime</em> milliseconds, to
+allow all processes to finish their clean exit routine. </li>
+ <li> All processes get a SIGKILL. </li>
+ <li> All zombies are reaped. </li>
+ <li> All filesystems get unmounted, and the root filesystem is remounted
+read-only. </li>
+ <li> The machine performs a hardware reboot, halt or poweroff, depending
+on the command that has been used. </li>
 </ul> </li>
-
-<li> The last command that <em>stage3</em> executes should be
-<tt>s6-$1 -f</tt>, <tt>$1</tt> being the first argument that has been
-given to it. This command will instantly execute the hard system halt,
-poweroff or reboot that has initially been asked by the admin. </li>
 
 </ul>
 
 <p>
  The <tt>examples/</tt> subdirectory of the s6-linux-init package
-contains an example of <tt>/etc/rc.init</tt>, <tt>/etc/rc.tini</tt>
+contains an example of <tt>/etc/rc.init</tt>
 and <tt>/etc/rc.shutdown</tt> scripts, suitable for
-<em>stage2</em>, <em>stage2_finish</em> and <em>stage3</em>
+<em>initscript</em> and <em>shutdownscript</em>
 respectively. Those scripts can practically be used as is if the machine
 is managed by the <a href="//skarnet.org/software/s6-rc/">s6-rc</a>
 service manager.
@@ -292,7 +285,7 @@ should be a getty, to allow logins even if <em>stage2</em> fails.
 <tt>"/sbin/getty 38400 tty1"</tt>. By default, no early service
 is defined. </li> <p />
 
- <li> <tt>-2</tt>&nbsp;<em>stage2</em>&nbsp;: <em>stage2</em> is
+ <li> <tt>-2</tt>&nbsp;<em>initscript</em>&nbsp;: <em>initscript</em> is
 the location of the stage 2 script that will be run when the
 system has an operational supervision tree. It must be absolute. Default is
 <strong><tt>/etc/rc.init</tt></strong>. </li> <p />
@@ -305,20 +298,14 @@ with an early getty, or be undesirable for other reasons. The
 to the catch-all logger, so the output will be made available
 in the <tt><em>tmpfsdir</em>/uncaught-logs</tt> directory. </li> <p />
 
- <li> <tt>-Z</tt>&nbsp;<em>stage2_finish</em>&nbsp;:
-<em>stage2_finish</em> is the location of the script that will be
+ <li> <tt>-Z</tt>&nbsp;<em>shutdownscript</em>&nbsp;:
+<em>shutdownscript</em> is the location of the script that will be
 run when s6-svscan receives a signal that tells it to stop the
-machine, before it executes into <em>stage3</em>. It must be
-absolute. Default is <strong><tt>/etc/rc.tini</tt></strong>.
+machine, before it executes into the final shutdown sequence. It must be
+absolute. Default is <strong><tt>/etc/rc.shutdown</tt></strong>.
 Note that this script is run with its stdout and stderr
 redirected to the <tt><em>tmpfsdir</em>/uncaught-logs</tt> logging
 directory, so its output will not appear on the system's console. </li> <p />
-
- <li> <tt>-3</tt>&nbsp;<em>stage3</em>&nbsp;: <em>stage3</em> is
-the location of the stage 3 script that will be run at the end of
-the machine lifetime, when s6-svscan is told to terminate.
-It must be absolute. Default is
-<strong><tt>/etc/rc.shutdown</tt></strong>. </li> <p />
 
  <li> <tt>-p</tt>&nbsp;<em>initial_path</em>&nbsp;: the value to
 set the PATH environment variable to, for all the starting processes.
@@ -383,6 +370,16 @@ and <tt>.s6-svscan/SIGINT</tt> scripts slightly, in order to provide
 adequate functionality when the containerized system is asked to
 shutdown. Do not add this option if the init script is going to run
 in the root pid namespace. </li> <p />
+
+ <li> <tt>-q</tt>&nbsp;<em>finalsleeptime</em>&nbsp;: when the machine
+shuts down, all processes that have not already been killed during
+<tt>shutdownscript</tt> will receive a SIGTERM or a SIGHUP to allow
+them to exit gracefully; then, after <em>finalsleeptime</em>
+milliseconds, they will receive a SIGKILL and the shutdown sequence
+will go on. This option configures the amount of time that will
+elapse between the SIGTERM/SIGHUP and the SIGKILL.
+Default is <strong>2000</strong>, meaning a grace period of 2 seconds. </li> <p />
+
 </ul>
 
 <h2> Notes </h2>

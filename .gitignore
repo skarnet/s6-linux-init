@@ -1,5 +1,8 @@
 *.o
-*.a
 *.lo
-*.so
-*.so.*
+/config.mak
+/src/include/s6-linux-init/config.h
+/s6-linux-init-maker
+/s6-halt
+/s6-poweroff
+/s6-reboot

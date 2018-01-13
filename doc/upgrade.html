@@ -18,6 +18,23 @@
 
 <h1> What has changed in s6-linux-init </h1>
 
+<h2> in 0.4.0.0 </h2>
+
+<ul>
+ <li> <a href="//skarnet.org/software/skalibs/">skalibs</a>
+dependency bumped to 2.6.3.0. </li>
+ <li> <a href="//skarnet.org/software/execline/">execline</a>
+dependency bumped to 2.3.0.4. </li>
+ <li> <a href="//skarnet.org/software/s6/">s6</a>
+dependency bumped to 2.7.0.0. </li>
+ <li> <a href="s6-linux-init-maker.html">s6-linux-init-maker</a> now
+autogenerates stage 3, which is not the responsibility of the user
+anymore (stage 3 was previously the user-written <tt>/etc/rc.shutdown</tt>
+script). </li>
+ <li> The default user-provided "end of stage 2, bring down services" script
+was named <tt>/etc/rc.tini</tt> before; now it's named <tt>/etc/rc.shutdown</tt>. </li>
+</ul>
+
 <h2> in 0.3.1.1 </h2>
 
 <ul>

@@ -1,0 +1,5 @@
+libhpr.a.xyzzy
+${LIBUTMPS}
+-lskarnet
+${TAINNOW_LIB}
+${SOCKET_LIB}

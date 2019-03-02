@@ -1,7 +1,13 @@
 BIN_TARGETS := \
-s6-linux-init-maker \
-s6-halt \
-s6-poweroff \
-s6-reboot
+s6-linux-init-single \
+s6-linux-init-halt \
+s6-linux-init-poweroff \
+s6-linux-init-reboot \
+s6-linux-init-shutdown \
+s6-linux-init-shutdownd \
+s6-linux-init-logouthookd \
+s6-linux-init \
+s6-linux-init-telinit \
+s6-linux-init-maker
 
-LIBEXEC_TARGETS :=
+LIB_DEFS := S6_LINUX_INIT=s6_linux_init

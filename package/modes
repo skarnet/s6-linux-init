@@ -1,4 +1,10 @@
-s6-linux-init-maker	0700
-s6-halt			0700
-s6-poweroff		0700
-s6-reboot		0700
+s6-linux-init-single		0700
+s6-linux-init-halt		0700
+s6-linux-init-poweroff		0700
+s6-linux-init-reboot		0700
+s6-linux-init-shutdown		0700
+s6-linux-init-shutdownd		0700
+s6-linux-init-logouthookd	0700
+s6-linux-init			0700
+s6-linux-init-telinit		0700
+s6-linux-init-maker		0700

@@ -33,6 +33,9 @@ anymore (stage 3 was previously the user-written <tt>/etc/rc.shutdown</tt>
 script). </li>
  <li> The default user-provided "end of stage 2, bring down services" script
 was named <tt>/etc/rc.tini</tt> before; now it's named <tt>/etc/rc.shutdown</tt>. </li>
+ <li> Everything now builds as PIC by default no matter
+the toolchain's settings. Use the <tt>--disable-all-pic</tt> configure
+option to build executables and static libraries as non-PIC. </li>
 </ul>
 
 <h2> in 0.3.1.1 </h2>

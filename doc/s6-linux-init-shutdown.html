@@ -1,0 +1,78 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>s6-linux-init: the s6-linux-init-shutdown program</title>
+    <meta name="Description" content="s6-linux-init: the s6-linux-init-shutdown program" />
+    <meta name="Keywords" content="s6 linux init administration root utilities shutdown halt poweroff reboot" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="index.html">s6-linux-init</a><br />
+<a href="//skarnet.org/software/">Software</a><br />
+<a href="//skarnet.org/">skarnet.org</a>
+</p>
+
+<h1> The <tt>s6-linux-init-shutdown</tt> program </h1>
+
+<p>
+<tt>s6-linux-init-shutdown</tt> triggers the system shutdown procedure.
+</p>
+
+<h2> Interface </h2>
+
+<pre>
+     s6-linux-init-shutdown [ -h | -p | -r | -k ] [ -a ] [ -t <em>sec</em> ] [ -f | -F ] [ -R <em>tmpfsdir</em> ] <em>time</em> [ <em>message</em> ]
+     s6-linux-init-shutdown -c [ -R <em>tmpfsdir</em> ] [ <em>message</em> ]
+</pre>
+
+<ul>
+ <li> If the <tt>-c</tt> option is present, a pending shutdown is cancelled. </li>
+ <li> Else, it triggers the shutdown procedure.
+ <li> It exits 0. The shutdown procedure happens asynchronously. </li>
+</ul>
+
+<p>
+ The <tt>s6-linux-init-shutdown</tt> program conforms to the LSB-3.0.0
+<a href="https://refspecs.linuxfoundation.org/LSB_3.0.0/LSB-PDA/LSB-PDA.junk/shutdown.html">shutdown</a>
+interface.
+</p>
+
+<h2> Exit codes </h2>
+
+<ul>
+ <li> 0: shutdown procedure triggered. </li>
+ <li> 100: wrong usage, or user does not have root privileges. </li>
+ <li> 111: system call failed. </li>
+</ul>
+
+<h2> Supplementary options </h2>
+
+<p>
+ These options are supported by <tt>s6-linux-init-shutdown</tt> but are not
+part of the LSB-3.0.0 <tt>shutdown</tt> specification.
+</p>
+
+<ul>
+ <li> <tt>-R&nbsp;<em>tmpfsdir</em></tt>&nbsp;: assume that the root-only
+boot-time tmpfs has been mounted on <em>tmpfsdir</em>. Default is <tt>/run</tt>.
+The <tt>shutdown</tt> script created by a
+<a href="s6-linux-init-maker.html">s6-linux-init-maker</a> invocation
+automatically execs into <tt>s6-linux-init-shutdown</tt> with the correct
+<tt>-R</tt> option. </li>
+</ul>
+
+<h2> Notes </h2>
+
+<ul>
+ <li> The <a href="s6-linux-init-shutdown.html">s6-linux-init-shutdown</a>
+binary is not meant to be called directly by administrators.
+Instead, its purpose is to be used in a <tt>shutdown</tt> script created by
+<a href="s6-linux-init-maker.html">s6-linux-init-maker</a>. </li>
+</ul>
+
+</body>
+</html>

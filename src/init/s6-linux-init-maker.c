@@ -16,29 +16,21 @@
 #include <skalibs/sgetopt.h>
 #include <skalibs/skamisc.h>
 
+#include <execline/config.h>
+
 #include <s6/config.h>
 
 #include <s6-linux-init/config.h>
 #include "defaults.h"
 #include "initctl.h"
 
-#define USAGE "s6-linux-init-maker [ -c basedir ] [ -b execline_bindir ] [ -u log_uid -g log_gid | -U ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] dir"
+#define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_uid -g log_gid | -U ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] dir"
 #define dieusage() strerr_dieusage(100, USAGE)
 #define dienomem() strerr_diefu1sys(111, "stralloc_catb") ;
 
 #define UNCAUGHT_DIR "uncaught-logs"
-#define EXITCODENAME "file\\ created\\ by\\ s6-linux-init,\\ storing\\ a\\ container's\\ exit\\ code"
-
-#define CRASH_SCRIPT \
-"redirfd -r 0 /dev/console\n" \
-"redirfd -w 1 /dev/console\n" \
-"fdmove -c 2 1\n" \
-"foreground { s6-echo -- " \
-"\"s6-svscan finished. Dropping to an interactive shell.\" }\n" \
-"/bin/sh -i\n"
 
 static char const *robase = BASEDIR ;
-static char const *bindir = BINDIR ;
 static char const *initial_path = INITPATH ;
 static char const *env_store = 0 ;
 static char const *early_getty = 0 ;
@@ -51,65 +43,59 @@ static unsigned int finalsleep = 3000 ;
 static int console = 0 ;
 static int logouthookd = 0 ;
 
-typedef int writetobuf_func_t (buffer *, void *) ;
+typedef int writetobuf_func_t (buffer *, char const *) ;
 typedef writetobuf_func_t *writetobuf_func_t_ref ;
 
 #define put_shebang(b) put_shebang_options((b), "-P")
 
-static int put_shebang_options (buffer *b, void *data)
+static int put_shebang_options (buffer *b, char const *options)
 {
-  char *options = data ;
-  return buffer_puts(b, "#!") >= 0
-   && buffer_puts(b, bindir) >= 0
-   && buffer_puts(b, "/execlineb") >= 0
+  return buffer_puts(b, "#!" EXECLINE_SHEBANGPREFIX "/execlineb") >= 0
    && (!options || !options[0] || buffer_puts(b, " ") >= 0)
    && buffer_puts(b, options) >= 0
    && buffer_puts(b, "\n\n") >= 0 ;
 }
 
-static int line_script (buffer *b, void *data)
+static int line_script (buffer *b, char const *line)
 {
-  char *line = data ;
   return put_shebang(b)
    && buffer_puts(b, line) >= 0
    && buffer_put(b, "\n", 1) >= 0 ;
 }
 
-static int linewithargs_script (buffer *b, void *data)
+static int linewithargs_script (buffer *b, char const *line)
 {
-  char *line = data ;
   return put_shebang_options(b, "-S0")
    && buffer_puts(b, line) >= 0
    && buffer_puts(b, " $@\n") >= 0 ;
 }
 
-static int death_script (buffer *b, void *data)
+static int death_script (buffer *b, char const *s)
 {
-  char *s = data ;
   return put_shebang(b)
     && buffer_puts(b,
-      "redirfd -r 0 /dev/console\n"
-      "redirfd -w 1 /dev/console\n"
-      "fdmove -c 2 1\n"
-      "foreground { s6-echo -- \"s6-svscan ") >= 0
+      EXECLINE_EXTBINPREFIX "redirfd -r 0 /dev/console\n"
+      EXECLINE_EXTBINPREFIX "redirfd -w 1 /dev/console\n"
+      EXECLINE_EXTBINPREFIX "fdmove -c 2 1\n"
+      EXECLINE_EXTBINPREFIX "foreground { "
+      S6_LINUX_INIT_LIBEXECPREFIX "s6-linux-init-echo -- \"s6-svscan ") >= 0
     && buffer_puts(b, s) >= 0
     && buffer_puts(b,
       ". Dropping to an interactive shell.\" }\n"
-      "/bin/sh -i\n") >= 0
+      "/bin/sh -i\n") >= 0 ;
 }
 
-static int s6_svscan_log_script (buffer *b, void *data)
+static int s6_svscan_log_script (buffer *b, char const *data)
 {
   char fmt[UINT64_FMT] ;
-  (void)data ;
   if (!put_shebang(b)
    || buffer_puts(b,
-       "redirfd -w 2 /dev/console\n"
-       "redirfd -w 1 /dev/") < 0
+       EXECLINE_EXTBINPREFIX "redirfd -w 2 /dev/console\n"
+       EXECLINE_EXTBINPREFIX "redirfd -w 1 /dev/") < 0
    || buffer_puts(b, console ? "console" : "null") < 0
    || buffer_puts(b, "\n"
-       "redirfd -rnb 0 " LOGGER_FIFO "\n"
-       "s6-applyuidgid -u ") < 0
+       EXECLINE_EXTBINPREFIX "redirfd -rnb 0 " LOGGER_FIFO "\n"
+       S6_EXTBINPREFIX "s6-applyuidgid -u ") < 0
    || buffer_put(b, fmt, uid_fmt(fmt, uncaught_logs_uid)) < 0
    || buffer_puts(b, " -g ") < 0
    || buffer_put(b, fmt, gid_fmt(fmt, uncaught_logs_gid)) < 0
@@ -126,33 +112,30 @@ static int s6_svscan_log_script (buffer *b, void *data)
    || timestamp_style & 2 && buffer_puts(b, "T ") < 0
    || buffer_puts(b, S6_LINUX_INIT_TMPFS "/" UNCAUGHT_DIR "\n") < 0)
     return 0 ;
+  (void)data ;
   return 1 ;
 }
 
-static int logouthookd_script (buffer *b, void *data)
+static int logouthookd_script (buffer *b, char const *data)
 {
   (void)data ;
   return put_shebang(b)
    && buffer_puts(b,
     S6_EXTBINPREFIX "s6-ipcserver -1 -l0 -- " LOGOUTHOOKD_SOCKET "\n"
-    S6_LINUX_INIT_BINPREFIX "s6-linux-init-logouthookd\n") >= 0 ;
+    S6_LINUX_INIT_LIBEXECPREFIX "s6-linux-init-logouthookd\n") >= 0 ;
 }
 
-static int shutdownd_script (buffer *b, void *data)
+static int shutdownd_script (buffer *b, char const *data)
 {
   size_t sabase = satmp.len ;
   char fmt[UINT_FMT] ;
   if (!put_shebang(b)
-   || buffer_puts(b, S6_LINUX_INIT_BINPREFIX "s6-linux-init-shutdownd -b ") < 0)
-   || !string_quote(&satmp, bindir, strlen(bindir))) return 0 ;
-  if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
-  satmp.len = sabase ;
-  if (buffer_puts(b, " -c ") < 0
+   || buffer_puts(b, S6_LINUX_INIT_LIBEXECPREFIX "s6-linux-init-shutdownd -c ") < 0
    || !string_quote(&satmp, robase, strlen(robase))) return 0 ;
   if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
   satmp.len = sabase ;
   if (buffer_puts(b, " -g ") < 0
-   || buffer_puts(b, fmt, uint_fmt(fmt, finalsleep)) < 0
+   || buffer_put(b, fmt, uint_fmt(fmt, finalsleep)) < 0
    || buffer_puts(b, "\n") < 0) return 0 ;
   (void)data ;
   return 1 ;
@@ -162,25 +145,42 @@ static int shutdownd_script (buffer *b, void *data)
   return 0 ;    
 }
 
-static int sig_script (buffer *b, void *data)
+static int runleveld_script (buffer *b, char const *data)
 {
-  char *option = data ;
-  return put_shebang(b)
-   && buffer_puts(b, S6_LINUX_INIT_BINPREFIX "s6-linux-init-shutdown -a ") >= 0
-   && buffer_puts(b, option) >= 0
-   && buffer_puts(" -- now\n") >= 0 ;
-}
-
-static int stage4_script (buffer *b, void *data)
-{
+  size_t sabase = satmp.len ;
+  if (!put_shebang(b)
+   || buffer_puts(b,
+    EXECLINE_EXTBINPREFIX "fdmove -c 2 1\n"
+    EXECLINE_EXTBINPREFIX "fdmove 1 3\n"
+    S6_EXTBINPREFIX "s6-ipcserver-socketbinder -- " RUNLEVELD_SOCKET "\n"
+    S6_EXTBINPREFIX "s6-ipcserverd -1 -c1 --\n"
+    S6_EXTBINPREFIX "s6-ipcserver-access -v0 -E -l0 -i data/rules --\n"
+    S6_EXTBINPREFIX "s6-sudod -0 -1 -2 -t 30000 --\n") < 0
+   || !string_quote(&satmp, robase, strlen(robase))) return 0 ;
+  if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
+  satmp.len = sabase ;
+  if (buffer_puts(b, "/scripts/runlevel\n") < 0) return 0 ;
   (void)data ;
+  return 1 ;
+
+ err:
+  satmp.len = sabase ;
+  return 0 ;
 }
 
-static inline int stage1_script (buffer *b)
+static int sig_script (buffer *b, char const *option)
+{
+  return put_shebang(b)
+   && buffer_puts(b, S6_LINUX_INIT_LIBEXECPREFIX "s6-linux-init-shutdown -a ") >= 0
+   && buffer_puts(b, option) >= 0
+   && buffer_puts(b, " -- now\n") >= 0 ;
+}
+
+static inline int stage1_script (buffer *b, char const *data)
 {
   size_t sabase = satmp.len ;
   if (!put_shebang_options(b, "-S0")
-   || buffer_puts(b, S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init -c ") < 0
+   || buffer_puts(b, S6_LINUX_INIT_LIBEXECPREFIX "s6-linux-init -c ") < 0
    || !string_quote(&satmp, robase, strlen(robase))) return 0 ;
   if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
   satmp.len = sabase ;
@@ -211,6 +211,7 @@ static inline int stage1_script (buffer *b)
     satmp.len = sabase ;
   }
   if (buffer_puts(b, "\n") < 0) return 0 ;
+  (void)data ;
   return 1 ;
 
  err:
@@ -250,7 +251,7 @@ static void auto_file (char const *base, char const *file, char const *s, unsign
   fn[clen] = '/' ;
   memcpy(fn + clen + 1, file, flen + 1) ;
   if (!openwritenclose_unsafe(fn, s, n)
-   || chmod(fn, executable ? 0755 : 0644) == -1))
+   || chmod(fn, executable ? 0755 : 0644) == -1)
   {
     cleanup(base) ;
     strerr_diefu2sys(111, "write to ", fn) ;
@@ -284,7 +285,7 @@ static void auto_fifo (char const *base, char const *fifo)
   }
 }
 
-static void auto_script (char const *base, char const *file, writetobuf_func_t_ref scriptf, void *data)
+static void auto_script (char const *base, char const *file, writetobuf_func_t_ref scriptf, char const *data)
 {
   char buf[4096] ;
   buffer b ;
@@ -312,11 +313,12 @@ static void auto_script (char const *base, char const *file, writetobuf_func_t_r
 
 static void auto_exec (char const *base, char const *name, char const *target)
 {
-  if (S6_LINUX_INIT_BINPREFIX[0] == '/')
+  if (S6_LINUX_INIT_LIBEXECPREFIX[0] == '/')
   {
     size_t len = strlen(target) ;
-    char fn[sizeof(S6_LINUX_INIT_BINPREFIX) + len] = S6_LINUX_INIT_BINPREFIX ;
-    memcpy(fn + sizeof(S6_LINUX_INIT_BINPREFIX - 1, len + 1, target)) ;
+    char fn[sizeof(S6_LINUX_INIT_LIBEXECPREFIX) + len] ;
+    memcpy(fn, S6_LINUX_INIT_LIBEXECPREFIX, sizeof(S6_LINUX_INIT_LIBEXECPREFIX) - 1) ;
+    memcpy(fn + sizeof(S6_LINUX_INIT_LIBEXECPREFIX) - 1, target, len + 1) ;
     auto_symlink(base, name, fn) ;
   }
   else
@@ -358,19 +360,35 @@ static inline void make_image (char const *base)
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGINT", &sig_script, "-r") ;
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGUSR1", &sig_script, "-p") ;
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGUSR2", &sig_script, "-h") ;
+
   auto_dir(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR, 0, 0, 0755) ;
   auto_fifo(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR "/" LOGGER_FIFO) ;
   auto_file(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR "/notification-fd", "3\n", 2, 0) ;
-  auto_script(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR "/run, &s6_svscan_log_script, 0) ;
+  auto_script(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR "/run", &s6_svscan_log_script, 0) ;
+
   auto_dir(base, "run-image/" SCANDIR "/" SHUTDOWND_SERVICEDIR, 0, 0, 0755) ;
   auto_fifo(base, "run-image/" SCANDIR "/" SHUTDOWND_SERVICEDIR "/" SHUTDOWND_FIFO) ;
   auto_script(base, "run-image/" SCANDIR "/" SHUTDOWND_SERVICEDIR "/run", &shutdownd_script, 0) ;
+
+  auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR, 0, 0, 0755) ;
+  auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data", 0, 0, 0755) ;
+  auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules", 0, 0, 0755) ;
+  auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/gid", 0, 0, 0755) ;
+  auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/gid/0", 0, 0, 0755) ;
+  auto_file(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/gid/0/allow", "", 0, 0) ;
+  auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/uid", 0, 0, 0755) ;
+  auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/uid/0", 0, 0, 0755) ;
+  auto_file(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/uid/0/allow", "", 0, 0) ;
+  auto_file(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/notification-fd", "3\n", 2, 0) ;
+  auto_script(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/run", &runleveld_script, 0) ;
+
   if (logouthookd)
   {
     auto_dir(base, "run-image/" SCANDIR "/" LOGOUTHOOKD_SERVICEDIR, 0, 0, 0755) ;
     auto_file(base, "run-image/" SCANDIR "/" LOGOUTHOOKD_SERVICEDIR "/notification-fd", "1\n", 2, 0) ;
     auto_script(base, "run-image/" SCANDIR "/" LOGOUTHOOKD_SERVICEDIR "/run", &logouthookd_script, 0) ;
   }
+
   if (early_getty)
   {
     auto_dir(base, "run-image/" SCANDIR "/" EARLYGETTY_SERVICEDIR, 0, 0, 0755) ;
@@ -395,7 +413,6 @@ static inline void make_bins (char const *base)
   auto_exec(base, "bin/shutdown", "s6-linux-init-shutdown") ;
   auto_exec(base, "bin/telinit", "s6-linux-init-telinit") ;
   auto_script(base, "bin/init", &stage1_script, 0) ;
-  auto_script(base, "bin/" STAGE4, &stage4_script, 0) ;
 }
 
 int main (int argc, char const *const *argv, char const *const *envp)
@@ -407,12 +424,11 @@ int main (int argc, char const *const *argv, char const *const *envp)
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "c:b:u:g:UG:1Lp:m:t:d:s:e:E:q:", &l) ;
+      int opt = subgetopt_r(argc, argv, "c:u:g:UG:1Lp:m:t:d:s:e:E:q:", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
         case 'c' : robase = l.arg ; break ;
-        case 'b' : bindir = l.arg ; break ;
         case 'u' : if (!uint0_scan(l.arg, &uncaught_logs_uid)) dieusage() ; break ;
         case 'g' : if (!uint0_scan(l.arg, &uncaught_logs_gid)) dieusage() ; break ;
         case 'U' :
@@ -444,12 +460,6 @@ int main (int argc, char const *const *argv, char const *const *envp)
 
   if (robase[0] != '/')
     strerr_dief3x(100, "base directory ", robase, " is not absolute") ;
-  if (bindir[0] != '/')
-    strerr_dief3x(100, "initial location for binaries ", bindir, " is not absolute") ;
-  if (init_script[0] != '/')
-    strerr_dief3x(100, "stage 2 script location ", init_script, " is not absolute") ;
-  if (tini_script[0] != '/')
-    strerr_dief3x(100, "shutdown script location ", tini_script, " is not absolute") ;
   if (slashdev && slashdev[0] != '/')
     strerr_dief3x(100, "devtmpfs mounting location ", slashdev, " is not absolute") ;
   if (timestamp_style > 3)
@@ -463,7 +473,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
   stralloc_free(&saenv2) ;
   make_env(argv[0], ENVSTAGE1, saenv1.s, saenv1.len) ;
   saenv1.len = 0 ;
-  make_image(argv[0], &saenv1) ;
+  make_image(argv[0]) ;
   make_scripts(argv[0]) ;
   make_bins(argv[0]) ;
   return 0 ;

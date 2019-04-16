@@ -49,7 +49,6 @@ machine</em> - else the scripts will crash.
 <pre>
      s6-linux-init-maker \
        [ -c <em>basedir</em> ] \
-       [ -b <em>execline_bindir</em> ] \
        [ -u <em>log_uid</em> -g <em>log_gid</em> | -U ] \
        [ -G <em>early_getty</em> ] \
        [ -1 ] \
@@ -253,15 +252,6 @@ s6-linux-init-maker, the administrator should make sure to copy the
 created directory <em>dir</em> to <em>basedir</em>. <em>basedir</em>
 must be absolute. Default is
 <strong><tt>/etc/s6-linux-init</tt></strong>. </li> <p />
-
- <li> <tt>-b</tt>&nbsp;<em>execline_bindir</em>&nbsp;: init is run by the kernel
-without a PATH, and since it is a script, it is necessary to tell it where
-to find the
-<a href="//skarnet.org/software/execline/execlineb.html">execlineb</a>
-launcher and the first few early commands before PATH can be set.
-<em>execline_bindir</em> is the location where the execline binaries can be
-found. It must be absolute. Default is
-<strong><tt>/bin</tt></strong>. </li> <p />
 
  <li> <tt>-u</tt>&nbsp;<em>log_uid</em>&nbsp;: the catch-all
 logger will run with the uid <em>log_uid</em>. Default is 0. </li> <p />

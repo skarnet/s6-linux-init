@@ -5,26 +5,27 @@
 src/include-local/initctl.h: src/include/s6-linux-init/config.h
 src/shutdown/hpr.h: src/include-local/initctl.h
 src/init/s6-linux-init-maker.o src/init/s6-linux-init-maker.lo: src/init/s6-linux-init-maker.c src/include-local/defaults.h src/include-local/initctl.h src/include/s6-linux-init/config.h
+src/init/s6-linux-init-telinit.o src/init/s6-linux-init-telinit.lo: src/init/s6-linux-init-telinit.c src/include-local/initctl.h src/include/s6-linux-init/config.h
 src/init/s6-linux-init.o src/init/s6-linux-init.lo: src/init/s6-linux-init.c src/include-local/defaults.h src/include-local/initctl.h src/include/s6-linux-init/config.h
 src/lib/s6_linux_init_logouthook.o src/lib/s6_linux_init_logouthook.lo: src/lib/s6_linux_init_logouthook.c src/include-local/initctl.h
-src/logout-hook/s6-linux-init-logouthookd.o src/logout-hook/s6-linux-init-logouthookd.lo: src/logout-hook/s6-linux-init-logouthookd.c
+src/misc/s6-linux-init-echo.o src/misc/s6-linux-init-echo.lo: src/misc/s6-linux-init-echo.c
+src/misc/s6-linux-init-logouthookd.o src/misc/s6-linux-init-logouthookd.lo: src/misc/s6-linux-init-logouthookd.c
+src/misc/s6-linux-init-umountall.o src/misc/s6-linux-init-umountall.lo: src/misc/s6-linux-init-umountall.c
 src/shutdown/hpr.o src/shutdown/hpr.lo: src/shutdown/hpr.c src/include-local/defaults.h src/shutdown/hpr.h
-src/shutdown/hpr_fmttime.o src/shutdown/hpr_fmttime.lo: src/shutdown/hpr_fmttime.c src/shutdown/hpr.h
 src/shutdown/hpr_shutdown.o src/shutdown/hpr_shutdown.lo: src/shutdown/hpr_shutdown.c src/shutdown/hpr.h
 src/shutdown/hpr_wall.o src/shutdown/hpr_wall.lo: src/shutdown/hpr_wall.c src/shutdown/hpr.h
-src/shutdown/hpr_wall_seconds.o src/shutdown/hpr_wall_seconds.lo: src/shutdown/hpr_wall_seconds.c src/shutdown/hpr.h
 src/shutdown/s6-linux-init-halt.o src/shutdown/s6-linux-init-halt.lo: src/shutdown/s6-linux-init-halt.c
 src/shutdown/s6-linux-init-poweroff.o src/shutdown/s6-linux-init-poweroff.lo: src/shutdown/s6-linux-init-poweroff.c
 src/shutdown/s6-linux-init-reboot.o src/shutdown/s6-linux-init-reboot.lo: src/shutdown/s6-linux-init-reboot.c
 src/shutdown/s6-linux-init-shutdown.o src/shutdown/s6-linux-init-shutdown.lo: src/shutdown/s6-linux-init-shutdown.c src/include-local/defaults.h src/shutdown/hpr.h src/include-local/initctl.h
 src/shutdown/s6-linux-init-shutdownd.o src/shutdown/s6-linux-init-shutdownd.lo: src/shutdown/s6-linux-init-shutdownd.c src/include-local/defaults.h src/shutdown/hpr.h src/include-local/initctl.h
-src/shutdown/s6-linux-init-single.o src/shutdown/s6-linux-init-single.lo: src/shutdown/s6-linux-init-single.c src/include-local/initctl.h
-src/shutdown/s6-linux-init-telinit.o src/shutdown/s6-linux-init-telinit.lo: src/shutdown/s6-linux-init-telinit.c src/include-local/defaults.h src/shutdown/hpr.h src/include-local/initctl.h
 
 s6-linux-init: EXTRA_LIBS :=
 s6-linux-init: src/init/s6-linux-init.o -lskarnet
 s6-linux-init-maker: EXTRA_LIBS :=
 s6-linux-init-maker: src/init/s6-linux-init-maker.o -lskarnet
+s6-linux-init-telinit: EXTRA_LIBS :=
+s6-linux-init-telinit: src/init/s6-linux-init-telinit.o -lskarnet
 ifeq ($(strip $(STATIC_LIBS_ARE_PIC)),)
 libs6_linux_init.a.xyzzy: src/lib/s6_linux_init_logouthook.o
 else
@@ -32,12 +33,16 @@ libs6_linux_init.a.xyzzy: src/lib/s6_linux_init_logouthook.lo
 endif
 libs6_linux_init.so.xyzzy: EXTRA_LIBS := -lskarnet ${SOCKET_LIB} ${TAINNOW_LIB}
 libs6_linux_init.so.xyzzy: src/lib/s6_linux_init_logouthook.lo
+s6-linux-init-echo: EXTRA_LIBS :=
+s6-linux-init-echo: src/misc/s6-linux-init-echo.o -lskarnet
 s6-linux-init-logouthookd: EXTRA_LIBS := ${TAINNOW_LIB} ${SOCKET_LIB}
-s6-linux-init-logouthookd: src/logout-hook/s6-linux-init-logouthookd.o ${LIBUTMPS} -lskarnet
+s6-linux-init-logouthookd: src/misc/s6-linux-init-logouthookd.o ${LIBUTMPS} -lskarnet
+s6-linux-init-umountall: EXTRA_LIBS :=
+s6-linux-init-umountall: src/misc/s6-linux-init-umountall.o -lskarnet
 ifeq ($(strip $(STATIC_LIBS_ARE_PIC)),)
-libhpr.a.xyzzy: src/shutdown/hpr_fmttime.o src/shutdown/hpr_shutdown.o src/shutdown/hpr_wall.o src/shutdown/hpr_wall_seconds.o
+libhpr.a.xyzzy: src/shutdown/hpr_shutdown.o src/shutdown/hpr_wall.o
 else
-libhpr.a.xyzzy: src/shutdown/hpr_fmttime.lo src/shutdown/hpr_shutdown.lo src/shutdown/hpr_wall.lo src/shutdown/hpr_wall_seconds.lo
+libhpr.a.xyzzy: src/shutdown/hpr_shutdown.lo src/shutdown/hpr_wall.lo
 endif
 s6-linux-init-halt: EXTRA_LIBS := ${TAINNOW_LIB} ${SOCKET_LIB}
 s6-linux-init-halt: src/shutdown/s6-linux-init-halt.o libhpr.a.xyzzy ${LIBUTMPS} -lskarnet
@@ -49,8 +54,4 @@ s6-linux-init-shutdown: EXTRA_LIBS := ${TAINNOW_LIB} ${SOCKET_LIB}
 s6-linux-init-shutdown: src/shutdown/s6-linux-init-shutdown.o libhpr.a.xyzzy ${LIBUTMPS} -lskarnet
 s6-linux-init-shutdownd: EXTRA_LIBS := ${TAINNOW_LIB} ${SOCKET_LIB}
 s6-linux-init-shutdownd: src/shutdown/s6-linux-init-shutdownd.o ${LIBUTMPS} -lskarnet
-s6-linux-init-single: EXTRA_LIBS :=
-s6-linux-init-single: src/shutdown/s6-linux-init-single.o -lskarnet
-s6-linux-init-telinit: EXTRA_LIBS :=
-s6-linux-init-telinit: src/shutdown/s6-linux-init-telinit.o libhpr.a.xyzzy -lskarnet
 INTERNAL_LIBS := libhpr.a.xyzzy

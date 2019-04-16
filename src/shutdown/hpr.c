@@ -1,5 +1,7 @@
 /* ISC license. */
 
+#include <skalibs/nonposix.h>
+
 #include <unistd.h>
 #include <signal.h>
 #include <errno.h>
@@ -92,7 +94,7 @@ int main (int argc, char const *const *argv)
       strerr_warnwu1sys("timeval_from_tain") ;
     updwtmpx(_PATH_WTMP, &utx) ;
   }
-  if (dowall) hpr_wall_seconds(0) ;
+  if (dowall) hpr_wall(HPR_WALL_BANNER) ;
   if (dowtmp < 2)
   {
     if (!hpr_shutdown(what, &STAMP, 0))

@@ -211,7 +211,7 @@ int main (int argc, char const *const *argv)
   int doactl = 0 ;
   int docancel = 0 ;
   tain_t when ;
-  PROG = "shutdown" ;
+  PROG = "s6-linux-init-shutdown" ;
 
   {
     subgetopt_t l = SUBGETOPT_ZERO ;

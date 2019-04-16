@@ -49,20 +49,18 @@ machine</em> - else the scripts will crash.
 <pre>
      s6-linux-init-maker \
        [ -c <em>basedir</em> ] \
-       [ -l <em>tmpfsdir</em> ] \
        [ -b <em>execline_bindir</em> ] \
        [ -u <em>log_uid</em> -g <em>log_gid</em> | -U ] \
        [ -G <em>early_getty</em> ] \
-       [ -2 <em>initscript</em> ] \
-       [ -r ] \
-       [ -Z ] <em>shutdownscript</em> \
+       [ -1 ] \
+       [ -L ] \
        [ -p <em>initial_path</em> ] \
        [ -m <em>initial_umask</em> ] \
        [ -t <em>timestamp_style</em> ] \
        [ -d <em>dev_style</em> ] \
        [ -s <em>env_store</em> ] \
        [ -e <em>initial_envvar</em> ] ... \
-       [ -n ] \
+       [ -E <em>stage2_envvar</em> ] ... \
        [ -q ] <em>finalsleeptime</em>
        <em>dir</em>
 </pre>
@@ -87,18 +85,28 @@ tool can do it, as well as the GNU or busybox <tt>cp -a</tt> or <tt>mv</tt> comm
 </p>
 
 <p>
- The <tt><em>basedir</em>/init</tt> script
-is then suitable as a "stage 1" init program, i.e. the first program
-run by the kernel. The administrator should make a symbolic link
-from <tt>/sbin/init</tt> to <tt><em>basedir</em>/init</tt>; the
-machine will then be ready to boot 
+ The <tt><em>basedir</em>/bin</tt> directory contains scripts, or
+links to programs, that are suitable as System V-compatible programs
+of the same name; the administrator should copy them to (or symlink
+them from) a place where those programs are usually found, typically
+<tt>/sbin</tt>.
+</p>
+
+<p>
+ In particular, the <tt><em>basedir</em>/bin/init</tt> script
+suitable as a "stage 1" init program, i.e. the first program
+run by the kernel (possibly after an initramfs execution).
+Once this script is copied to, or symlinked from,
+<tt>/sbin/init</tt>, the machine will be ready to boot on the
+new s6-based system.
 </p>
 
 <h2> Boot sequence </h2>
 
 <p>
- When the kernel boots, it runs the <tt><em>basedir</em>/init</tt> script,
-also known as <em>stage 1</em>. and this is what happens:
+ When the kernel boots, it may run an initramfs first, but in any
+case it then runs the <tt><em>basedir</em>/init</tt> script,
+also known as <em>stage 1</em>. This is what happens during stage 1:
 </p>
 
 <ul>
@@ -246,11 +254,6 @@ created directory <em>dir</em> to <em>basedir</em>. <em>basedir</em>
 must be absolute. Default is
 <strong><tt>/etc/s6-linux-init</tt></strong>. </li> <p />
 
- <li> <tt>-l</tt>&nbsp;<em>tmpfsdir</em>&nbsp;: at boot time, a tmpfs will
-be mounted on <em>tmpfsdir</em>. The directory should already exist in
-the root filesystem, and be empty. <em>tmpfsdir</em> must be absolute. Default is
-<strong><tt>/run</tt></strong>. </li> <p />
-
  <li> <tt>-b</tt>&nbsp;<em>execline_bindir</em>&nbsp;: init is run by the kernel
 without a PATH, and since it is a script, it is necessary to tell it where
 to find the
@@ -285,27 +288,13 @@ should be a getty, to allow logins even if <em>stage2</em> fails.
 <tt>"/sbin/getty 38400 tty1"</tt>. By default, no early service
 is defined. </li> <p />
 
- <li> <tt>-2</tt>&nbsp;<em>initscript</em>&nbsp;: <em>initscript</em> is
-the location of the stage 2 script that will be run when the
-system has an operational supervision tree. It must be absolute. Default is
-<strong><tt>/etc/rc.init</tt></strong>. </li> <p />
-
- <li> <tt>-r</tt>&nbsp;: redirect. By default, <em>stage2</em> is
-run with stdout and stderr pointing to <tt>/dev/console</tt>, so that
-users can see what init scripts print. However, it may conflict
-with an early getty, or be undesirable for other reasons. The
-<tt>-r</tt> option redirects <em>stage2</em>'s stdout and stderr
-to the catch-all logger, so the output will be made available
-in the <tt><em>tmpfsdir</em>/uncaught-logs</tt> directory. </li> <p />
-
- <li> <tt>-Z</tt>&nbsp;<em>shutdownscript</em>&nbsp;:
-<em>shutdownscript</em> is the location of the script that will be
-run when s6-svscan receives a signal that tells it to stop the
-machine, before it executes into the final shutdown sequence. It must be
-absolute. Default is <strong><tt>/etc/rc.shutdown</tt></strong>.
-Note that this script is run with its stdout and stderr
-redirected to the <tt><em>tmpfsdir</em>/uncaught-logs</tt> logging
-directory, so its output will not appear on the system's console. </li> <p />
+ <li> <tt>-1</tt>&nbsp;: make it so that all the messages that are
+sent to the catch-all logger (i.e. all the error messages that are not
+caught by a dedicated logger, as well as the output from <em>stage2</em>)
+are also copied to <tt>/dev/console</tt>. This is generally useful to
+debug a system at a glance, but if a failing program keeps sending
+error messages, it may interfere with comfortable usage of an early
+getty. </li>
 
  <li> <tt>-p</tt>&nbsp;<em>initial_path</em>&nbsp;: the value to
 set the PATH environment variable to, for all the starting processes.
@@ -360,16 +349,18 @@ will adjust the global environment directory in <em>dir</em>/env.
 to make sure that <em>VAR</em> does not appear in the global
 environment, or of the form <em>VAR=VALUE</em>, to add an
 environment variable <em>VAR</em> with the value <em>VALUE</em>.
+The global environment is the environment that every supervised
+process (as well as the <em>stage2</em> script) will run with,
+so it will be inherited by default by every process running on
+the system.
 The TZ variable, for instance, is a good candidate to be set in
 the global environment. </li> <p />
 
- <li> <tt>-n</tt>&nbsp;: tells s6-linux-init-maker that the init script
-is going to run in a container, as pid 1 in a non-root namespace.
-This modifies the <tt>.s6-svscan/finish</tt>, <tt>.s6-svscan/SIGHUP</tt>
-and <tt>.s6-svscan/SIGINT</tt> scripts slightly, in order to provide
-adequate functionality when the containerized system is asked to
-shutdown. Do not add this option if the init script is going to run
-in the root pid namespace. </li> <p />
+ <li> <tt>-E</tt>&nbsp;<em>stage2_envvar</em>&nbsp;: same behaviour
+as the <tt>-e</tt> option, except that every declared
+<em>stage2_envvar</em> will be put in the environment run by the
+<em>stage2</em> script. They will not be put in the global
+environment. </li>
 
  <li> <tt>-q</tt>&nbsp;<em>finalsleeptime</em>&nbsp;: when the machine
 shuts down, all processes that have not already been killed during

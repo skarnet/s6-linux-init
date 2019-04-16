@@ -22,7 +22,7 @@
 #include "defaults.h"
 #include "initctl.h"
 
-#define USAGE "s6-linux-init-maker [ -c basedir ] [ -b execline_bindir ] [ -u log_uid -g log_gid | -U ] [ -G early_getty_cmd ] [ -r ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] dir"
+#define USAGE "s6-linux-init-maker [ -c basedir ] [ -b execline_bindir ] [ -u log_uid -g log_gid | -U ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] dir"
 #define dieusage() strerr_dieusage(100, USAGE)
 #define dienomem() strerr_diefu1sys(111, "stralloc_catb") ;
 
@@ -48,7 +48,7 @@ static gid_t uncaught_logs_gid = 0 ;
 static unsigned int initial_umask = 0022 ;
 static unsigned int timestamp_style = 1 ;
 static unsigned int finalsleep = 3000 ;
-static int redirect_stage2 = 0 ;
+static int console = 0 ;
 static int logouthookd = 0 ;
 
 typedef int writetobuf_func_t (buffer *, void *) ;
@@ -102,19 +102,31 @@ static int s6_svscan_log_script (buffer *b, void *data)
 {
   char fmt[UINT64_FMT] ;
   (void)data ;
-  return put_shebang(b)
-   && buffer_puts(b,
-    "redirfd -w 2 /dev/console\n"
-    "redirfd -w 1 /dev/null\n"
-    "redirfd -rnb 0 " LOGGER_FIFO "\n"
-    "s6-applyuidgid -u ") >= 0
-   && buffer_put(b, fmt, uid_fmt(fmt, uncaught_logs_uid)) >= 0
-   && buffer_puts(b, " -g ") >= 0
-   && buffer_put(b, fmt, gid_fmt(fmt, uncaught_logs_gid)) >= 0
-   && buffer_puts(b, " --\ns6-log -bpd3 -- ") >= 0
-   && buffer_puts(b, timestamp_style & 1 ? "t " : "") >= 0
-   && buffer_puts(b, timestamp_style & 2 ? "T " : "") >= 0
-   && buffer_puts(b, S6_LINUX_INIT_TMPFS "/" UNCAUGHT_DIR "\n") >= 0 ;
+  if (!put_shebang(b)
+   || buffer_puts(b,
+       "redirfd -w 2 /dev/console\n"
+       "redirfd -w 1 /dev/") < 0
+   || buffer_puts(b, console ? "console" : "null") < 0
+   || buffer_puts(b, "\n"
+       "redirfd -rnb 0 " LOGGER_FIFO "\n"
+       "s6-applyuidgid -u ") < 0
+   || buffer_put(b, fmt, uid_fmt(fmt, uncaught_logs_uid)) < 0
+   || buffer_puts(b, " -g ") < 0
+   || buffer_put(b, fmt, gid_fmt(fmt, uncaught_logs_gid)) < 0
+   || buffer_puts(b, " --\ns6-log -bpd3 -- ") < 0)
+    return 0 ;
+  if (console)
+  {
+    if (timestamp_style & 1 && buffer_puts(b, "t ") < 0
+     || timestamp_style & 2 && buffer_puts(b, "T ") < 0
+     || buffer_puts(b, "1 ") < 0)
+      return 0 ;
+  }
+  if (timestamp_style & 1 && buffer_puts(b, "t ") < 0
+   || timestamp_style & 2 && buffer_puts(b, "T ") < 0
+   || buffer_puts(b, S6_LINUX_INIT_TMPFS "/" UNCAUGHT_DIR "\n") < 0)
+    return 0 ;
+  return 1 ;
 }
 
 static int logouthookd_script (buffer *b, void *data)
@@ -176,10 +188,6 @@ static inline int stage1_script (buffer *b)
     char fmt[UINT_OFMT] ;
     if (buffer_puts(b, " -m 00") < 0
      || buffer_put(b, fmt, uint_ofmt(fmt, initial_umask)) < 0) return 0 ;
-  }
-  if (redirect_stage2)
-  {
-    if (buffer_puts(b, " -r") < 0) return 0 ;
   }
   if (initial_path)
   {
@@ -399,7 +407,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "c:b:u:g:UG:rLp:m:t:d:s:e:E:q:", &l) ;
+      int opt = subgetopt_r(argc, argv, "c:b:u:g:UG:1Lp:m:t:d:s:e:E:q:", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
@@ -417,7 +425,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
           if (!uint0_scan(x, &uncaught_logs_gid)) strerr_dieinvalid(100, "GID") ;
         }
         case 'G' : early_getty = l.arg ; break ;
-        case 'r' : redirect_stage2 = 1 ; break ;
+        case '1' : console = 1 ; break ;
         case 'L' : logouthookd = 1 ; break ;
         case 'p' : initial_path = l.arg ; break ;
         case 'm' : if (!uint0_oscan(l.arg, &initial_umask)) dieusage() ; break ;

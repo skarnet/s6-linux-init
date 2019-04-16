@@ -8,7 +8,6 @@
 #include <errno.h>
 #include <time.h>
 #include <utmpx.h>
-#include <sys/reboot.h>
 
 #include <skalibs/uint32.h>
 #include <skalibs/types.h>

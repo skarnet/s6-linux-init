@@ -45,30 +45,11 @@ static inline void prepare_shutdown (char c, unsigned int *what, tain_t *deadlin
   tain_unpack(pack, deadline) ;
   uint32_unpack_big(pack + TAIN_PACK, &u) ;
   if (u && u <= 300000) *grace_time = u ;
-  *what = byte_chr(" hpr", c, 4) ;
-}
-
-static inline void change_runlevels (char c)
-{
-  pid_t pid = doublefork() ;
-  if (pid == -1)
-    strerr_warnwu1sys("doublefork for runlevel change") ;
-  if (pid)
-  {
-    size_t basedirlen = strlen(basedir) ;
-    char fn[basedirlen + sizeof("/scripts/runlevel")] ;
-    char s[2] = { c, 0 } ;
-    char const *cargv[3] = { fn, s, 0 } ;
-    PROG = "s6-linux-init-shutdownd (grandchild)" ;
-    memcpy(fn, basedir, basedirlen) ;
-    memcpy(fn + basedirlen, "/scripts/runlevel", sizeof("/scripts/runlevel")) ;
-    xpathexec_run(cargv[0], cargv, (char const *const *)environ) ;
-  }
+  *what = 1 + byte_chr("hpr", c, 3) ;
 }
 
 static inline void handle_stdin (unsigned int *what, tain_t *deadline, unsigned int *grace_time)
 {
-  char rl = 0 ;
   for (;;)
   {
     char c ;
@@ -84,23 +65,7 @@ static inline void handle_stdin (unsigned int *what, tain_t *deadline, unsigned 
         break ;
       case 'c' :
         *what = 0 ;
-        rl = 0 ;
         tain_add_g(deadline, &tain_infinite_relative) ;
-        break ;
-      case 'S' :
-        *what = 4 ;
-        tain_copynow(deadline) ;
-        break ;
-      case '0' :
-      case '1' :
-      case '2' :
-      case '3' :
-      case '4' :
-      case '5' :
-      case '6' :
-        *what = 0 ;
-        tain_add_g(deadline, &tain_infinite_relative) ;
-        rl = c  ;
         break ;
       default :
       {
@@ -110,12 +75,11 @@ static inline void handle_stdin (unsigned int *what, tain_t *deadline, unsigned 
       break ;
     }
   }
-  if (rl) change_runlevels(rl) ;
 }
 
 static inline void prepare_stage4 (char const *bindir, char const *basedir, unsigned int what)
 {
-  static char const *table[4] = { "single", "halt", "poweroff", "reboot" } ;
+  static char const *table[3] = { "halt", "poweroff", "reboot" } ;
   stralloc sa = STRALLOC_ZERO ;
   buffer b ;
   char buf[512] ;
@@ -133,7 +97,7 @@ static inline void prepare_stage4 (char const *bindir, char const *basedir, unsi
     strerr_diefu1sys(111, "string_quote") ;
   if (buffer_put(&b, sa.s, sa.len) == -1
    || buffer_puts(&b, "/bin/" STAGE4 " ") == -1
-   || buffer_puts(&b, table[what]) == -1
+   || buffer_puts(&b, table[what-1]) == -1
    || buffer_putsflush(&b, "\n") == -1)
     strerr_diefu2sys(111, "write to ", STAGE4_FILE ".new") ;
   stralloc_free(&sa) ;
@@ -213,7 +177,6 @@ int main (int argc, char const *const *argv)
       handle_stdin(&what, &deadline, &grace_time) ;
   }
 
-  if (what == 4) what = 0 ;
 
  /* Stage 3 */
 

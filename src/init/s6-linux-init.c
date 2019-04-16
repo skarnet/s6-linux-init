@@ -23,12 +23,12 @@
 #include "defaults.h"
 #include "initctl.h"
 
-#define USAGE "s6-linux-init [ -r ] [ -c basedir ] [ -p initpath ] [ -s envdumpdir ] [ -m umask ] [ -d devtmpfs ]"
+#define USAGE "s6-linux-init [ -c basedir ] [ -p initpath ] [ -s envdumpdir ] [ -m umask ] [ -d devtmpfs ]"
 #define dieusage() strerr_dieusage(100, USAGE)
 
 #define BANNER "\n  s6-linux-init version " S6_LINUX_INIT_VERSION "\n\n"
 
-static inline void run_stage2 (char const *basedir, char const **argv, unsigned int argc, char const *const *envp, size_t envlen, stralloc *envmodifs, int redirect)
+static inline void run_stage2 (char const *basedir, char const **argv, unsigned int argc, char const *const *envp, size_t envlen, stralloc *envmodifs)
 {
   size_t dirlen = strlen(basedir) ;
   char const *childargv[argc + 2] ;
@@ -47,10 +47,10 @@ static inline void run_stage2 (char const *basedir, char const **argv, unsigned 
   childargv[argc + 1] = 0 ;
   setsid() ;
   fd_close(1) ;
-  if (open(LOGFIFO, O_WRONLY) != 1)  /* blocks */
+  if (open(LOGFIFO, O_WRONLY) != 1)  /* blocks until catch-all logger is up */
     strerr_diefu1sys(111, "open " LOGFIFO " for writing") ;
-  if (fd_copy(1 + redirect, 2 - redirect) == -1)
-    strerr_diefu1sys(111, "redirect output file descriptor") ;
+  if (fd_copy(2, 1) == -1)
+    strerr_diefu1sys(111, "fd_copy stdout to stderr") ;
   xpathexec_r(childargv, envp, envlen, envmodifs->s, envmodifs->len) ;
 }
 
@@ -62,7 +62,6 @@ int main (int argc, char const **argv, char const *const *envp)
   char const *slashdev = 0 ;
   char const *envdumpdir = 0 ;
   stralloc envmodifs = STRALLOC_ZERO ;
-  int redirect = 0 ;
   PROG = "s6-linux-init" ;
 
   if (getpid() != 1)
@@ -76,11 +75,10 @@ int main (int argc, char const **argv, char const *const *envp)
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "rc:p:s:m:d:", &l) ;
+      int opt = subgetopt_r(argc, argv, "c:p:s:m:d:", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
-        case 'r' : redirect = 1 ; break ;
         case 'c' : basedir = l.arg ; break ;
         case 'p' : path = l.arg ; break ;
         case 's' : envdumpdir = l.arg ; break ;
@@ -160,7 +158,7 @@ int main (int argc, char const **argv, char const *const *envp)
     }
     pid = fork() ;
     if (pid == -1) strerr_diefu1sys(111, "fork") ;
-    if (!pid) run_stage2(basedir, argv, argc, newenvp, !!path, &envmodifs, redirect) ;
+    if (!pid) run_stage2(basedir, argv, argc, newenvp, !!path, &envmodifs) ;
     if (fd_copy(2, 1) == -1)
       strerr_diefu1sys(111, "redirect output file descriptor") ;
     xpathexec_r(newargv, newenvp, !!path, envmodifs.s, envmodifs.len) ;

@@ -29,8 +29,7 @@
 #define RUNIMAGE "run-image"
 #define ENVSTAGE1 "env-global"
 #define ENVSTAGE2 "env-stage2"
-#define STAGE2 "stage2"
-#define STAGE3 "stage3"
-#define STAGE4 "stage4"
+#define STAGE2 "rc.init"
+#define STAGE3 "rc.shutdown"
 
 #endif

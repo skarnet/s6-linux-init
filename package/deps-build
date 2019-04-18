@@ -1,3 +1,5 @@
 /package/prog/skalibs
+/package/admin/nsss $usensss
+/package/admin/utmps $utmps
 /package/admin/execline
 /package/admin/s6

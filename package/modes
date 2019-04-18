@@ -5,7 +5,7 @@ s6-linux-init-reboot		0750
 s6-linux-init-shutdown		0755
 s6-linux-init-shutdownd		0700
 s6-linux-init-telinit		0750
-s6-linux-init-logouthookd	0755
+s6-linux-init-logouthookd	0700
 s6-linux-init-echo		0755
 s6-linux-init-umountall		0750
-s6-linux-init-maker		0755
+s6-linux-init-maker		0700

@@ -4,6 +4,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <pwd.h>
+
 #include <skalibs/uint64.h>
 #include <skalibs/types.h>
 #include <skalibs/bytestr.h>
@@ -24,7 +26,16 @@
 #include "defaults.h"
 #include "initctl.h"
 
-#define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_uid -g log_gid | -U ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] dir"
+#ifdef S6_LINUX_INIT_UTMPD_PATH
+# include <utmps/config.h>
+# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -U utmp_user ]"
+# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:U:"
+# define UTMPS_DIR "utmps"
+#else
+# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ]"
+# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:"
+#endif
+
 #define dieusage() strerr_dieusage(100, USAGE)
 #define dienomem() strerr_diefu1sys(111, "stralloc_catb") ;
 
@@ -35,13 +46,16 @@ static char const *initial_path = INITPATH ;
 static char const *env_store = 0 ;
 static char const *early_getty = 0 ;
 static char const *slashdev = 0 ;
-static uid_t uncaught_logs_uid = 0 ;
-static gid_t uncaught_logs_gid = 0 ;
+static char const *log_user = "root" ;
 static unsigned int initial_umask = 0022 ;
 static unsigned int timestamp_style = 1 ;
 static unsigned int finalsleep = 3000 ;
 static int console = 0 ;
 static int logouthookd = 0 ;
+
+#ifdef S6_LINUX_INIT_UTMPD_PATH
+static char const *utmp_user = "utmp" ;
+#endif
 
 typedef int writetobuf_func_t (buffer *, char const *) ;
 typedef writetobuf_func_t *writetobuf_func_t_ref ;
@@ -74,20 +88,19 @@ static int death_script (buffer *b, char const *s)
 {
   return put_shebang(b)
     && buffer_puts(b,
-      EXECLINE_EXTBINPREFIX "redirfd -r 0 /dev/console\n"
       EXECLINE_EXTBINPREFIX "redirfd -w 1 /dev/console\n"
       EXECLINE_EXTBINPREFIX "fdmove -c 2 1\n"
       EXECLINE_EXTBINPREFIX "foreground { "
       S6_LINUX_INIT_LIBEXECPREFIX "s6-linux-init-echo -- \"s6-svscan ") >= 0
     && buffer_puts(b, s) >= 0
     && buffer_puts(b,
-      ". Dropping to an interactive shell.\" }\n"
-      "/bin/sh -i\n") >= 0 ;
+      ". Rebooting.\" }\n"
+      S6_LINUX_INIT_LIBEXECPREFIX "s6-linux-init-reboot\n") >= 0 ;
 }
 
 static int s6_svscan_log_script (buffer *b, char const *data)
 {
-  char fmt[UINT64_FMT] ;
+  size_t sabase = satmp.len ;
   if (!put_shebang(b)
    || buffer_puts(b,
        EXECLINE_EXTBINPREFIX "redirfd -w 2 /dev/console\n"
@@ -95,12 +108,11 @@ static int s6_svscan_log_script (buffer *b, char const *data)
    || buffer_puts(b, console ? "console" : "null") < 0
    || buffer_puts(b, "\n"
        EXECLINE_EXTBINPREFIX "redirfd -rnb 0 " LOGGER_FIFO "\n"
-       S6_EXTBINPREFIX "s6-applyuidgid -u ") < 0
-   || buffer_put(b, fmt, uid_fmt(fmt, uncaught_logs_uid)) < 0
-   || buffer_puts(b, " -g ") < 0
-   || buffer_put(b, fmt, gid_fmt(fmt, uncaught_logs_gid)) < 0
-   || buffer_puts(b, " --\ns6-log -bpd3 -- ") < 0)
-    return 0 ;
+       S6_EXTBINPREFIX "s6-setuidgid ") < 0
+   || !string_quote(&satmp, log_user, strlen(log_user))) return 0 ;
+  if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
+  satmp.len = sabase ;
+  if (buffer_puts(b, "\ns6-log -bpd3 -- ") < 0) return 0 ;
   if (console)
   {
     if (timestamp_style & 1 && buffer_puts(b, "t ") < 0
@@ -114,6 +126,10 @@ static int s6_svscan_log_script (buffer *b, char const *data)
     return 0 ;
   (void)data ;
   return 1 ;
+
+ err:
+  satmp.len = sabase ;
+  return 0 ;
 }
 
 static int logouthookd_script (buffer *b, char const *data)
@@ -226,7 +242,7 @@ static void cleanup (char const *base)
   errno = e ;
 }
 
-static void auto_dir (char const *base, char const *dir, uid_t uid, gid_t gid, unsigned int mode)
+static void auto_dir_internal (char const *base, char const *dir, uid_t uid, gid_t gid, unsigned int mode, int strict)
 {
   size_t clen = strlen(base) ;
   size_t dlen = strlen(dir) ;
@@ -234,15 +250,26 @@ static void auto_dir (char const *base, char const *dir, uid_t uid, gid_t gid, u
   memcpy(fn, base, clen) ;
   fn[clen] = dlen ? '/' : 0 ;
   memcpy(fn + clen + 1, dir, dlen + 1) ;
-  if (mkdir(fn, mode) < 0
-   || ((uid || gid) && (chown(fn, uid, gid) < 0 || chmod(fn, mode) < 0)))
+
+  if (mkdir(fn, mode) < 0)
   {
-    cleanup(base) ;
-    strerr_diefu2sys(111, "mkdir ", fn) ;
+    if (errno != EEXIST || strict) goto err ;
   }
+  if (uid || gid)
+  {
+    if (chown(fn, uid, gid) < 0
+     || chmod(fn, mode) < 0) goto err ;
+  }
+  return ;
+
+ err:
+  cleanup(base) ;
+  strerr_diefu2sys(111, "mkdir ", fn) ;
 }
 
-static void auto_file (char const *base, char const *file, char const *s, unsigned int n, int executable)
+#define auto_dir(base, dir, uid, gid, mode) auto_dir_internal(base, dir, uid, gid, (mode), 1)
+
+static void auto_file (char const *base, char const *file, char const *s, unsigned int n)
 {
   size_t clen = strlen(base) ;
   size_t flen = strlen(file) ;
@@ -251,7 +278,7 @@ static void auto_file (char const *base, char const *file, char const *s, unsign
   fn[clen] = '/' ;
   memcpy(fn + clen + 1, file, flen + 1) ;
   if (!openwritenclose_unsafe(fn, s, n)
-   || chmod(fn, executable ? 0755 : 0644) == -1)
+   || chmod(fn, 0644) == -1)
   {
     cleanup(base) ;
     strerr_diefu2sys(111, "write to ", fn) ;
@@ -311,6 +338,18 @@ static void auto_script (char const *base, char const *file, writetobuf_func_t_r
   fd_close(fd) ;
 }
 
+static void copy_script (char const *base, char const *src, char const *dst)
+{
+  size_t baselen = strlen(base) ;
+  size_t dstlen = strlen(dst) ;
+  char fn[baselen + dstlen + 2] ;
+  memcpy(fn, base, baselen) ;
+  fn[baselen] = '/' ;
+  memcpy(fn + baselen + 1, dst, dstlen + 1) ;
+  if (!filecopy_unsafe(src, fn, 0755))
+    strerr_diefu4sys(111, "copy ", src, " to ", fn) ;
+}
+
 static void auto_exec (char const *base, char const *name, char const *target)
 {
   if (S6_LINUX_INIT_LIBEXECPREFIX[0] == '/')
@@ -339,17 +378,99 @@ static void make_env (char const *base, char const *envname, char const *modif, 
     memcpy(fn + envnamelen + 1, modif, pos) ;
     fn[envnamelen + 1 + pos] = 0 ;
     
-    if (pos + 1 < len) auto_file(base, fn, modif + pos + 1, len - pos - 1, 0) ;
-    else if (pos + 1 == len) auto_file(base, fn, "\n", 1, 0) ;
-    else auto_file(base, fn, "", 0, 0) ;
+    if (pos + 1 < len) auto_file(base, fn, modif + pos + 1, len - pos - 1) ;
+    else if (pos + 1 == len) auto_file(base, fn, "\n", 1) ;
+    else auto_file(base, fn, "", 0) ;
     modif += len+1 ; modiflen -= len+1 ;
   }
 }
 
+static void getug (char const *s, uid_t *uid, gid_t *gid)
+{
+  struct passwd *pw ;
+  errno = 0 ;
+  pw = getpwnam(s) ;
+  if (!pw)
+  {
+    if (!errno) strerr_diefu3x(100, "find user ", s, " in passwd database") ;
+    else strerr_diefu2sys(111, "getpwnam for ", s) ;
+  }
+  *uid = pw->pw_uid ;
+  *gid = pw->pw_gid ;
+}
+
+#ifdef S6_LINUX_INIT_UTMPD_PATH
+
+static inline void auto_basedir (char const *base, char const *dir, uid_t uid, gid_t gid, unsigned int mode)
+{
+  size_t n = strlen(dir) ;
+  char tmp[n+1] ;
+  for (size_t i = 0; i < n ; i++)
+  {
+    if ((s[i] == '/') && i)
+    {
+      tmp[i] = 0 ;
+      auto_dir_internal(base, tmp, uid, gid, mode, 0) ;
+    }
+    tmp[i] = s[i] ;
+  }
+}
+
+static int utmpd_script (buffer *b, char const *uw)
+{
+  size_t sabase = satmp.len ;
+  if (!put_shebang(b)
+   || buffer_puts(b,
+    EXECLINE_EXTBINPREFIX "fdmove -c 2 1\n"
+    S6_EXTBINPREFIX "s6-setuidgid ") < 0
+   || !string_quote(&satmp, utmp_user, strlen(utmp_user))) return 0 ;
+  if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
+  satmp.len = sabase ;
+  if (buffer_puts(b, "\n"
+    EXECLINE_EXTBINPREFIX "cd " S6_LINUX_INIT_TMPFS "/" UTMPS_DIR "\n"
+    EXECLINE_EXTBINPREFIX "fdmove 1 3\n"
+    S6_EXTBINPREFIX "s6-ipcserver -1 -- ") < 0) return 0 ;
+  if (buffer_puts(b, uw[0] == 'u' ? UTMPS_UTMPD_PATH : UTMPS_WTMPD_PATH) < 0
+   || buffer_puts(b, "\n"
+    UTMPS_EXTBINPREFIX "utmps-") < 0
+   || buffer_puts(b, uw) < 0
+   || buffer_puts(b, "tmpd\n") < 0) return 0 ;
+  return 1 ;
+
+ err:
+  satmp.len = sabase ;
+  return 0 ;
+}
+
+static inline void make_utmps (char const *base)
+{
+  auto_dir(base, "run-image/" SCANDIR "/utmpd", 0, 0, 0755) ;
+  auto_file(base, "run-image/" SCANDIR "/utmpd/notification-fd", "3\n", 2) ;
+  auto_script(base, "run-image/" SCANDIR "/utmpd/run", &utmpd_script, "u") ;
+  auto_dir(base, "run-image/" SCANDIR "/wtmpd", 0, 0, 0755) ;
+  auto_file(base, "run-image/" SCANDIR "/wtmpd/notification-fd", "3\n", 2) ;
+  auto_script(base, "run-image/" SCANDIR "/wtmpd/run", &utmpd_script, "w") ;
+  {
+    uid_t uid ;
+    gid_t gid ;
+    getug(utmp_user, &uid, &gid) ;
+    auto_dir(base, "run-image/" UTMPS_DIR, uid, gid, 0755) ;
+    auto_basedir(base, S6_LINUX_INIT_UTMPD_PATH, uid, gid, 0755) ;
+    auto_basedir(base, S6_LINUX_INIT_WTMPD_PATH, uid, gid, 0755) ;
+  }
+}
+
+#endif
+
 static inline void make_image (char const *base)
 {
   auto_dir(base, "run-image", 0, 0, 0755) ;
-  auto_dir(base, "run-image/" UNCAUGHT_DIR, uncaught_logs_uid, uncaught_logs_gid, 02700) ;
+  {
+    uid_t uid ;
+    gid_t gid ;
+    getug(log_user, &uid, &gid) ;
+    auto_dir(base, "run-image/" UNCAUGHT_DIR, uid, gid, 02700) ;
+  }
   auto_dir(base, "run-image/" SCANDIR, 0, 0, 0755) ;
   auto_dir(base, "run-image/" SCANDIR "/.s6-svscan", 0, 0, 0755) ;
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/crash", &death_script, "crashed") ;
@@ -363,7 +484,7 @@ static inline void make_image (char const *base)
 
   auto_dir(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR, 0, 0, 0755) ;
   auto_fifo(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR "/" LOGGER_FIFO) ;
-  auto_file(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR "/notification-fd", "3\n", 2, 0) ;
+  auto_file(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR "/notification-fd", "3\n", 2) ;
   auto_script(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR "/run", &s6_svscan_log_script, 0) ;
 
   auto_dir(base, "run-image/" SCANDIR "/" SHUTDOWND_SERVICEDIR, 0, 0, 0755) ;
@@ -375,17 +496,17 @@ static inline void make_image (char const *base)
   auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules", 0, 0, 0755) ;
   auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/gid", 0, 0, 0755) ;
   auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/gid/0", 0, 0, 0755) ;
-  auto_file(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/gid/0/allow", "", 0, 0) ;
+  auto_file(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/gid/0/allow", "", 0) ;
   auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/uid", 0, 0, 0755) ;
   auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/uid/0", 0, 0, 0755) ;
-  auto_file(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/uid/0/allow", "", 0, 0) ;
-  auto_file(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/notification-fd", "3\n", 2, 0) ;
+  auto_file(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/uid/0/allow", "", 0) ;
+  auto_file(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/notification-fd", "3\n", 2) ;
   auto_script(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/run", &runleveld_script, 0) ;
 
   if (logouthookd)
   {
     auto_dir(base, "run-image/" SCANDIR "/" LOGOUTHOOKD_SERVICEDIR, 0, 0, 0755) ;
-    auto_file(base, "run-image/" SCANDIR "/" LOGOUTHOOKD_SERVICEDIR "/notification-fd", "1\n", 2, 0) ;
+    auto_file(base, "run-image/" SCANDIR "/" LOGOUTHOOKD_SERVICEDIR "/notification-fd", "1\n", 2) ;
     auto_script(base, "run-image/" SCANDIR "/" LOGOUTHOOKD_SERVICEDIR "/run", &logouthookd_script, 0) ;
   }
 
@@ -394,14 +515,18 @@ static inline void make_image (char const *base)
     auto_dir(base, "run-image/" SCANDIR "/" EARLYGETTY_SERVICEDIR, 0, 0, 0755) ;
     auto_script(base, "run-image/" SCANDIR "/" EARLYGETTY_SERVICEDIR "/run", &line_script, early_getty) ;
   }
+
+#ifdef S6_LINUX_INIT_UTMPD_PATH
+  if (utmp_user[0]) make_utmps(base) ;
+#endif
 }
 
 static inline void make_scripts (char const *base)
 {
   auto_dir(base, "scripts", 0, 0, 0755) ;
-  auto_script(base, "scripts/runlevel", &put_shebang_options, 0) ;
-  auto_script(base, "scripts/" STAGE2, &put_shebang_options, 0) ;
-  auto_script(base, "scripts/" STAGE3, &put_shebang_options, 0) ;
+  copy_script(base, S6_LINUX_INIT_SKELDIR "/runlevel", "scripts/runlevel") ;
+  copy_script(base, S6_LINUX_INIT_SKELDIR "/" STAGE2, "scripts/" STAGE2) ;
+  copy_script(base, S6_LINUX_INIT_SKELDIR "/" STAGE3, "scripts/" STAGE3) ;
 }
 
 static inline void make_bins (char const *base)
@@ -424,22 +549,12 @@ int main (int argc, char const *const *argv, char const *const *envp)
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "c:u:g:UG:1Lp:m:t:d:s:e:E:q:", &l) ;
+      int opt = subgetopt_r(argc, argv, OPTION_STRING, &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
         case 'c' : robase = l.arg ; break ;
-        case 'u' : if (!uint0_scan(l.arg, &uncaught_logs_uid)) dieusage() ; break ;
-        case 'g' : if (!uint0_scan(l.arg, &uncaught_logs_gid)) dieusage() ; break ;
-        case 'U' :
-        {
-          char const *x = env_get2(envp, "UID") ;
-          if (!x) strerr_dienotset(100, "UID") ;
-          if (!uint0_scan(x, &uncaught_logs_uid)) strerr_dieinvalid(100, "UID") ;
-          x = env_get2(envp, "GID") ;
-          if (!x) strerr_dienotset(100, "GID") ;
-          if (!uint0_scan(x, &uncaught_logs_gid)) strerr_dieinvalid(100, "GID") ;
-        }
+        case 'u' : log_user = l.arg ; break ;
         case 'G' : early_getty = l.arg ; break ;
         case '1' : console = 1 ; break ;
         case 'L' : logouthookd = 1 ; break ;
@@ -451,6 +566,9 @@ int main (int argc, char const *const *argv, char const *const *envp)
         case 'e' : if (!stralloc_catb(&saenv1, l.arg, strlen(l.arg) + 1)) dienomem() ; break ;
         case 'E' : if (!stralloc_catb(&saenv2, l.arg, strlen(l.arg) + 1)) dienomem() ; break ;
         case 'q' : if (!uint0_scan(l.arg, &finalsleep)) dieusage() ; break ;
+#ifdef S6_LINUX_INIT_UTMPD_PATH
+        case 'U' : utmp_user = l.arg ; break ;
+#endif
         default : dieusage() ;
       }
     }

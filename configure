@@ -22,7 +22,8 @@ Fine tuning of the installation directories:
   --libexecdir=DIR              package-scoped executables [EPREFIX/libexec]
   --libdir=DIR                  static library files [PREFIX/lib/$package]
   --includedir=DIR              C header files [PREFIX/include]
-  --tmpfsdir=DIR           assume the initial tmpfs will be mounted on DIR [/run]
+  --skeldir=DIR                 script skeleton files [PREFIX/etc/s6-linux-init/skel]
+  --tmpfsdir=DIR                assume the initial tmpfs will be mounted on DIR [/run]
 
  If no --prefix option is given, by default libdir (but not dynlibdir) will be
  /usr/lib/$package, and includedir will be /usr/include.
@@ -46,6 +47,7 @@ Optional features:
   --enable-absolute-paths       do not rely on PATH to access this package's binaries,
                                   hardcode absolute BINDIR/foobar paths instead [disabled]
 
+  --enable-nsss                 use the nsss library for user information [disabled]
   --enable-utmps                link against the utmps library [disabled]
 
 EOF
@@ -72,6 +74,10 @@ EOF
 fail () {
   echo "$*"
   exit 1
+}
+
+isprefix() {
+  case "$1" in "$2"*) return 0 ;; *) return 1 ;; esac ;
 }
 
 fnmatch () {
@@ -120,6 +126,13 @@ tryldflag () {
   fi
 }
 
+getmacro () {
+  echo "#include <$1>" | $CC_AUTO -v $CPPFLAGS_AUTO $CPPFLAGS $CPPFLAGS_POST $CFLAGS_AUTO $CFLAGS $CFLAGS_POST -E -dM - | grep -F -- "$2" | cut -d' ' -f3-
+}
+
+getmacrostring () {
+  getmacro "$1" "$2" | sed -e 's/^"//' -e 's/"$//'
+}
 
 # Actual script
 
@@ -149,6 +162,7 @@ static=true
 allpic=true
 slashpackage=false
 abspath=false
+usensss=false
 sproot=
 home=
 exthome=
@@ -160,6 +174,7 @@ addlibdpath=''
 vpaths=''
 vpathd=''
 build=
+skeldir='$prefix/etc/s6-linux-init/skel'
 tmpfsdir=/run
 utmps=false
 
@@ -192,6 +207,9 @@ for arg ; do
     --disable-slashpackage) sproot= ; slashpackage=false ;;
     --enable-absolute-paths|--enable-absolute-paths=yes) abspath=true ;;
     --disable-absolute-paths|--enable-absolute-paths=no) abspath=false ;;
+    --enable-nsss|--enable-nsss=yes) usensss=true ;;
+    --disable-nsss|--enable-nsss=no) usensss=false ;;
+    --skeldir=*) skeldir=${arg#*=} ;;
     --tmpfsdir=*) tmpfsdir=${arg#*=} ;;
     --enable-utmps|--enable-utmps=yes) utmps=true ;;
     --disable-utmps|--enable-utmps=no) utmps=false ;;
@@ -219,7 +237,7 @@ fi
 
 # Expand installation directories
 stripdir prefix
-for i in exec_prefix dynlibdir libexecdir bindir libdir includedir sysdeps sproot ; do
+for i in exec_prefix dynlibdir libexecdir bindir libdir includedir sysdeps sproot tmpfsdir skeldir ; do
   eval tmp=\${$i}
   eval $i=$tmp
   stripdir $i
@@ -254,6 +272,7 @@ if $slashpackage ; then
   libdir=${home}/library
   libexecdir=$bindir
   includedir=${home}/include
+  skeldir=${home}/etc/skel
   while read dep condvar ; do
     if test -n "$condvar" ; then
       eval "cond=$condvar"
@@ -366,6 +385,23 @@ if test -z "$vpaths" ; then
   done < package/deps-build  
 fi
 
+if $utmps ; then
+  echo "Sanity checking cross-package configuration..."
+  p=`getmacrostring utmps/config.h UTMPS_UTMPD_PATH`
+  if isprefix "$p" "$tmpfsdir"/ ; then : ; else
+    echo "UTMPS_UTMPD_PATH has been configured as $p which is not located under $tmpfsdir"
+    exit 1
+  fi
+  utmpd_path=${p##${tmpfsdir}/}
+  p=`getmacrostring utmps/config.h UTMPS_WTMPD_PATH`
+  if isprefix "$p" "$tmpfsdir"/ ; then : ; else
+    echo "UTMPS_WTMPD_PATH has been configured as $p which is not located under $tmpfsdir"
+    exit 1
+  fi
+  wtmpd_path=${p##${tmpfsdir}/}
+  echo "  ... ok"
+fi
+
 echo "creating config.mak..."
 cmdline=$(quote "$0")
 for i ; do cmdline="$cmdline $(quote "$i")" ; done
@@ -384,6 +420,7 @@ libexecdir := $libexecdir
 bindir := $bindir
 libdir := $libdir
 includedir := $includedir
+skeldir := $skeldir
 sysdeps := $sysdeps
 slashpackage := $slashpackage
 sproot := $sproot
@@ -432,6 +469,13 @@ if $allpic ; then
 else
   echo "STATIC_LIBS_ARE_PIC :="
 fi
+if $usensss ; then
+  echo "LIBNSSS := -lnsss"
+  echo "MAYBEPTHREAD_LIB := -lpthread"
+else
+  echo "LIBNSSS :="
+  echo "MAYBEPTHREAD_LIB :="
+fi
 if $utmps ; then
   echo "LIBUTMPS := -lutmps"
 else
@@ -465,12 +509,15 @@ else
   echo "#define ${package_macro_name}_EXTBINPREFIX \"\""
 fi
 echo "#define ${package_macro_name}_LIBEXECPREFIX \"$libexecdir/\""
+echo "#define ${package_macro_name}_SKELDIR \"$skeldir\""
 echo "#define ${package_macro_name}_TMPFS \"$tmpfsdir\""
 echo
 if $utmps ; then
-  echo "#define ${package_macro_name}_HAS_UTMPS"
+  echo "#define ${package_macro_name}_UTMPD_PATH \"$utmpd_path\""
+  echo "#define ${package_macro_name}_WTMPD_PATH \"$wtmpd_path\""
 else
-  echo "#undef ${package_macro_name}_HAS_UTMPS"
+  echo "#undef ${package_macro_name}_UTMPD_PATH"
+  echo "#undef ${package_macro_name}_WTMPD_PATH"
 fi
 echo
 echo "#endif"

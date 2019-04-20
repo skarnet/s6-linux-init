@@ -127,7 +127,7 @@ tryldflag () {
 }
 
 getmacro () {
-  echo "#include <$1>" | $CC_AUTO -v $CPPFLAGS_AUTO $CPPFLAGS $CPPFLAGS_POST $CFLAGS_AUTO $CFLAGS $CFLAGS_POST -E -dM - | grep -F -- "$2" | cut -d' ' -f3-
+  echo "#include <$1>" | $CC_AUTO $CPPFLAGS_AUTO $CPPFLAGS $CPPFLAGS_POST $CFLAGS_AUTO $CFLAGS $CFLAGS_POST -E -dM - | grep -F -- "$2" | cut -d' ' -f3-
 }
 
 getmacrostring () {

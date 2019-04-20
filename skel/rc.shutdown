@@ -1,0 +1,17 @@
+#!/bin/sh -e
+
+### Things to do before hardware halt/reboot/poweroff.
+### Ideally, it should be a single call to the service manager,
+### telling it to bring all the services down.
+
+### If your services are managed by sysv-rc:
+### remove the K11reboot link from /etc/rc6.d to prevent
+### sysv-rc from rebooting prematurely - because sysvinit does
+### not properly separate state changes from system init/shutdown.
+# exec /etc/init.d/rc 6
+
+### If your services are managed by OpenRC:
+# exec /sbin/openrc shutdown
+
+### If your services are managed by s6-rc:
+# exec s6-rc -da change

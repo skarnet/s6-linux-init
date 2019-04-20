@@ -1,0 +1,34 @@
+#!/bin/sh -e
+
+rl="$1"
+shift
+
+### argv now contains the arguments of the kernel command line that are
+### not of the form key=value. (The key=value arguments were stored by
+### s6-linux-init into an envdir, if instructed so via the -s option.)
+### Normally this argv remains unused because programs that need the
+### kernel command line usually read it later on from /proc/cmdline -
+### but just in case, it's available here.
+
+
+### 1. Early preparation
+### This is done only once at boot time.
+### Ideally, this phase should just initialize the service manager.
+
+### If your services are managed by sysv-rc:
+# /etc/init.d/rcS
+
+### If your services are managed by OpenRC:
+# /sbin/openrc sysinit
+# /sbin/openrc boot
+
+### If your services are managed by s6-rc:
+### (replace /run/service with your scandir)
+# s6-rc-init /run/service
+
+
+### 2. Starting the wanted set of services
+### This is also called every time you change runlevels with telinit.
+### (edit the location to suit your installation)
+
+# exec /etc/s6-linux-init/current/scripts/runlevel "$rl"

@@ -28,12 +28,12 @@
 
 #ifdef S6_LINUX_INIT_UTMPD_PATH
 # include <utmps/config.h>
-# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -U utmp_user ]"
-# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:U:"
+# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -U utmp_user ]"
+# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:U:D:"
 # define UTMPS_DIR "utmps"
 #else
-# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ]"
-# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:"
+# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ]"
+# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:"
 #endif
 
 #define dieusage() strerr_dieusage(100, USAGE)
@@ -47,6 +47,7 @@ static char const *env_store = 0 ;
 static char const *early_getty = 0 ;
 static char const *slashdev = 0 ;
 static char const *log_user = "root" ;
+static char const *initdefault = 0 ;
 static unsigned int initial_umask = 0022 ;
 static unsigned int timestamp_style = 1 ;
 static unsigned int finalsleep = 3000 ;
@@ -223,6 +224,13 @@ static inline int stage1_script (buffer *b, char const *data)
   {
     if (buffer_puts(b, " -d ") < 0
      || !string_quote(&satmp, slashdev, strlen(slashdev))) return 0 ;
+    if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
+    satmp.len = sabase ;
+  }
+  if (initdefault)
+  {
+    if (buffer_puts(b, " -D ") < 0
+     || !string_quote(&satmp, initdefault, strlen(initdefault))) return 0 ;
     if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
     satmp.len = sabase ;
   }
@@ -404,15 +412,15 @@ static void getug (char const *s, uid_t *uid, gid_t *gid)
 static inline void auto_basedir (char const *base, char const *dir, uid_t uid, gid_t gid, unsigned int mode)
 {
   size_t n = strlen(dir) ;
-  char tmp[n+1] ;
-  for (size_t i = 0; i < n ; i++)
+  char tmp[n + 1] ;
+  for (size_t i = 0 ; i < n ; i++)
   {
-    if ((s[i] == '/') && i)
+    if ((dir[i] == '/') && i)
     {
       tmp[i] = 0 ;
       auto_dir_internal(base, tmp, uid, gid, mode, 0) ;
     }
-    tmp[i] = s[i] ;
+    tmp[i] = dir[i] ;
   }
 }
 
@@ -542,8 +550,6 @@ static inline void make_bins (char const *base)
 
 int main (int argc, char const *const *argv, char const *const *envp)
 {
-  stralloc saenv1 = STRALLOC_ZERO ;
-  stralloc saenv2 = STRALLOC_ZERO ;
   PROG = "s6-linux-init-maker" ;
   {
     subgetopt_t l = SUBGETOPT_ZERO ;
@@ -563,9 +569,9 @@ int main (int argc, char const *const *argv, char const *const *envp)
         case 't' : if (!uint0_scan(l.arg, &timestamp_style)) dieusage() ; break ;
         case 'd' : slashdev = l.arg ; break ;
         case 's' : env_store = l.arg ; break ;
-        case 'e' : if (!stralloc_catb(&saenv1, l.arg, strlen(l.arg) + 1)) dienomem() ; break ;
-        case 'E' : if (!stralloc_catb(&saenv2, l.arg, strlen(l.arg) + 1)) dienomem() ; break ;
+        case 'e' : if (!stralloc_catb(&satmp, l.arg, strlen(l.arg) + 1)) dienomem() ; break ;
         case 'q' : if (!uint0_scan(l.arg, &finalsleep)) dieusage() ; break ;
+        case 'D' : initdefault = l.arg ; break ;
 #ifdef S6_LINUX_INIT_UTMPD_PATH
         case 'U' : utmp_user = l.arg ; break ;
 #endif
@@ -587,10 +593,8 @@ int main (int argc, char const *const *argv, char const *const *envp)
   if (mkdir(argv[0], 0755) < 0)
     strerr_diefu2sys(111, "mkdir ", argv[0]) ;
 
-  make_env(argv[0], ENVSTAGE2, saenv2.s, saenv2.len) ;
-  stralloc_free(&saenv2) ;
-  make_env(argv[0], ENVSTAGE1, saenv1.s, saenv1.len) ;
-  saenv1.len = 0 ;
+  make_env(argv[0], ENVSTAGE1, satmp.s, satmp.len) ;
+  satmp.len = 0 ;
   make_image(argv[0]) ;
   make_scripts(argv[0]) ;
   make_bins(argv[0]) ;

@@ -27,8 +27,7 @@
 #define EARLYGETTY S6_LINUX_INIT_TMPFS "/" SCANDIR "/" EARLYGETTY_SERVICEDIR
 
 #define RUNIMAGE "run-image"
-#define ENVSTAGE1 "env-global"
-#define ENVSTAGE2 "env-stage2"
+#define ENVSTAGE1 "env"
 #define STAGE2 "rc.init"
 #define STAGE3 "rc.shutdown"
 

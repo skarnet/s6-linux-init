@@ -23,28 +23,35 @@
 #include "defaults.h"
 #include "initctl.h"
 
-#define USAGE "s6-linux-init [ -c basedir ] [ -p initpath ] [ -s envdumpdir ] [ -m umask ] [ -d devtmpfs ]"
+#define USAGE "s6-linux-init [ -c basedir ] [ -p initpath ] [ -s envdumpdir ] [ -m umask ] [ -d devtmpfs ] [ -D initdefault ]"
 #define dieusage() strerr_dieusage(100, USAGE)
 
 #define BANNER "\n  s6-linux-init version " S6_LINUX_INIT_VERSION "\n\n"
 
-static inline void run_stage2 (char const *basedir, char const **argv, unsigned int argc, char const *const *envp, size_t envlen, stralloc *envmodifs)
+static inline char const *scan_cmdline (char const *initdefault, char const *const *argv, unsigned int argc)
+{
+  static char const *valid[] = { "default", "2", "3", "4", "5", 0 } ;
+  for (unsigned int i = 0 ; i < argc ; i++)
+    for (char const *const *p = valid ; *p ; p++)
+      if (!strcmp(argv[i], *p)) return argv[i] ;
+  return initdefault ;
+}
+
+static inline void run_stage2 (char const *basedir, char const **argv, unsigned int argc, char const *const *envp, size_t envlen, stralloc *envmodifs, char const *initdefault)
 {
   size_t dirlen = strlen(basedir) ;
-  char const *childargv[argc + 2] ;
-  char fn[dirlen + 1 + (sizeof(ENVSTAGE2) > sizeof(STAGE2) ? sizeof(ENVSTAGE2) : sizeof(STAGE2))] ;
+  char const *childargv[argc + 3] ;
+  char fn[dirlen + 1 + sizeof(STAGE2)] ;
   PROG = "s6-linux-init (child)" ;
   argv[0] = PROG ;
   memcpy(fn, basedir, dirlen) ;
   fn[dirlen] = '/' ;
-  memcpy(fn + dirlen + 1, ENVSTAGE2, sizeof(ENVSTAGE2)) ;
-  if (envdir(fn, envmodifs) == -1)
-    strerr_warnwu2sys("envdir ", fn) ;
   memcpy(fn + dirlen + 1, STAGE2, sizeof(STAGE2)) ;
   childargv[0] = fn ;
+  childargv[1] = scan_cmdline(initdefault, argv + 1, argc - 1) ;
   for (unsigned int i = 0 ; i < argc ; i++)
-    childargv[i+1] = argv[i] ;
-  childargv[argc + 1] = 0 ;
+    childargv[i+2] = argv[i] ;
+  childargv[argc + 2] = 0 ;
   setsid() ;
   fd_close(1) ;
   if (open(LOGFIFO, O_WRONLY) != 1)  /* blocks until catch-all logger is up */
@@ -61,6 +68,7 @@ int main (int argc, char const **argv, char const *const *envp)
   char const *path = INITPATH ;
   char const *slashdev = 0 ;
   char const *envdumpdir = 0 ;
+  char const *initdefault = "default" ;
   stralloc envmodifs = STRALLOC_ZERO ;
   PROG = "s6-linux-init" ;
 
@@ -75,7 +83,7 @@ int main (int argc, char const **argv, char const *const *envp)
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "c:p:s:m:d:", &l) ;
+      int opt = subgetopt_r(argc, argv, "c:p:s:m:d:D:", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
@@ -84,6 +92,7 @@ int main (int argc, char const **argv, char const *const *envp)
         case 's' : envdumpdir = l.arg ; break ;
         case 'm' : if (!uint0_oscan(l.arg, &mask)) dieusage() ; break ;
         case 'd' : slashdev = l.arg ; break ;
+        case 'D' : initdefault = l.arg ; break ;
         default : dieusage() ;
       }
     }
@@ -158,7 +167,7 @@ int main (int argc, char const **argv, char const *const *envp)
     }
     pid = fork() ;
     if (pid == -1) strerr_diefu1sys(111, "fork") ;
-    if (!pid) run_stage2(basedir, argv, argc, newenvp, !!path, &envmodifs) ;
+    if (!pid) run_stage2(basedir, argv, argc, newenvp, !!path, &envmodifs, initdefault) ;
     if (fd_copy(2, 1) == -1)
       strerr_diefu1sys(111, "redirect output file descriptor") ;
     xpathexec_r(newargv, newenvp, !!path, envmodifs.s, envmodifs.len) ;

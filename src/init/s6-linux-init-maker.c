@@ -65,9 +65,8 @@ typedef writetobuf_func_t *writetobuf_func_t_ref ;
 
 static int put_shebang_options (buffer *b, char const *options)
 {
-  return buffer_puts(b, "#!" EXECLINE_SHEBANGPREFIX "/execlineb") >= 0
-   && (!options || !options[0] || buffer_puts(b, " ") >= 0)
-   && buffer_puts(b, options) >= 0
+  return buffer_puts(b, "#!" EXECLINE_SHEBANGPREFIX "execlineb ") >= 0
+   && buffer_puts(b, options && options[0] ? options : "-P") >= 0
    && buffer_puts(b, "\n\n") >= 0 ;
 }
 
@@ -90,7 +89,7 @@ static int hpr_script (buffer *b, char const *what)
   return put_shebang_options(b, "-S0")
     && buffer_puts(b, S6_LINUX_INIT_BINPREFIX "s6-linux-init-hpr -") >= 0
     && buffer_puts(b, what) >= 0
-    && buffer_put(b, " $@\n", 1) >= 0 ;
+    && buffer_puts(b, " $@\n") >= 0 ;
 }
 
 static int death_script (buffer *b, char const *s)
@@ -119,7 +118,7 @@ static int s6_svscan_log_script (buffer *b, char const *data)
        EXECLINE_EXTBINPREFIX "redirfd -rnb 0 " LOGGER_FIFO "\n"
        S6_EXTBINPREFIX "s6-setuidgid ") < 0
    || !string_quote(&satmp, log_user, strlen(log_user))) return 0 ;
-  if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
+  if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
   if (buffer_puts(b, "\ns6-log -bpd3 -- ") < 0) return 0 ;
   if (console)
@@ -157,7 +156,7 @@ static int shutdownd_script (buffer *b, char const *data)
   if (!put_shebang(b)
    || buffer_puts(b, S6_LINUX_INIT_BINPREFIX "s6-linux-init-shutdownd -c ") < 0
    || !string_quote(&satmp, robase, strlen(robase))) return 0 ;
-  if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
+  if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
   if (buffer_puts(b, " -g ") < 0
    || buffer_put(b, fmt, uint_fmt(fmt, finalsleep)) < 0
@@ -182,7 +181,7 @@ static int runleveld_script (buffer *b, char const *data)
     S6_EXTBINPREFIX "s6-ipcserver-access -v0 -E -l0 -i data/rules --\n"
     S6_EXTBINPREFIX "s6-sudod -0 -1 -2 -t 30000 --\n") < 0
    || !string_quote(&satmp, robase, strlen(robase))) return 0 ;
-  if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
+  if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
   if (buffer_puts(b, "/scripts/runlevel\n") < 0) return 0 ;
   (void)data ;
@@ -207,7 +206,7 @@ static inline int stage1_script (buffer *b, char const *data)
   if (!put_shebang_options(b, "-S0")
    || buffer_puts(b, S6_LINUX_INIT_BINPREFIX "s6-linux-init -c ") < 0
    || !string_quote(&satmp, robase, strlen(robase))) return 0 ;
-  if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
+  if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
   {
     char fmt[UINT_OFMT] ;
@@ -218,28 +217,28 @@ static inline int stage1_script (buffer *b, char const *data)
   {
     if (buffer_puts(b, " -p ") < 0
      || !string_quote(&satmp, initial_path, strlen(initial_path))) return 0 ;
-    if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
+    if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
     satmp.len = sabase ;
   }
   if (env_store)
   {
     if (buffer_puts(b, " -s ") < 0
      || !string_quote(&satmp, env_store, strlen(env_store))) return 0 ;
-    if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
+    if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
     satmp.len = sabase ;
   }
   if (slashdev)
   {
     if (buffer_puts(b, " -d ") < 0
      || !string_quote(&satmp, slashdev, strlen(slashdev))) return 0 ;
-    if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
+    if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
     satmp.len = sabase ;
   }
   if (initdefault)
   {
     if (buffer_puts(b, " -D ") < 0
      || !string_quote(&satmp, initdefault, strlen(initdefault))) return 0 ;
-    if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
+    if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
     satmp.len = sabase ;
   }
   if (buffer_puts(b, "\n") < 0) return 0 ;
@@ -440,7 +439,7 @@ static int utmpd_script (buffer *b, char const *uw)
     EXECLINE_EXTBINPREFIX "fdmove -c 2 1\n"
     S6_EXTBINPREFIX "s6-setuidgid ") < 0
    || !string_quote(&satmp, utmp_user, strlen(utmp_user))) return 0 ;
-  if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
+  if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
   if (buffer_puts(b, "\n"
     EXECLINE_EXTBINPREFIX "cd " S6_LINUX_INIT_TMPFS "/" UTMPS_DIR "\n"
@@ -471,8 +470,8 @@ static inline void make_utmps (char const *base)
     gid_t gid ;
     getug(utmp_user, &uid, &gid) ;
     auto_dir(base, "run-image/" UTMPS_DIR, uid, gid, 0755) ;
-    auto_basedir(base, S6_LINUX_INIT_UTMPD_PATH, uid, gid, 0755) ;
-    auto_basedir(base, S6_LINUX_INIT_WTMPD_PATH, uid, gid, 0755) ;
+    auto_basedir(base, "run-image/" S6_LINUX_INIT_UTMPD_PATH, uid, gid, 0755) ;
+    auto_basedir(base, "run-image/" S6_LINUX_INIT_WTMPD_PATH, uid, gid, 0755) ;
   }
 }
 

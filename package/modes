@@ -1,7 +1,5 @@
 s6-linux-init			0700
-s6-linux-init-halt		0750
-s6-linux-init-poweroff		0750
-s6-linux-init-reboot		0750
+s6-linux-init-hpr		0750
 s6-linux-init-shutdown		0755
 s6-linux-init-shutdownd		0700
 s6-linux-init-telinit		0750

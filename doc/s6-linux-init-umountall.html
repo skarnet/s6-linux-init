@@ -1,0 +1,61 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>s6-linux-init: the s6-linux-init-umountall program</title>
+    <meta name="Description" content="s6-linux-init: the s6-linux-init-umountall program" />
+    <meta name="Keywords" content="s6 linux administration root linux utilities umount unmount filesystem" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="index.html">s6-linux-init</a><br />
+<a href="//skarnet.org/software/">Software</a><br />
+<a href="//skarnet.org/">skarnet.org</a>
+</p>
+
+<h1> The <tt>s6-linux-init-umountall</tt> program </h1>
+
+<p>
+ <tt>s6-linux-init-umountall</tt> unmounts all the filesystems.
+</p>
+
+<h2> Interface </h2>
+
+<pre>
+     s6-linux-init-umountall
+</pre>
+
+<ul>
+ <li> <tt>s6-linux-init-umountall</tt> unmounts all partitions according to <tt>/proc/mounts</tt>.
+It processes <tt>/proc/mounts</tt> in the reverse order, starting with the most recently mounted
+partition and ending with the root filesystem ("unmounting" the root filesystem means remounting
+it read-only). </li>
+ <li> <tt>s6-linux-init-umountall</tt> does not touch <tt>/etc/mtab</tt>. </li>
+ <li> If a filesystem fails to unmount, a warning is printed to stderr, but
+<tt>s6-linux-init-umountall</tt> still attempts to unmount all the other ones. </li>
+</ul>
+
+<h2> Notes </h2>
+
+<ul>
+ <li> <tt>s6-linux-init-umountall</tt> is automatically called at the very end of the shutdown procedure,
+in "stage 4", i.e. after a SIGKILL has been sent to all the processes on the system, and
+right before the system reboots (or halts, or is powered off). By that point, there is
+no possible process that could prevent real file systems from being unmounted. </li>
+ <li> It is likely that some filesystems will still fail to unmount, typically
+<tt>/proc</tt> and <tt>/dev</tt>. That's okay: those are pseudo-filesystems, and
+will not cause data loss or a fsck if the system shuts down while they are still mounted. </li>
+ <li> Distributions usually provide a <tt>umount</tt> command with a <tt>-a</tt> option
+to unmount all filesystems. That command is usually bloated with historical artifacts
+and relies on unsafe interfaces, so it was decided not to use it. The
+<a href="//skarnet.org/software/s6-linux-utils/">s6-linux-utils</a> package also
+provides a <a href="//skarnet.org/software/s6-linux-utils/s6-umount.html">s6-umount</a>
+command with a <tt>-a</tt> option, but adding a dependency to that package would be a
+higher cost than simply reimplementing the specific functionality here. </li>
+</ul>
+
+</body>
+</html>

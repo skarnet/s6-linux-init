@@ -20,24 +20,25 @@
 
 <p>
 <tt>s6-linux-init-shutdown</tt> triggers the system shutdown procedure.
+It is normally invoked as <tt>/sbin/shutdown</tt>.
 </p>
 
 <h2> Interface </h2>
 
 <pre>
-     s6-linux-init-shutdown [ -h | -p | -r | -k ] [ -a ] [ -t <em>sec</em> ] [ -f | -F ] [ -R <em>tmpfsdir</em> ] <em>time</em> [ <em>message</em> ]
-     s6-linux-init-shutdown -c [ -R <em>tmpfsdir</em> ] [ <em>message</em> ]
+     s6-linux-init-shutdown [ -h | -p | -r | -k ] [ -a ] [ -t <em>sec</em> ] [ -f | -F ] <em>time</em> [ <em>message</em> ]
+     s6-linux-init-shutdown -c [ <em>message</em> ]
 </pre>
 
 <ul>
  <li> If the <tt>-c</tt> option is present, a pending shutdown is cancelled. </li>
- <li> Else, it triggers the shutdown procedure.
+ <li> Else, it triggers the shutdown procedure. </li>
  <li> It exits 0. The shutdown procedure happens asynchronously. </li>
 </ul>
 
 <p>
  The <tt>s6-linux-init-shutdown</tt> program conforms to the LSB-3.0.0
-<a href="https://refspecs.linuxfoundation.org/LSB_3.0.0/LSB-PDA/LSB-PDA.junk/shutdown.html">shutdown</a>
+<a href="http://refspecs.linuxbase.org/LSB_3.0.0/LSB-PDA/LSB-PDA/shutdown.html">shutdown</a>
 interface.
 </p>
 
@@ -49,29 +50,16 @@ interface.
  <li> 111: system call failed. </li>
 </ul>
 
-<h2> Supplementary options </h2>
-
-<p>
- These options are supported by <tt>s6-linux-init-shutdown</tt> but are not
-part of the LSB-3.0.0 <tt>shutdown</tt> specification.
-</p>
-
-<ul>
- <li> <tt>-R&nbsp;<em>tmpfsdir</em></tt>&nbsp;: assume that the root-only
-boot-time tmpfs has been mounted on <em>tmpfsdir</em>. Default is <tt>/run</tt>.
-The <tt>shutdown</tt> script created by a
-<a href="s6-linux-init-maker.html">s6-linux-init-maker</a> invocation
-automatically execs into <tt>s6-linux-init-shutdown</tt> with the correct
-<tt>-R</tt> option. </li>
-</ul>
-
 <h2> Notes </h2>
 
 <ul>
- <li> The <a href="s6-linux-init-shutdown.html">s6-linux-init-shutdown</a>
-binary is not meant to be called directly by administrators.
-Instead, its purpose is to be used in a <tt>shutdown</tt> script created by
-<a href="s6-linux-init-maker.html">s6-linux-init-maker</a>. </li>
+ <li> The <tt>s6-linux-init-shutdown</tt>
+binary is not meant to be called directly by administrators. Instead, after a
+<a href="s6-linux-init-maker.html">s6-linux-init-maker</a> invocation,
+the <tt>bin/</tt> subdirectory of the target will contain a <tt>shutdown</tt>
+symlink to <tt>s6-linux-init-shutdown</tt>. The <tt>bin/</tt> subdirectory
+should be copied by the administrator into <tt>/sbin</tt> for full
+interface compatibility with sysvinit. </li>
 </ul>
 
 </body>

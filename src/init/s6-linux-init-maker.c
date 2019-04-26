@@ -85,6 +85,14 @@ static int linewithargs_script (buffer *b, char const *line)
    && buffer_puts(b, " $@\n") >= 0 ;
 }
 
+static int hpr_script (buffer *b, char const *what)
+{
+  return put_shebang_options(b, "-S0")
+    && buffer_puts(b, S6_LINUX_INIT_BINPREFIX "s6-linux-init-hpr -") >= 0
+    && buffer_puts(b, what) >= 0
+    && buffer_put(b, " $@\n", 1) >= 0 ;
+}
+
 static int death_script (buffer *b, char const *s)
 {
   return put_shebang(b)
@@ -92,11 +100,11 @@ static int death_script (buffer *b, char const *s)
       EXECLINE_EXTBINPREFIX "redirfd -w 1 /dev/console\n"
       EXECLINE_EXTBINPREFIX "fdmove -c 2 1\n"
       EXECLINE_EXTBINPREFIX "foreground { "
-      S6_LINUX_INIT_LIBEXECPREFIX "s6-linux-init-echo -- \"s6-svscan ") >= 0
+      S6_LINUX_INIT_BINPREFIX "s6-linux-init-echo -- \"s6-svscan ") >= 0
     && buffer_puts(b, s) >= 0
     && buffer_puts(b,
       ". Rebooting.\" }\n"
-      S6_LINUX_INIT_LIBEXECPREFIX "s6-linux-init-reboot\n") >= 0 ;
+      S6_LINUX_INIT_BINPREFIX "s6-linux-init-hpr -r -f\n") >= 0 ;
 }
 
 static int s6_svscan_log_script (buffer *b, char const *data)
@@ -139,7 +147,7 @@ static int logouthookd_script (buffer *b, char const *data)
   return put_shebang(b)
    && buffer_puts(b,
     S6_EXTBINPREFIX "s6-ipcserver -1 -l0 -- " LOGOUTHOOKD_SOCKET "\n"
-    S6_LINUX_INIT_LIBEXECPREFIX "s6-linux-init-logouthookd\n") >= 0 ;
+    S6_LINUX_INIT_BINPREFIX "s6-linux-init-logouthookd\n") >= 0 ;
 }
 
 static int shutdownd_script (buffer *b, char const *data)
@@ -147,7 +155,7 @@ static int shutdownd_script (buffer *b, char const *data)
   size_t sabase = satmp.len ;
   char fmt[UINT_FMT] ;
   if (!put_shebang(b)
-   || buffer_puts(b, S6_LINUX_INIT_LIBEXECPREFIX "s6-linux-init-shutdownd -c ") < 0
+   || buffer_puts(b, S6_LINUX_INIT_BINPREFIX "s6-linux-init-shutdownd -c ") < 0
    || !string_quote(&satmp, robase, strlen(robase))) return 0 ;
   if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
   satmp.len = sabase ;
@@ -188,7 +196,7 @@ static int runleveld_script (buffer *b, char const *data)
 static int sig_script (buffer *b, char const *option)
 {
   return put_shebang(b)
-   && buffer_puts(b, S6_LINUX_INIT_LIBEXECPREFIX "s6-linux-init-shutdown -a ") >= 0
+   && buffer_puts(b, S6_LINUX_INIT_BINPREFIX "s6-linux-init-shutdown -a ") >= 0
    && buffer_puts(b, option) >= 0
    && buffer_puts(b, " -- now\n") >= 0 ;
 }
@@ -197,7 +205,7 @@ static inline int stage1_script (buffer *b, char const *data)
 {
   size_t sabase = satmp.len ;
   if (!put_shebang_options(b, "-S0")
-   || buffer_puts(b, S6_LINUX_INIT_LIBEXECPREFIX "s6-linux-init -c ") < 0
+   || buffer_puts(b, S6_LINUX_INIT_BINPREFIX "s6-linux-init -c ") < 0
    || !string_quote(&satmp, robase, strlen(robase))) return 0 ;
   if (buffer_puts(b, satmp.s + sabase) < 0) goto err ;
   satmp.len = sabase ;
@@ -360,12 +368,12 @@ static void copy_script (char const *base, char const *src, char const *dst)
 
 static void auto_exec (char const *base, char const *name, char const *target)
 {
-  if (S6_LINUX_INIT_LIBEXECPREFIX[0] == '/')
+  if (S6_LINUX_INIT_BINPREFIX[0] == '/')
   {
     size_t len = strlen(target) ;
-    char fn[sizeof(S6_LINUX_INIT_LIBEXECPREFIX) + len] ;
-    memcpy(fn, S6_LINUX_INIT_LIBEXECPREFIX, sizeof(S6_LINUX_INIT_LIBEXECPREFIX) - 1) ;
-    memcpy(fn + sizeof(S6_LINUX_INIT_LIBEXECPREFIX) - 1, target, len + 1) ;
+    char fn[sizeof(S6_LINUX_INIT_BINPREFIX) + len] ;
+    memcpy(fn, S6_LINUX_INIT_BINPREFIX, sizeof(S6_LINUX_INIT_BINPREFIX) - 1) ;
+    memcpy(fn + sizeof(S6_LINUX_INIT_BINPREFIX) - 1, target, len + 1) ;
     auto_symlink(base, name, fn) ;
   }
   else
@@ -540,12 +548,12 @@ static inline void make_scripts (char const *base)
 static inline void make_bins (char const *base)
 {
   auto_dir(base, "bin", 0, 0, 0755) ;
-  auto_exec(base, "bin/halt", "s6-linux-init-halt") ;
-  auto_exec(base, "bin/reboot", "s6-linux-init-reboot") ;
-  auto_exec(base, "bin/poweroff", "s6-linux-init-poweroff") ;
+  auto_script(base, "bin/init", &stage1_script, 0) ;
+  auto_script(base, "bin/halt", &hpr_script, "h") ;
+  auto_script(base, "bin/poweroff", &hpr_script, "p") ;
+  auto_script(base, "bin/reboot", &hpr_script, "r") ;
   auto_exec(base, "bin/shutdown", "s6-linux-init-shutdown") ;
   auto_exec(base, "bin/telinit", "s6-linux-init-telinit") ;
-  auto_script(base, "bin/init", &stage1_script, 0) ;
 }
 
 int main (int argc, char const *const *argv, char const *const *envp)

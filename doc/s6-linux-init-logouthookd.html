@@ -1,0 +1,84 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>s6-linux-init: the s6-linux-init-logouthookd program</title>
+    <meta name="Description" content="s6-linux-init: the s6-linux-init-logouthookd program" />
+    <meta name="Keywords" content="s6-linux-init command s6-linux-init-logouthookd login logout utmp hook sysvinit" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="index.html">s6-linux-init</a><br />
+<a href="//skarnet.org/software/">Software</a><br />
+<a href="//skarnet.org/">skarnet.org</a>
+</p>
+
+<h1> The <tt>s6-linux-init-logouthookd</tt> program </h1>
+
+<p>
+ s6-linux-init-logouthookd cleans up its client's utmp record when it dies.
+</p>
+
+<h2> Interface </h2>
+
+<pre>
+     s6-ipcserver <em>socket</em> s6-linux-init-logouthookd
+</pre>
+
+<p>
+ s6-linux-init-logouthookd implements a
+<a href="//skarnet.org/software/s6/localservice.html">local service</a>
+for getty programs that add an utmp record when a user logs in.
+</p>
+
+<p>
+ In the sysvinit model, <tt>getty</tt>/<tt>login</tt> and similar programs add an utmp
+record for every user that logs in, then exec into the user's shell.
+At logout time, the shell dies; sysvinit is supervising the <tt>getty</tt>
+program, so it's watching the pid, and respawns the <tt>getty</tt> when the
+shell dies. But before respawning the <tt>getty</tt>, it cleans up the
+utmp record, to correctly report that the user isn't logged in on this
+terminal anymore.
+</p>
+
+<p>
+ utmp is an old, clunky, insecure system (unless you're using
+<a href="//skarnet.org/software/utmps/">utmps</a>) and it is definitely
+not pid 1's job to have any knowledge of utmp and play janitor after
+<tt>getty</tt>. <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
+definitely will not do it.
+</p>
+
+<p>
+ Some distributions use versions of <tt>login</tt> that fork the user's
+shell instead of execing it. When the user logs out, the <tt>login</tt>
+program cleans up after itself. This is a better model, but it's not
+always easy to patch <tt>login</tt> to go from a "exec the shell" model to a
+"fork the shell as a child" model.
+</p>
+
+<p>
+ <tt>s6-linux-init</tt> comes with a small library which makes it easy
+for a distribution to fully support utmp cleanup with an s6 init system
+if they so choose. Before execing into the user's shell, the <tt>login</tt>
+program should just make a call to <tt>s6_linux_init_logouthook()</tt>,
+and that's it. That function will call the <tt>s6-linux-init-logouthookd</tt>
+local service, which will do nothing but wait until the user's shell dies;
+and when it happens, the user's utmp record will automatically be cleaned up.
+</p>
+
+<h2> Notes </h2>
+
+<ul>
+ <li> The <a href="//skarnet.org/software/s6/localservice.html">local service</a>
+implementing logouthook support is automatically created at boot time when the
+<tt>-L</tt> option has been given to
+<a href="s6-linux-init-maker">s6-linux-init-maker</a>. Client-side, though,
+the various login programs must be patched at the source level. </li>
+</ul>
+
+</body>
+</html>

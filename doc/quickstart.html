@@ -3,9 +3,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <meta http-equiv="Content-Language" content="en" />
-    <title>s6-linux-init: quickstart and FAQ</title>
-    <meta name="Description" content="s6-linux-init: quickstart and FAQ" />
-    <meta name="Keywords" content="s6-linux-init installation quickstart faq" />
+    <title>s6-linux-init: quickstart</title>
+    <meta name="Description" content="s6-linux-init: quickstart" />
+    <meta name="Keywords" content="s6-linux-init installation quickstart quick start" />
     <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
   </head>
 <body>
@@ -16,7 +16,7 @@
 <a href="//skarnet.org/">skarnet.org</a>
 </p>
 
-<h1> Quickstart and FAQ for s6-linux-init </h1>
+<h1> Quickstart for s6-linux-init </h1>
 
 <h2> Quickstart </h2>
 
@@ -25,175 +25,27 @@
   <ul>
    <li> <a href="//skarnet.org/software/skalibs/">skalibs</a> </li>
    <li> <a href="//skarnet.org/software/execline/">execline</a> </li>
-   <li> <a href="//skarnet.org/software/s6-portable-utils/">s6-portable-utils</a> </li>
-   <li> <a href="//skarnet.org/software/s6-linux-utils/">s6-linux-utils</a> </li>
    <li> <a href="//skarnet.org/software/s6/">s6</a> </li>
   </ul> </li>
- <li> Install <a href="index.html">s6-linux-init</a> itself. </li>
- <li> Save your old <tt>/sbin/init</tt> binary. </li>
  <li> Save and remove your old <tt>/etc/s6-linux-init</tt> directory, if you have one. </li>
+ <li> Install <a href="index.html">s6-linux-init</a> itself. </li>
+ <li> Save your old <tt>/sbin/init</tt>, <tt>/sbin/telinit</tt>, <tt>/sbin/shutdown</tt>,
+<tt>/sbin/halt</tt>, <tt>/sbin/poweroff</tt> and <tt>/sbin/reboot</tt> binaries. </li>
  <li> Make sure you have a <tt>/run</tt> directory. </li>
- <li> Write a machine initialization script in <tt>/etc/rc.init</tt> and
-a machine shutdown script in <tt>/etc/rc.shutdown</tt>. Make sure they are
-executable. See below for more information on how to write these scripts. </li>
+ <li> Edit the scripts in <tt>/etc/s6-linux-init/skel</tt>. </li>
  <li> Check that your devtmpfs is automounted by your kernel at boot time. If it is not,
 add the <tt>-d 1</tt> option to the <tt>s6-linux-init-maker</tt> command line below. </li>
  <li> As root, run: <pre>
-     rm -rf /tmp/s6-linux-init /tmp/init
-     s6-linux-init-maker /tmp/s6-linux-init
-     mv /tmp/s6-linux-init /etc/
-     ln -sf /etc/s6-linux-init/init /sbin/init </pre> </li>
+     rm -rf /tmp/blah
+     s6-linux-init-maker -1 -G "/sbin/getty 38400 tty1" /tmp/blah
+     rm -rf /etc/s6-linux-init/current
+     mv /tmp/blah /etc/s6-linux-init/current
+     cp -a /etc/s6-linux-init/current/bin/* /sbin/ </pre> </li>
  <li> Reboot. </li>
  <li> Congratulations! your machine is now running a s6-based init system. </li>
- <li> To shut the machine down, use the
-<a href="s6-halt.html">s6-halt</a>,
-<a href="s6-poweroff.html">s6-poweroff</a> or
-<a href="s6-reboot.html">s6-reboot</a> command as appropriate. </li>
+ <li> To shut the machine down, use <tt>/sbin/shutdown</tt>, <tt>/sbin/halt</tt>,
+<tt>/sbin/poweroff</tt> or <tt>/sbin/reboot</tt> as usual. </li>
 </ol>
-
-<h3> What should go into <tt>/etc/rc.init</tt> and <tt>/etc/rc.shutdown</tt>&nbsp;? </h3>
-
-<h4> <tt>/etc/rc.init</tt> </h4>
-
-<p>
- This script will be run after s6-linux-init has done is job, i.e.
-<a href="//skarnet.org/software/s6/">s6-svscan</a> is running as process 1, and it
-is now up to <tt>/etc/rc.init</tt> to get the machine to its usable state.
-It normally contains a call to the service manager to bring up all the services;
-for instance, if you're using
-<a href="//skarnet.org/software/s6-rc/">s6-rc</a> as your service manager, and
-your top bundle (containing all the services you want to bring up) is named
-<tt>ok-all</tt>, a proper <tt>/etc/rc.init</tt> could look like this:
-</p>
-
-<pre>#!/bin/sh
-s6-rc-init /run/service &amp;&amp; exec s6-rc -u change ok-all
-</pre>
-
-<p>
- The script can assume that:
-</p>
-
-<ul>
- <li> There is a tmpfs partition, only writable by root, mounted on <tt>/run</tt> </li>
- <li> There is a <a href="//skarnet.org/software/s6/">s6</a> supervision tree
-running on <tt>/run/service</tt> </li>
- <li> <tt>/dev</tt> is mounted, but <tt>/proc</tt> and <tt>/sys</tt> are not </li>
-</ul>
-
-<h4> <tt>/etc/rc.shutdown</tt> </h4>
-
-<p>
- This script is spawned by <a href="//skarnet.org/software/s6/">s6-svscan</a>
-when the administrator calls <a href="s6-halt.html">s6-halt</a>,
-<a href="s6-poweroff.html">s6-poweroff</a> or
-<a href="s6-reboot.html">s6-reboot</a>. When this script exits, the final
-shutdown sequence is run, which means that the supervision tree is dismantled,
-all processes are killed, the file systems are umounted and the system
-undergoes a hardware shutdown or reboot. So the goal of this script is to
-bring services down in an orderly fashion and perform all the necessary
-cleanups before all remaining processes are summarily killed.
-</p>
-
-<p>
- If you're using <a href="//skarnet.org/software/s6-rc/">s6-rc</a> as your
-service manager, a proper <tt>/etc/rc.shutdown</tt> could look like this:
-</p>
-
-<pre>#!/bin/sh
-exec s6-rc -da change
-</pre>
-
-<h2> FAQ </h2>
-
-<h4> Why is it so complicated to use s6 as an init process? It's much
-simpler with runit. </h4>
-
-<p>
- Yes, runit is simpler, because it provides a simple
-<a href="http://smarden.org/runit/runit.8.html">runit</a> binary
-suitable as a <tt>/sbin/init</tt> program and calls scripts to
-handle the three stages of init. However, the runit design has a
-few perfectible points:
-</p>
-
-<ul>
- <li> The one-time initialization is performed in <tt>/etc/runit/1</tt>, but
-the supervision tree is not run until <tt>/etc/runit/2</tt>, which means
-means that it is impossible to start supervised services during the
-one-time initialization. Early daemons such as <tt>udevd</tt>, for
-instance, have to remain unsupervised. </li>
- <li> runit runs with its descriptors pointing to <tt>/dev/console</tt>,
-which means that error messages from the supervision tree, and uncaught
-logs, will be displayed on the system console; they are not saved beyond
-the console buffer capabilities. </li>
- <li> The runit supervision tree is of height 3
-(runit, runsvdir, runsv), when height 2 is enough - some init
-systems, like sysvinit, systemd or launchd, even provide a
-supervision tree of height 1! (At the expense of complexity in the init
-process, of course.) Height 3 is a bit redundant, because the supervision
-capabilities of the root will be redundant with either those of the trunk
-or those of the branches. Its display is also aesthetically less pleasing than
-height 2: try out <tt>ps afuxww</tt> on a runit-based system.
-Yes, this point is extremely minor, but still deserves a mention. :-) </li>
-</ul>
-
-<p>
- Running a s6-based init addresses those issues:
-</p>
-
-<ul>
- <li> Save for the initial tmpfs mount, <em>all</em> of the machine
-initialization runs in the stage 2 script, i.e. <tt>/etc/rc.init</tt>,
-and the supervision tree is already available at that point. This
-makes it possible to start one-shot services as well as long-run
-services in the desired order while ensuring that every long-run service
-is properly supervised, i.e. it lays the ground for a proper dependency
-management system. </li>
- <li> s6-linux-init solves the problem of uncaught logs in a clean
-way, and any error message from any process in the system is
-guaranteed to end up in a logging directory. The <em>only</em>
-exception is error messages from the catch-all logger process itself:
-those naturally go to <tt>/dev/console</tt>. </li>
- <li> When s6-svscan runs as process 1, the supervision tree is of
-height 2, and <tt>ps afuxww</tt> looks clean. </li>
-</ul>
-
-<p>
- To sum up, a s6-based init is cleaner than a runit-based
-init; it's a bit more complex to set up, but it organizes the system
-in a better way, without using more resources. And the goal of
-s6-linux-init is to make the setup more accessible.
-</p>
-
-<h4> My <tt>/etc/rc.init</tt> script is not printing anything! </h4>
-
-<p>
- You probably gave the <tt>-r</tt> option to
-<a href="s6-linux-init-maker.html">s6-linux-init-maker</a>, and
-your <tt>/etc/rc.init</tt>'s output is being logged into the
-<tt>/run/uncaught-logs</tt> directory instead of printed to
-<tt>/dev/console</tt>.
-</p>
-
-<h4> I want to run s6 in a container, and I just want to log
-to stdout/stderr, without this tmpfs and <tt>/dev/console</tt>
-stuff and
-without having a catch-all logger inside the container. Is it
-possible&nbsp;? </h4>
-
-<p>
- Yes, it is possible, but then s6-linux-init may not be what you
-are looking for. For your case, it will be simpler to run s6-svscan
-directly!
-</p>
-
-<p>
- If you are using
-<a href="https://www.docker.com/">Docker</a>, there is a
-<a href="https://github.com/just-containers/s6-overlay">s6-overlay</a>
-project specifically made for integrating s6 into Docker images.
-</p>
 
 </body>
 </html>

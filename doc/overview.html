@@ -1,0 +1,149 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>s6-linux-init: overview</title>
+    <meta name="Description" content="s6-linux-init: overview" />
+    <meta name="Keywords" content="s6-linux-init overview architecture design" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="index.html">s6-linux-init</a><br />
+<a href="//skarnet.org/software/">Software</a><br />
+<a href="//skarnet.org/">skarnet.org</a>
+</p>
+
+<h1> An overview of s6-linux-init </h1>
+
+<h2> Organisation of the package </h2>
+
+<p>
+ When installed, the <tt>s6-linux-init</tt> package provides the
+following:
+</p>
+
+<ul>
+ <li> <em>Binaries</em>, that are typically installed in <tt>/bin</tt>
+  <ul>
+   <li> <a href="s6-linux-init-maker.html">s6-linux-init-maker</a> is the main
+program of the package and is used to create <tt>/sbin/init</tt> scripts
+and their supporting environment depending on configuration parameters
+given on its command line. </li>
+   <li> <a href="s6-linux-init-hpr.html">s6-linux-init-hpr</a> is an
+implementation of the sysv <tt>halt</tt>, <tt>poweroff</tt> and <tt>reboot</tt>
+commands; <a href="s6-linux-init-telinit.html">s6-linux-init-telinit</a>
+is an implementation of the sysv <tt>telinit</tt> command; and
+ <a href="s6-linux-init-shutdown.html">s6-linux-init-shutdown</a>
+is an implementation of the
+<a href="http://refspecs.linuxbase.org/LSB_3.0.0/LSB-PDA/LSB-PDA/shutdown.html">shutdown</a>
+command.  <a href="s6-linux-init.html">s6-linux-init</a> is an
+implementation of stage 1 <tt>/sbin/init</tt>, but it needs to be
+given command-line options in order to do what the user has chosen.
+An invocation of <a href="s6-linux-init-maker.html">s6-linux-init-maker</a>
+will create proper wrappers for all those commands, named after their
+short sysv names; the wrappers are directly usable as turnkey replacements
+for sysv commands. </li>
+   <li> Other binaries are support binaries, not meant to be called
+directly by the user. They are called internally, in scripts
+created by a
+<a href="s6-linux-init-maker.html">s6-linux-init-maker</a> invocation -
+typically in run scripts for early services. </li>
+  </ul> </li> <p />
+
+ <li> A <em>small library</em>, that for now contains a single symbol,
+<tt>s6_linux_init_logouthook()</tt>, intended for distributions using
+<tt>login</tt> programs that add utmp entries for users logging in and
+expect <tt>init</tt> to clean up after them when users log out. See
+the <a href="s6-linux-init-logouthookd.html">s6-linux-init-logouthookd</a>
+page for details. </li> <p />
+
+ <li> <em>Skeleton scripts</em>, installed by default in
+<tt>/etc/s6-linux-init/skel</tt>; that location can be changed at build
+time via the <tt>--skeldir</tt> configure option. At
+<tt>s6-linux-init-maker</tt>, the scripts are copied from the skeleton
+directory to the <tt>scripts</tt> subdirectory of the directory created
+by <tt>s6-linux-init-maker</tt>, and the copy is meant to be edited
+by the user. The skeleton scripts are commented and examples of
+interaction with various service manager are given; it is recommended
+to review them, and possibly edit them too.
+These scripts are the following:
+  <ul>
+   <li> <em>rc.init</em>: the script launching the system initialization
+procedure once stage 1 init is done and
+<a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a> is
+safely running as pid 1. </li>
+   <li> <em>rc.shutdown</em>: the script launching the system shutdown
+procedure when the admin runs a <tt>halt</tt>, <tt>poweroff</tt>,
+<tt>reboot</tt> or <tt>shutdown</tt> command. </li>
+   <li> <em>runlevel</em>: the script executing a machine state change
+at boot time (normally invoked by <em>rc.init</em>, towards the default
+runlevel) or when the administrator runs a <tt>telinit</tt> command. </li>
+  </ul> </li>
+</ul>
+
+<h2> Organisation of the booted system </h2>
+
+<p>
+ When a system has booted on an <tt>/sbin/init</tt> program created by
+<a href="s6-linux-init-maker.html">s6-linux-init-maker</a>, the following
+invariants are met:
+</p>
+
+<ul>
+ <li> A tmpfs is mounted on <tt>/run</tt> - that location can be changed
+at build-time via the <tt>--tmpfsdir</tt> option to configure. The rest
+of this document assumes it is <tt>/run</tt>. </li>
+ <li> <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a> is
+running as pid 1 on the <tt>/run/service</tt> scandir. </li>
+ <li> Every process on the system is running with at least the environment
+defined in the <tt>/etc/s6-linux-init/current/env</tt> envdir. The
+<tt>/etc/s6-linux-init/current</tt> location can be changed at
+<a href="s6-linux-init-maker.html">s6-linux-init-maker</a> invocation time
+via the <tt>-c</tt> option. </li>
+ <li> Some early services are defined in <tt>/run/service</tt>, and running.
+They are not seen by the service manager and should remain up all the time,
+until the machine shuts down: they are considered a part of the init system,
+even if they're not process 1. Each of these services uses very few resources.
+The services are:
+  <ul>
+   <li> <tt>s6-svscan-log</tt>: the catch-all logger </li>
+   <li> <tt>s6-linux-init-shutdownd</tt>: the shutdown manager, running
+the shutdown sequence in a reproducible environment when a shutdown command
+is executed, then performing the last shutdown steps. </li>
+   <li> <tt>s6-linux-init-runleveld</tt>: the runlevel manager, running
+the <em>runlevel</em> script in a reproducible environment when a <tt>telinit</tt>
+command is executed. </li>
+   <li> (optionally) <tt>s6-linux-init-logouthookd</tt>: a local service performing
+utmp record cleanup duty for patched <tt>login</tt> programs. </li>
+   <li> (optionally) <tt>s6-linux-init-early-getty</tt>: the early getty,
+allowing the user to login even if <em>rc.init</em> fails early. </li>
+   <li> (optionally) <tt>utmpd</tt> and <tt>wtmpd</tt>: the services performing
+utmp and wtmp access when <a href="//skarnet.org/software/utmps/">utmps</a> is
+used. </li>
+  </ul> </li>
+</ul>
+
+ <h2> Integration with the service manager </h2>
+
+<p>
+ The s6-linux-init package's duties stop where the service manager's start.
+s6-linux-init simply brings the system up to the point where it is stable and
+operational enough for the service manager to take over; and at shutdown
+time, s6-linux-init just tells the service manager to bring down the services,
+and then performs the last steps of the shutdown: killing all the remaining
+processes, unmounting the file systems and halting/powering off/rebooting
+the machine.
+</p>
+
+<p>
+ All the interactions between s6-linux-init and the service manager are
+configurable: they happen in the <em>rc.init</em>, <em>rc.shutdown</em>
+and <em>runlevel</em> scripts. Examples are provided in the skeleton
+scripts, that you should review and edit. 
+</p>
+
+</body>
+</html>

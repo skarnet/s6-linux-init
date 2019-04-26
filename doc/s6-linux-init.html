@@ -1,0 +1,154 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>s6-linux-init: the s6-linux-init program</title>
+    <meta name="Description" content="s6-linux-init: the s6-linux-init program" />
+    <meta name="Keywords" content="s6 linux init administration root init boot pid1 pid 1 /sbin/init" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="index.html">s6-linux-init</a><br />
+<a href="//skarnet.org/software/">Software</a><br />
+<a href="//skarnet.org/">skarnet.org</a>
+</p>
+
+<h1> The <tt>s6-linux-init</tt> program </h1>
+
+<p>
+<tt>s6-linux-init</tt> is a program that is meant to run as pid 1,
+as a <em>stage 1 init</em>: it performs the necessary early system preparation
+and execs into <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>.
+</p>
+
+<h2> Interface </h2>
+
+<pre>
+     s6-linux-init [ -c <em>basedir</em> ] [ -p <em>initial_path</em> ] [ -s <em>env_store</em> ] [ -m <em>umask</em> ] [ -d <em>dev_style</em> ] [ -D <em>initdefault</em> ] [ <em>args...</em> ]
+</pre>
+
+<ul>
+ <li> If <tt>s6-linux-init</tt> isn't pid 1, it execs into
+<a href="s6-linux-init-telinit.html">s6-linux-init-telinit</a> with the
+same arguments. </li>
+ </li>
+ <li> Else, it performs some early preparation, spawns a process that
+will run the <em>rc.init</em> script, then execs into
+<a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>.
+</ul>
+
+<h2> Options </h2>
+
+<p>
+ These options should exactly mirror the options with the same name that
+have been given to <a href="s6-linux-init-maker.html">s6-linux-init-maker</a>.
+If there is a discrepancy, the system might not boot.
+</p>
+
+<ul>
+ <li> <tt>-c</tt>&nbsp;<em>basedir</em>&nbsp;: read all its initialization
+data from <em>basedir</em>. If the data has not indeed been copied to
+<em>basedir</em>, <strong>the system will not boot</strong>. </li>
+ <li> <tt>-p</tt>&nbsp;<em>initial_path</em>&nbsp;: the value to
+set the initial PATH environment variable to.
+ <li> <tt>-s</tt>&nbsp;<em>env_store</em>&nbsp;: the place where to dump
+kernel environment variables. </li>
+ <li> <tt>-m</tt>&nbsp;<em>initial_umask</em>&nbsp;: the value of
+the initial file umask. </li>
+ <li> <tt>-d</tt>&nbsp;<em>dev_style</em>&nbsp;: how <tt>/dev</tt> is
+handled on this system. 0 means a static <tt>/dev</tt>, 1 means
+devtmpfs but not automounted by the kernel at boot time, and 2 means
+devtmpfs automounted by the kernel at boot time. </li>
+ <li> <tt>-D</tt>&nbsp;<em>initdefault</em>&nbsp;: the initial runlevel
+to boot to, if it isn't overridden by the kernel command line.
+This is only given as a first argument to <em>rc.init</em>.
+Default is <tt>default</tt>. </li>
+</ul>
+
+<h2> Early preparation </h2>
+
+<p>
+ When booting a system, <tt>s6-linux-init</tt> performs the following
+operations:
+</p>
+
+<ul>
+ <li> It prints a banner to <tt>/dev/console</tt>. </li>
+ <li> It chdirs to <tt>/</tt>. </li>
+ <li> It sets the umask to <em>initial_umask</em>. </li>
+ <li> It becomes a session leader. </li>
+ <li> It mounts a devtmpfs on <tt>/dev</tt>, if necessary. </li>
+ <li> It uses <tt>/dev/null</tt> as its stdin (instead of <tt>/dev/console</tt>).
+<tt>/dev/console</tt> is still used, for now, as stdout and stderr. </li>
+ <li> It unmounts <tt>/run</tt> (or the directory you have given to the
+<tt>--tmpfsdir</tt> configure option at package build time), just in case. </li>
+ <li> It creates a tmpfs on <tt>/run</tt> (or your chosen <em>tmpfsdir</em>). </li>
+ <li> It copies the whole <tt><em>basedir</em>/run-image</tt> hierarchy to
+<tt>/run</tt> (or your chosen tmpfsdir). </li>
+ <li> It reads the initial environment from <tt><em>basedir</em>/env</tt>. </li>
+ <li> If required, it stores the kernel environment into <em>env_store</em>. </li>
+ <li> It performs "the fifo trick", i.e. it redirects its stdout to the
+catch-all logger's fifo, without blocking, before the catch-all
+logger is even up (because it's a service that will be spawned a bit
+later, when <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
+is executed). </li>
+ <li> It forks a child.
+  <ul>
+    <li> The child scans the kernel command line to find a suitable runlevel
+(<tt>default</tt>, <tt>2</tt>, <tt>3</tt>, <tt>4</tt>, or <tt>5</tt>). If
+it doesn't find any kernel command line argument that defines a runlevel,
+it uses <em>initdefault</em>. </li>
+    <li> The child becomes a session leader. </li>
+    <li> The child blocks until the catch-all logger runs. </li>
+  </ul> </li>
+ <li> It also makes the catch-all logger's fifo its stderr. </li>
+ <li> It execs into <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
+with <tt>/run/service</tt> as its scandir (or <em>tmpfsdir</em>/service) </li>.
+  <ul>
+   <li> <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
+spawns the early services that are defined in
+<tt><em>basedir</em>/run-image/service</tt>, and have been copied into
+<tt>/run/service</tt> (or <em>tmpfsdir</em>/service). </li>
+   <li> One of those early services is <tt>s6-svscan-log</tt>, which is
+the catch-all logger. When this service is up, <tt>s6-linux-init<tt>'s
+child unblocks. </li>
+   <li> The child execs into <tt><em>basedir</em>/scripts/rc.init</tt>.
+The first argument to <em>rc.init</em> is the chosen runlevel. The kernel
+command line, as given by the kernel to <tt>s6-linux-init</tt> (i.e. without
+the <tt>key=value</tt> arguments, which were passed into <tt>s6-linux-init</tt>'s
+environment and were stored into <em>env_store</em>), makes for the rest of
+the arguments given to <em>rc.init</em>. </li>
+  </ul> </li>
+</ul>
+
+<p>
+ By the time <em>rc.init</em> runs,
+<a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a> is running
+as pid 1 and has spawned its early services - at least the catch-all logger,
+and the other services, including the early getty if it has been defined, are
+started in parallel and will be ready instantly. <em>rc.init</em> can then
+perform <em>stage 2</em> of the initialization process, i.e. the initialization
+sequence per se.
+</p>
+
+<h2> Notes </h2>
+
+<ul>
+ <li> The <tt>s6-linux-init</tt>
+binary is not meant to be called directly, or be linked to <tt>/sbin/init</tt>
+directly, because it takes command-line options.
+ Instead, after a
+<a href="s6-linux-init-maker.html">s6-linux-init-maker</a> invocation,
+the <tt>bin/</tt> subdirectory of the target will contain a script called
+<tt>init</tt>, which execs into <tt>s6-linux-init</tt> with the appropriate
+command-line options, and <em>is</em> suitable as a <tt>/sbin/init</tt> program.
+The <tt>bin/</tt> subdirectory
+should be copied by the administrator into <tt>/sbin</tt> for full
+interface compatibility with sysvinit. </li>
+</ul>
+
+</body>
+</html>

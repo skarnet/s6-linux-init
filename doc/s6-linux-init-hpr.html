@@ -1,0 +1,87 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>s6-linux-init: the s6-linux-init-hpr program</title>
+    <meta name="Description" content="s6-linux-init: the s6-linux-init-hpr program" />
+    <meta name="Keywords" content="s6 linux init administration root utilities shutdown halt poweroff reboot s6-linux-init-hpr" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="index.html">s6-linux-init</a><br />
+<a href="//skarnet.org/software/">Software</a><br />
+<a href="//skarnet.org/">skarnet.org</a>
+</p>
+
+<h1> The <tt>s6-linux-init-hpr</tt> program </h1>
+</h1>
+
+<p>
+ <tt>s6-linux-init-hpr</tt> triggers the software shutdown procedure,
+or, with the <tt>-f</tt> option, it perform an immediate hardware shutdown.
+It is normally invoked as <tt>/sbin/halt</tt>, <tt>/sbin/poweroff</tt> or
+<tt>/sbin/reboot</tt>.
+</p>
+
+<h2> Interface </h2>
+
+<pre>
+     s6-linux-init-hpr [ -f ] [ -h | -p | -r ] [ -d | -w ] [ -W ]
+</pre>
+
+<ul>
+ <li> If the <tt>-f</tt> option is present, the hardware command is executed immediately. </li>
+ <li> Else, the machine's shutdown procedure is started.
+ <li> The command exits 0; the shutdown procedure happens asynchronously. </li>
+</ul>
+
+<p>
+ This interface is the traditional <em>sysvinit</em> interface for the
+<tt>halt</tt>, <tt>poweroff</tt> and <tt>reboot</tt> programs.
+<tt>s6-linux-init-hpr</tt> must always be called with one of the
+<tt>-h</tt>, <tt>-p</tt> or <tt>-r</tt> options.
+</p>
+
+<h2> Exit codes </h2>
+
+<ul>
+ <li> 0: shutdown procedure triggered. </li>
+ <li> 100: wrong usage, or user does not have root privileges. </li>
+ <li> 111: system call failed. </li>
+</ul>
+
+<h2> Options </h2>
+
+<ul>
+ <li> <tt>-f</tt>&nbsp;: force. The command will not trigger a clean shutdown
+procedure; it will just sync the filesystems then tell the kernel to immediately
+halt, poweroff or reboot. This should be the last step in the lifetime of the
+machine. </li>
+ <li> <tt>-h</tt>&nbsp;: halt. The system will be shut down, but the power will remain up. </li>
+ <li> <tt>-p</tt>&nbsp;: poweroff. The system will be shut down and the power turned off. </li>
+ <li> <tt>-r</tt>&nbsp;: reboot. The system will reboot. </li>
+ <li> <tt>-d</tt>&nbsp;: Do not write a wtmp shutdown entry. </li>
+ <li> <tt>-w</tt>&nbsp;: Only write a wtmp shutdown entry; do not actually shut down
+the system. </li>
+ <li> <tt>-W</tt>&nbsp;: Do not send a <tt>wall</tt> message to users before shutting
+down the system. Some other implementations of the <tt>halt</tt>, <tt>poweroff</tt>
+and <tt>reboot</tt> commands use the <tt>--no-wall</tt> long option to achieve this. </li>
+</ul>
+
+<h2> Notes </h2>
+
+<ul>
+ <li> When an administrator runs
+<a href="s6-linux-init-maker.html">s6-linux-init-maker</a>, the resulting
+directory has a <tt>bin/</tt> subdirectory that contains <tt>halt</tt>,
+<tt>poweroff</tt> and <tt>reboot</tt> scripts that call <tt>s6-linux-init-hpr</tt>
+with the relevant option. The
+contents of this <tt>bin/</tt> subdirectory should then be copied by the
+administrator into <tt>/sbin</tt> for full interface compatibility with sysvinit. </li>
+</ul>
+
+</body>
+</html>

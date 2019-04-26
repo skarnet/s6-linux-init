@@ -1,0 +1,139 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>s6-linux-init: why?</title>
+    <meta name="Description" content="s6-linux-init: why?" />
+    <meta name="Keywords" content="s6-linux-init why rationale s6 software stack init pid 1" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="index.html">s6-linux-init</a><br />
+<a href="//skarnet.org/software/">Software</a><br />
+<a href="//skarnet.org/">skarnet.org</a>
+</p>
+
+<h1> Why s6-linux-init&nbsp;? </h1>
+
+<h2> The s6 software stack </h2>
+
+<p>
+ The s6 ecosystem is made of several parts, which are mainly the following:
+</p>
+
+<ul>
+ <li> <a href="//skarnet.org/software/skalibs/">skalibs</a>: a C system
+programming library that is used in all skarnet.org software. </li>
+ <li> <a href="//skarnet.org/software/execline/">execline</a>: a small
+scripting language that is mainly used in various parts of the s6
+ecosystem because:
+  <ul>
+   <li> It is very quick to launch, and efficient with small scripts, so it
+is a good choice for s6 run scripts. </li>
+   <li> It is much easier to programmatically generate execline scripts than
+shell scripts. execline allows programs such as
+<a href="s6-linux-init-maker.html">s6-linux-init-maker</a> to generate scripts
+quite easily, whereas using the shell syntax would require them to understand
+the full subleties of shell quoting. </li>
+  </ul>
+ <li> <a href="//skarnet.org/software/s6/">s6</a>, the main dish: a process
+supervision suite. </li>
+ <li> <a href="//skarnet.org/software/s6-rc/">s6-rc</a>: a service manager
+for s6. </li>
+ <li> and <a href="//skarnet.org/software/s6-linux-init/">s6-linux-init</a>: this
+package. </li>
+</ul>
+
+<h2> Providing a complete init system </h2>
+
+<p>
+ As explained in
+<a href="https://archive.fosdem.org/2017/schedule/event/s6_supervision/">this
+presentation"></a>, an init system is made of four parts:
+</p>
+
+<ol>
+ <li> <tt>/sbin/init</tt>: the first userspace program that is run by the
+kernel at boot time (not counting an initramfs). </li>
+ <li> <em>pid 1</em>: the program that will run as process 1 for most of
+the lifetime of the machine. This is not necessarily the same executable
+as <tt>/sbin/init</tt>, because <tt>/sbin/init</tt> can exec into something
+else. </li>
+ <li> a <em>process supervisor</em>. </li>
+ <li> a <em>service manager</em>. </li>
+</ol>
+
+<p>
+ The <a href="//skarnet.org/software/s6/">s6</a> package obviously provides
+part 3. It also provides part 2, because
+<a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a> is suitable
+as being pid 1 after some small setup is performed.
+</p>
+
+<p>
+ Part 4, service management, can be provided in a variety of ways. The
+<a href="//skarnet.org/software/s6-rc/">s6-rc</a> service manager is the
+natural complement to the s6 process supervisor, but it is not the only
+possibility. The
+<a href="https://jjacky.com/anopa/">anopa</a> package also provides a
+service manager designed to work with s6. And, at the expense of
+tight integration with the supervisor, it is possible to run a "traditional"
+service manager, such as sysv-rc or OpenRC, with an s6-based init system.
+This flexibility is possible because service management is one layer above
+the mechanisms of init and process supervision.
+</p>
+
+<p>
+ Remains part 1. And that's where s6-linux-init enters the picture.
+</p>
+
+<h3> Portability </h3>
+
+<p>
+ Part 1 of an init system, the <tt>/sbin/init</tt> program, has been purposefully
+omitted from the main s6 package, for a simple reason: s6 aims to be portable
+to any flavor of Unix, and <em>it is impossible to implement <tt>/sbin/init</tt>
+in a portable way</em>.
+</p>
+
+<p>
+ For instance, to do its job,
+<a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a> needs
+a writable directory. Such a directory may not be available at boot time,
+before mounting filesystems, because the root filesystem may be read-only.
+So, at least one writable filesystem (typically a RAM-backed one) must be
+mounted before s6-svscan can be executed and be pid 1. And mounting a
+filesystem is a non-portable operation.
+</p>
+
+<h3> Complexity </h3>
+
+<p>
+ Moreover, the sequence of operations that a <tt>/sbin/init</tt> program
+needs to perform before executing into <tt>s6-svscan</tt> is a bit
+tricky. It can be scripted, but it's not easy, and since it's so early
+in the lifetime of the machine, there's no safety net at all (the
+supervision tree itself, and the early getty, are supposed to be the
+safety net! and they're not there yet). So it's better to automate
+these operations.
+</p>
+
+<h2> Conclusion </h2>
+
+<p>
+ <tt>s6-linux-init</tt> aims to provide a fully functional <tt>/sbin/init</tt>
+program that executes into an s6 supervision tree with all the necessary
+support services already in place, as well as the corresponding shutdown
+commands. It also aims to be flexible enough to accommodate various needs
+and be compatible with any user-chosen service manager.
+</p>
+
+<p>
+As usual, it is about <em>mechanism</em>, not <em>policy</em>.
+</p>
+
+</body>
+</html>

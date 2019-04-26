@@ -5,7 +5,7 @@
 ### telling it to bring all the services down.
 
 ### If your services are managed by sysv-rc:
-### remove the K11reboot link from /etc/rc6.d to prevent
+### also remove the K11reboot link from /etc/rc6.d to prevent
 ### sysv-rc from rebooting prematurely - because sysvinit does
 ### not properly separate state changes from system init/shutdown.
 # exec /etc/init.d/rc 6
@@ -14,4 +14,4 @@
 # exec /sbin/openrc shutdown
 
 ### If your services are managed by s6-rc:
-# exec s6-rc -da change
+# exec s6-rc -bda change

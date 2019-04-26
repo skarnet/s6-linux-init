@@ -24,7 +24,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "c:p:s:m:d:", &l) ;
+      int opt = subgetopt_r(argc, argv, "c:p:s:m:d:D:", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
@@ -32,7 +32,8 @@ int main (int argc, char const *const *argv, char const *const *envp)
         case 'p' :
         case 's' :
         case 'm' :
-        case 'd' : break ;
+        case 'd' :
+        case 'D' : break ;
         default : dieusage() ;
       }
     }
@@ -63,9 +64,10 @@ int main (int argc, char const *const *argv, char const *const *envp)
       fmt[uint_fmt(fmt, WEXITSTATUS(wstat))] = 0 ;
       strerr_dief3x(wait_estatus(wstat), newargv[0], " died with exitcode ", fmt) ;
     }
-    
-    newargv[0] = argv[0][0] == '6' ? S6_LINUX_INIT_BINPREFIX "reboot" : S6_LINUX_INIT_BINPREFIX "poweroff" ;
-    newargv[1] = 0 ;
+   
+    newargv[0] = S6_LINUX_INIT_BINPREFIX "s6-linux-init-hpr" ; 
+    newargv[1] = argv[0][0] == '6' ? "-r" : "-p" ;
+    newargv[2] = 0 ;
   }
 
   xpathexec_run(newargv[0], newargv, envp) ;

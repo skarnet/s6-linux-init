@@ -1,0 +1,69 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>s6-linux-init: the s6-linux-init-echo program</title>
+    <meta name="Description" content="s6-linux-init: the s6-linux-init-echo program" />
+    <meta name="Keywords" content="s6-linux-init command s6-linux-init-echo echo" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="index.html">s6-linux-init</a><br />
+<a href="//skarnet.org/software/">Software</a><br />
+<a href="//skarnet.org/">skarnet.org</a>
+</p>
+
+<h1> The <tt>s6-linux-init-echo</tt> program </h1>
+
+<p>
+ s6-linux-init-echo writes its arguments to stdout.
+</p>
+
+<h2> Interface </h2>
+
+<pre>
+     s6-linux-init-echo [ -n ] [ -s sep ] <em>args...</em>
+</pre>
+
+<p>
+ s6-linux-init-echo writes its arguments <em>args</em> to stdout, separated with spaces.
+</p>
+
+<h2> Options </h2>
+
+<ul>
+ <li> <tt>-n</tt>&nbsp;: do not output a trailing newline. </li>
+ <li> <tt>-s</tt>&nbsp;<em>sep</em>&nbsp;: separate arguments with the <em>sep</em>
+character instead of a space. </li>
+</ul>
+
+<h2> Notes </h2>
+
+<ul>
+ <li> Strange, and appalling, as it may seem for such a simple task, there is
+no way to ensure that the <tt>echo</tt> program will behave consistently from
+Unix system to Unix system - and even from Linux distribution to Linux
+distribution. Despite there being a
+<a href="//pubs.opengroup.org/onlinepubs/9699919799/utilities/echo.html">standard</a>
+for it, the <tt>echo</tt> commands in GNU coreutils, busybox, toybox, sbase, and
+other implementations basically all exhibit different behaviours. Every shell has
+a built-in <tt>echo</tt> command, that fails to follow the POSIX standard. <tt>echo</tt>
+is the prime example of the consequences of the blatant disregard of early Unices
+for cross-system compatibility, and its followup as a turf war between GNU and the
+rest of the Linux world. As a distribution-agnostic software developer, it is ironically
+impossible to rely on a definite behaviour of the <tt>echo</tt> command on every
+supported system, and that is why s6-linux-init provides its own implementation.
+Fortunately, it is very easy to do so, with minimal overhead. </li>
+ <li> This command is an exact duplicate of the
+<a href="//skarnet.org/software/s6-portable-utils/s6-echo.html">s6-echo</a> command
+provided in the <a href="//skarnet.org/software/s6-portable-utils/">s6-portable-utils</a>
+package. It was decided <em>not</em> to have a dependency from s6-linux-init to
+s6-portable-utils: that dependency would arguably be a higher cost than the small
+amount of code duplication. </li>
+</ul>
+
+</body>
+</html>

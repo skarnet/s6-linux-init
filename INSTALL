@@ -9,7 +9,8 @@ Build Instructions
   - skalibs version 2.8.0.0 or later: https://skarnet.org/software/skalibs/
   - execline version 2.5.1.0 or later: https://skarnet.org/software/execline/
   - s6 version 2.8.0.0 or later: https://skarnet.org/software/s6/
-  - Recommended: utmps version 0.0.2.0 or later: https://skarnet.org/software/utmps/
+  - Optional: nsss version 0.0.1.1 or later: https://skarnet.org/software/nsss/
+  - Optional: utmps version 0.0.2.0 or later: https://skarnet.org/software/utmps/
 
  This software is Linux-specific. It will run on a Linux kernel,
 version 2.6.32 or later. However, it should not be too hard to port to
@@ -22,11 +23,17 @@ other Unix-like operating systems.
   ./configure && make && sudo make install
 
  will work for most users.
- It will install the binaries in /bin.
+ It will install the exported binaries in /bin, the unexported
+binaries in /libexec, and the skeleton scripts in /etc/s6-linux-init/skel.
 
  You can strip the binaries and libraries of their extra symbols via
 "make strip" before the "make install" phase. It will shave a few bytes
 off them.
+
+ Your default init binaries will not be overwritten. They will only be
+overwritten by a manual action after you invoke s6-linux-init-maker,
+check that you are happy with its output, and decide to use it as
+your default init.
 
 
 * Customization

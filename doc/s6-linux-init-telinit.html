@@ -1,0 +1,72 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>s6-linux-init: the s6-linux-init-telinit program</title>
+    <meta name="Description" content="s6-linux-init: the s6-linux-init-telinit program" />
+    <meta name="Keywords" content="s6 linux init administration root utilities telinit" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="index.html">s6-linux-init</a><br />
+<a href="//skarnet.org/software/">Software</a><br />
+<a href="//skarnet.org/">skarnet.org</a>
+</p>
+
+<h1> The <tt>s6-linux-init-telinit</tt> program </h1>
+
+<p>
+<tt>s6-linux-init-telinit</tt> changes runlevels, i.e. changes the
+system state. It is normally invoked as <tt>/sbin/telinit</tt> or
+just <tt>init</tt> with an argument.
+</p>
+
+<h2> Interface </h2>
+
+<pre>
+     s6-linux-init-telinit <tt>rl</tt>
+</pre>
+
+<ul>
+ <li> <tt>s6-linux-init-telinit</tt> may be called with the same options as
+<tt>s6-linux-init</tt>, but it ignores them all. </li>
+ <li> It calls the runleveld
+<a href="//skarnet.org/software/s6/localservice.html">local service</a> with
+the <em>rl</em> argument. This local service executes the user-provided
+<tt>runlevel</tt> script, which changes the system state to the state
+described by <em>rl</em>. </li>
+ <li> As a special case, if <em>rl</em> is <tt>0</tt> or <tt>6</tt>,
+<tt>s6-linux-init-telinit</tt> then executes into
+<a href="s6-linux-init-hpr.html">s6-linux-init-hpr</a> with the <tt>-p</tt>
+or <tt>-r</tt> option respectively,
+for compatibility with sysvinit's <em>0</em> and <em>6</em> runlevels
+that respectively halt and reboot the machine. </li>
+</ul>
+
+<h2> Notes </h2>
+
+<ul>
+ <li> Traditional sysvinit only allows integer runlevels, from 0 to 6.
+More advanced service managers, like OpenRC or s6-rc, allow the admin to
+define alphanumerical runlevels, or <em>states</em>. <tt>s6-linux-init-telinit</tt>
+does not implement policy; it only makes sure the user-provided <tt>runlevel</tt>
+script is called with the <em>rl</em> argument, under a safe and reproducible
+environment. The <tt>runlevel</tt> script can then change the machine state
+as chosen by the user - typically by invoking the service manager. </li>
+ <li> The <tt>0</tt> and <tt>6</tt> special case has been added because
+some legacy programs may assume that calling <tt>init 0</tt> and <tt>init 6</tt>
+respectively halt and reboot the system. </li>
+ <li> The <tt>s6-linux-init-telinit</tt>
+binary is not meant to be called directly by administrators. Instead, after a
+<a href="s6-linux-init-maker.html">s6-linux-init-maker</a> invocation,
+the <tt>bin/</tt> subdirectory of the target will contain a <tt>telinit</tt>
+symlink to <tt>s6-linux-init-telinit</tt>. The <tt>bin/</tt> subdirectory
+should be copied by the administrator into <tt>/sbin</tt> for full
+interface compatibility with sysvinit. </li>
+</ul>
+
+</body>
+</html>

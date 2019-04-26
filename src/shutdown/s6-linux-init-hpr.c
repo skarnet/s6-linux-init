@@ -29,15 +29,15 @@
 #define _PATH_WTMP "/dev/null/wtmp"
 #endif
 
-#define USAGE PROGNAME " [ -h | -p | -r ] [ -d | -w ] [ -W ] [ -f ]"
+#define USAGE "s6-linux-init-hpr [ -h | -p | -r ] [ -d | -w ] [ -W ] [ -f ]"
 
 int main (int argc, char const *const *argv)
 {
-  int what = WHATDEFAULT ;
+  int what = 0 ;
   int force = 0 ;
   int dowtmp = 1 ;
   int dowall = 1 ;
-  PROG = PROGNAME ;
+  PROG = "s6-linux-init-hpr" ;
 
   {
     subgetopt_t l = SUBGETOPT_ZERO ;
@@ -59,6 +59,9 @@ int main (int argc, char const *const *argv)
     }
     argc -= l.ind ; argv += l.ind ;
   }
+
+  if (!what)
+    strerr_dief1x(100, "one of the -h, -p or -r options must be given") ;
 
   if (geteuid())
   {

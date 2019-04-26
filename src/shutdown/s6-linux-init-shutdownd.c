@@ -36,6 +36,41 @@
 
 static char const *basedir = BASEDIR ;
 
+static inline void run_stage3 (char const *basedir, char const *const *envp)
+{
+  pid_t pid ;
+  size_t basedirlen = strlen(basedir) ;
+  char stage3[basedirlen + sizeof("/" STAGE3)] ;
+  char const *stage3_argv[2] = { stage3, 0 } ;
+  memcpy(stage3, basedir, basedirlen) ;
+  memcpy(stage3 + basedirlen, "/" STAGE3, sizeof("/" STAGE3)) ;
+  pid = child_spawn0(stage3_argv[0], stage3_argv, envp) ;
+  if (pid)
+  {
+    int wstat ;
+    if (wait_pid(pid, &wstat) == -1) strerr_diefu1sys(111, "waitpid") ;
+    if (WIFSIGNALED(wstat))
+    {
+      char fmt[UINT_FMT] ;
+      fmt[uint_fmt(fmt, WTERMSIG(wstat))] = 0 ;
+      strerr_warnw3x(stage3, " was killed by signal ", fmt) ;
+    }
+    else if (WEXITSTATUS(wstat))
+    {
+      char fmt[UINT_FMT] ;
+      fmt[uint_fmt(fmt, WTERMSIG(wstat))] = 0 ;
+      strerr_warnw3x(stage3, " was killed by signal ", fmt) ;
+    }
+    else if (WEXITSTATUS(wstat))
+    {
+      char fmt[UINT_FMT] ;
+      fmt[uint_fmt(fmt, WEXITSTATUS(wstat))] = 0 ;
+      strerr_warnw3x(stage3, " exited ", fmt) ;
+    }
+  }
+  else strerr_warnwu2sys("spawn ", stage3) ;
+}
+
 static inline void prepare_shutdown (char c, unsigned int *what, tain_t *deadline, unsigned int *grace_time)
 {
   uint32_t u ;
@@ -43,22 +78,23 @@ static inline void prepare_shutdown (char c, unsigned int *what, tain_t *deadlin
   ssize_t r = sanitize_read(buffer_get(buffer_0small, pack, TAIN_PACK)) ;
   if (r == -1) strerr_diefu1sys(111, "read from pipe") ;
   if (r < TAIN_PACK + 4) strerr_dief1x(101, "bad shutdown protocol") ;
+  *what = byte_chr("Shpr", c, 4) ;
   tain_unpack(pack, deadline) ;
   uint32_unpack_big(pack + TAIN_PACK, &u) ;
   if (u && u <= 300000) *grace_time = u ;
-  *what = 1 + byte_chr("hpr", c, 3) ;
 }
 
-static inline void handle_stdin (unsigned int *what, tain_t *deadline, unsigned int *grace_time)
+static inline void handle_fifo (buffer *b, unsigned int *what, tain_t *deadline, unsigned int *grace_time)
 {
   for (;;)
   {
     char c ;
-    ssize_t r = sanitize_read(buffer_get(buffer_0small, &c, 1)) ;
+    ssize_t r = sanitize_read(buffer_get(b, &c, 1)) ;
     if (r == -1) strerr_diefu1sys(111, "read from pipe") ;
     else if (!r) break ;
     switch (c)
     {
+      case 'S' :
       case 'h' :
       case 'p' :
       case 'r' :
@@ -80,7 +116,6 @@ static inline void handle_stdin (unsigned int *what, tain_t *deadline, unsigned 
 
 static inline void prepare_stage4 (char const *basedir, unsigned int what)
 {
-  static char const *table[3] = { "halt", "poweroff", "reboot" } ;
   buffer b ;
   int fd ;
   char buf[512] ;
@@ -92,9 +127,9 @@ static inline void prepare_stage4 (char const *basedir, unsigned int what)
   if (buffer_puts(&b,
     "#!" EXECLINE_SHEBANGPREFIX "/execlineb -P\n\n"
     EXECLINE_EXTBINPREFIX "foreground { "
-    S6_LINUX_INIT_LIBEXECPREFIX "s6-linux-init-umountall }\n"
-    S6_LINUX_INIT_LIBEXECPREFIX "s6-linux-init-") < 0
-   || buffer_puts(&b, table[what-1]) < 0
+    S6_LINUX_INIT_BINPREFIX "s6-linux-init-umountall }\n"
+    S6_LINUX_INIT_BINPREFIX "s6-linux-init-hpr -") < 0
+   || buffer_put(&b, "hpr" + what - 1, 1) < 0
    || buffer_putsflush(&b, " -f\n") < 0)
     strerr_diefu2sys(111, "write to ", STAGE4_FILE ".new") ;
   if (fchmod(fd, S_IRWXU) == -1)
@@ -106,10 +141,12 @@ static inline void prepare_stage4 (char const *basedir, unsigned int what)
 
 int main (int argc, char const *const *argv, char const *const *envp)
 {
-  pid_t pid ;
-  tain_t deadline ;
   unsigned int what = 0 ;
   unsigned int grace_time = 3000 ;
+  tain_t deadline ;
+  int fdr, fdw ;
+  buffer b ;
+  char buf[64] ;
   PROG = "s6-linux-init-shutdownd" ;
 
   {
@@ -139,80 +176,46 @@ int main (int argc, char const *const *argv, char const *const *envp)
       strerr_warnwu2sys("exec ", stage4_argv[0]) ;
   }
 
-  fd_close(1) ;
-  fd_close(0) ;
-
-  if (open_read(SHUTDOWND_FIFO))
+  fdr = open_read(SHUTDOWND_FIFO) ;
+  if (fdr == -1 || coe(fdr) == -1)
     strerr_diefu3sys(111, "open ", SHUTDOWND_FIFO, " for reading") ;
-  if (open_write(SHUTDOWND_FIFO) != 1)
+  fdw = open_write(SHUTDOWND_FIFO) ;
+  if (fdw == -1 || coe(fdw) == -1)
     strerr_diefu3sys(111, "open ", SHUTDOWND_FIFO, " for writing") ;
   if (sig_ignore(SIGPIPE) == -1)
     strerr_diefu1sys(111, "sig_ignore SIGPIPE") ;
+  buffer_init(&b, &buffer_read, fdr, buf, 64) ;
   tain_now_g() ;
   tain_add_g(&deadline, &tain_infinite_relative) ;
 
   for (;;)
   {
-    iopause_fd x = { .fd = 0, .events = IOPAUSE_READ } ;
+    iopause_fd x = { .fd = fdr, .events = IOPAUSE_READ } ;
     int r = iopause_g(&x, 1, &deadline) ;
     if (r == -1) strerr_diefu1sys(111, "iopause") ;
     if (!r)
     {
+      run_stage3(basedir, envp) ;
+      tain_now_g() ;
       if (what) break ;
       tain_add_g(&deadline, &tain_infinite_relative) ;
       continue ;
     }
     if (x.revents & IOPAUSE_READ)
-      handle_stdin(&what, &deadline, &grace_time) ;
+      handle_fifo(&b, &what, &deadline, &grace_time) ;
   }
 
-
- /* Stage 3 */
-
+  fd_close(fdw) ;
+  fd_close(fdr) ;
   fd_close(1) ;
-  fd_close(0) ;
-  if (open_readb("/dev/null"))
-    strerr_diefu1sys(111, "open /dev/null for reading") ;
   if (open_write("/dev/console") != 1 || ndelay_off(1) == -1)
     strerr_diefu1sys(111, "open /dev/console for writing") ;
-  {
-    size_t basedirlen = strlen(basedir) ;
-    char stage3[basedirlen + sizeof("/" STAGE3)] ;
-    char const *stage3_argv[2] = { stage3, 0 } ;
-    memcpy(stage3, basedir, basedirlen) ;
-    memcpy(stage3 + basedirlen, "/" STAGE3, sizeof("/" STAGE3)) ;
-    pid = child_spawn0(stage3_argv[0], stage3_argv, envp) ;
-    if (pid)
-    {
-      int wstat ;
-      if (wait_pid(pid, &wstat) == -1) strerr_diefu1sys(111, "waitpid") ;
-      if (WIFSIGNALED(wstat))
-      {
-        char fmt[UINT_FMT] ;
-        fmt[uint_fmt(fmt, WTERMSIG(wstat))] = 0 ;
-        strerr_warnw3x(stage3, " was killed by signal ", fmt) ;
-      }
-      else if (WEXITSTATUS(wstat))
-      {
-        char fmt[UINT_FMT] ;
-        fmt[uint_fmt(fmt, WTERMSIG(wstat))] = 0 ;
-        strerr_warnw3x(stage3, " was killed by signal ", fmt) ;
-      }
-      else if (WEXITSTATUS(wstat))
-      {
-        char fmt[UINT_FMT] ;
-        fmt[uint_fmt(fmt, WEXITSTATUS(wstat))] = 0 ;
-        strerr_warnw3x(stage3, " exited ", fmt) ;
-      }
-    }
-    else strerr_warnwu2sys("spawn ", stage3) ;
-  }
+  if (fd_copy(2, 1) == -1) strerr_warnwu1sys("fd_copy") ;
 
 
  /* The end is coming! */
 
   prepare_stage4(basedir, what) ;
-  if (fd_move(2, 1) == -1) strerr_warnwu1sys("fd_move") ;
   sync() ;
   if (sig_ignore(SIGTERM) == -1) strerr_warnwu1sys("sig_ignore SIGTERM") ;
   strerr_warni1x("sending all processes the TERM signal...") ;

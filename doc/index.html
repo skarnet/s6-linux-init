@@ -26,19 +26,49 @@ system, including a <tt>/sbin/init</tt> binary, on a Linux kernel.
 </p>
 
 <p>
- s6-linux-init is meant to automate creation of scripts revolving
-around the use of other skarnet.org tools, especially s6, in order
-to provide a complete booting environment with integrated supervision
-and logging without having to hand-craft all the details.
+ The resulting architecture follows the Unix philosophy (one job &rarr;
+one tool) as closely as possible, and is fully dedicated to the s6 way of
+managing a system:
 </p>
+
+<ul>
+ <li> <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
+runs as process 1 for the whole machine lifetime. </li>
+ <li> Every daemon is supervised. </li>
+ <li> No logs are ever lost. </li>
+ <li> Policy is entirely left to the user. Typically, <em>any</em> service manager
+can be run on top of s6-linux-init. </li>
+</ul>
+
+<p>
+ Nevertheless, the architecture is fully compliant with various
+empirical and historical specifications. For instance, it provides:
+</p>
+
+<ul>
+ <li> utmp management compatible with sysvinit </li>
+ <li> runlevel management, with a configurable default, overridable from the
+kernel command line </li>
+ <li> sysvinit-like commands to shut the system down, including a
+<tt>shutdown</tt> command that follows the
+<a href="http://refspecs.linuxbase.org/LSB_3.0.0/LSB-PDA/LSB-PDA/shutdown.html">LSB specification</a> </li>
+</ul>
+
+<h2> Getting started </h2>
 
 <p>
  Please read the documentation for the
 <a href="s6-linux-init-maker.html">s6-linux-init-maker</a> program
 carefully, but if you're impatient, you can also read this
-<a href="quickstart.html">quickstart guide</a>, which includes
-a small FAQ.
+<a href="quickstart.html">quickstart guide</a>.
 </p>
+
+<hr />
+
+<ul>
+ <li> <a href="why.html">Why</a> s6-linux-init&nbsp;? </li>
+ <li> <a href="overview.html">An overview</a> of s6-linux-init </li>
+</ul>
 
 <hr />
 
@@ -50,30 +80,31 @@ a small FAQ.
  <li> A Linux-based system with a standard C development environment </li>
  <li> GNU make, version 3.81 or later </li>
  <li> <a href="//skarnet.org/software/skalibs/">skalibs</a> version
-2.6.4.0 or later </li>
+2.8.0.1 or later </li>
  <li> <a href="//skarnet.org/software/execline/">execline</a> version
-2.3.0.4 or later </li>
- <li> <a href="//skarnet.org/software/s6-portable-utils/">s6-portable-utils</a> version
-2.2.1.1 or later </li>
- <li> <a href="//skarnet.org/software/s6-linux-utils/">s6-linux-utils</a> version
-2.4.0.2 or later </li>
+2.5.1.0 or later </li>
  <li> <a href="//skarnet.org/software/s6/">s6</a> version
-2.7.1.0 or later </li>
+2.8.0.0 or later </li>
 </ul>
 
 <p>
-When you <em>build</em> s6-linux-init, the
- <a href="s6-linux-init-maker.html">s6-linux-init-maker</a> tool
-is created (as well as the shutdown commands);
- then you <em>run</em> that tool to create an init script,
-and then you can <em>boot</em> your system on that init script.
+ The following optional dependencies are also supported:
 </p>
 
+<ul>
+ <li> If you're using <a href="https://www.musl-libc.org/">musl</a> and
+want nsswitch-like functionality:
+<a href="//skarnet.org/software/nsss/">nsss</a> version
+0.0.1.1 or later </li>
+ <li> If you want secure utmp functionality:
+<a href="//skarnet.org/software/utmps/">utmps</a> version
+0.0.2.1 or later </li>
+</ul>
+
 <p>
- skalibs is a <em>build-time</em> dependency. If you are linking binaries
-against the shared version of the skalibs library, it also becomes a
-<em>run-time</em> and <em>boot-time</em> dependency. <br />
- All the other listed packages are <em>boot-time</em> dependencies only.
+ All those dependencies are <em>build-time</em> and <em>run-time</em>,
+except possibly skalibs, which is not needed at run time if you are linking
+all the other packages against the <em>static</em> version of libskarnet.
 </p>
 
 <h3> Licensing </h3>
@@ -87,7 +118,7 @@ against the shared version of the skalibs library, it also becomes a
 
 <ul>
  <li> The current released version of s6-linux-init is
-<a href="s6-linux-init-0.4.0.0.tar.gz">0.4.0.0</a>. </li>
+<a href="s6-linux-init-1.0.0.0.tar.gz">1.0.0.0</a>. </li>
  <li> Alternatively, you can checkout a copy of the
 <a href="//git.skarnet.org/cgi-bin/cgit.cgi/s6-linux-init/">s6-linux-init
 git repository</a>:
@@ -114,6 +145,14 @@ the previous versions of s6-linux-init and the current one. </li>
 
 <h2> Reference </h2>
 
+<h3> General </h3>
+
+<ul>
+ <li> A <a href="why.html">rationale</a> for this package </li>
+ <li> An <a href="overview.html">overview</a> of s6-linux-init </li>
+ <li> A <a href="quickstart.html">quickstart page</a> </li>
+</ul>
+
 <h3> Commands </h3>
 
 <p>
@@ -123,9 +162,14 @@ the previous versions of s6-linux-init and the current one. </li>
 
 <ul>
 <li><a href="s6-linux-init-maker.html">The <tt>s6-linux-init-maker</tt> program</a></li>
-<li><a href="s6-halt.html">The <tt>s6-halt</tt> program</a></li>
-<li><a href="s6-poweroff.html">The <tt>s6-poweroff</tt> program</a></li>
-<li><a href="s6-reboot.html">The <tt>s6-reboot</tt> program</a></li>
+<li><a href="s6-linux-init.html">The <tt>s6-linux-init</tt> program</a></li>
+<li><a href="s6-linux-init-hpr.html">The <tt>s6-linux-init-hpr</tt> program</a></li>
+<li><a href="s6-linux-init-shutdown.html">The <tt>s6-linux-init-shutdown</tt> program</a></li>
+<li><a href="s6-linux-init-shutdownd.html">The <tt>s6-linux-init-shutdownd</tt> program</a></li>
+<li><a href="s6-linux-init-telinit.html">The <tt>s6-linux-init-telinit</tt> program</a></li>
+<li><a href="s6-linux-init-logouthookd.html">The <tt>s6-linux-init-logouthookd</tt> program</a></li>
+<li><a href="s6-linux-init-echo.html">The <tt>s6-linux-init-umountall</tt> program</a></li>
+<li><a href="s6-linux-init-umountall.html">The <tt>s6-linux-init-umountall</tt> program</a></li>
 </ul>
 
 <h2> Related resources </h2>

@@ -21,27 +21,25 @@
 <p>
 <tt>s6-linux-init-maker</tt> reads configuration options on
 the command line, and outputs a directory to place in the
-root filesystem. That directory contains a script suitable
-as an init program, as well as support file hierarchies to
-get a complete
+root filesystem. That directory contains
+a script that is suitable as an <tt>/sbin/init</tt> program
+as well as all the necessary files that this script needs
+to properly boot and bring up a full
 <a href="//skarnet.org/software/s6/">s6</a>
-infrastructure running when the system is booted on that
-script.
+infrastructure.
 </p>
 
 <p>
  s6-linux-init-maker only writes scripts. At boot time, these
 scripts will call commands provided by other skarnet.org packages
 such as
-<a href="//skarnet.org/software/execline/">execline</a> or
+<a href="//skarnet.org/software/execline/">execline</a> and
 <a href="//skarnet.org/software/s6/">s6</a>. It is the
 responsibility of the administrator to make sure that all the
 dependencies are properly installed at boot time, and that the
-correct options have been given to s6-linux-init-maker so that
-the programs are found <em>on the root filesystem of the
-machine</em> - else the scripts will crash.
-</p>
-
+correct options have been given to <tt>s6-linux-init-maker</tt>
+so that the programs are found <em>on the root filesystem of the
+machine</em>. If it is not the case, the system will fail to boot.
 </p>
 
 <h2> Interface and usage </h2>
@@ -49,7 +47,7 @@ machine</em> - else the scripts will crash.
 <pre>
      s6-linux-init-maker \
        [ -c <em>basedir</em> ] \
-       [ -u <em>log_uid</em> -g <em>log_gid</em> | -U ] \
+       [ -u <em>log_user</em> ] \
        [ -G <em>early_getty</em> ] \
        [ -1 ] \
        [ -L ] \
@@ -59,13 +57,15 @@ machine</em> - else the scripts will crash.
        [ -d <em>dev_style</em> ] \
        [ -s <em>env_store</em> ] \
        [ -e <em>initial_envvar</em> ] ... \
-       [ -E <em>stage2_envvar</em> ] ... \
        [ -q ] <em>finalsleeptime</em>
+       [ -D <em>initdefault</em> ] \
+       [ -U <em>utmp_user</em> ] \
        <em>dir</em>
 </pre>
 
 <ul>
- <li> s6-linux-init-maker should be run as root. </li>
+ <li> s6-linux-init-maker must be run as root, on the machine
+that will boot an s6-based system. </li>
  <li> s6-linux-init-maker parses options on its command line. </li>
  <li> It writes data into a directory <em>dir</em>, which must not
 exist beforehand. </li>
@@ -75,171 +75,72 @@ or its contents. </li>
 </ul>
 
 <p>
- <em>dir</em> should then be copied by the administrator to the place
-declared as <em>basedir</em>. Be careful: it contains fifos, files with
+ Once the command has been run and <em>dir</em> has been created, there
+are a few manual steps to take:
+</p>
+
+<ol>
+ <li> <tt>s6-linux-init-maker</tt> has copied some scripts from the
+<tt>/etc/s6-linux-init/skel</tt> directory (or the directory you
+gave as an argument to the <tt>--skeldir</tt> configure option at
+build time) to the <em>dir</em><tt>/scripts</tt> directory. You
+should <strong>edit these scripts</strong> and adapt them to your use case.
+(Or you could edit the skeleton scripts before running
+<tt>s6-linux-init-maker</tt>.) The scripts are:
+  <ul>
+   <li> <tt>rc.init</tt>: this script will be run as <em>stage 2
+initialization</em>, i.e. the initialization that happens once
+<a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
+is running as process 1, and should contain all your normal
+system bootup tasks. Typically, it should initialize the service
+manager and then order it to bring the machine state to its
+fully operational state. <em>rc.init</em> is given the default
+<em>runlevel</em> as a first argument (i.e. the name of the state
+the machine should be brought to, traditionally <tt>default</tt>
+for OpenRC and <tt>2</tt> or <tt>5</tt> for sysv-rc), and the
+rest of the command line is made of the kernel's command line
+except for the kernel arguments of the <em>key=value</em> form,
+which have been stored into <em>env_store</em>. </li>
+ <li> <tt>rc.shutdown</tt>: this script will be run as the
+<em>shutdown sequence</em>, when the administrator runs the
+<tt>shutdown</tt>, <tt>halt</tt>, <tt>poweroff</tt> or <tt>reboot</tt>
+command. (As well as <tt>init 0</tt>, <tt>init 6</tt>.
+<tt>telinit 0</tt> and <tt>telinit 6</tt> for compatibility
+reasons.) It should ask the service manager to bring all the
+services down, and exit when it's done (in other words: it should
+not try to perform a hard halt/poweroff/reboot itself.)
+No arguments are given to this script. </li>
+ <li> <tt>runlevel</tt>: this script will be invoked for every
+<em>runlevel change</em>, i.e. change of machine states. It is
+given one argument: the name of the runlevel to change to.
+Typically, the <em>runlevel</em> script should just invoke the
+service manager, asking it to bring the machine state to the
+wanted runlevel. </li>
+  </ul> </li>
+ <li> Copy the <em>dir</em> directory to the place declared as
+<em>basedir</em> (<tt>/etc/s6-linux-init/current</tt> by default).
+ Be careful: it contains fifos, files with
 precise uid/gid permissions, and files with non-standard access rights,
 so be sure to copy it verbatim. The
 <a href="//skarnet.org/software/s6-portable-utils/s6-hiercopy.html">s6-hiercopy</a>
-tool can do it, as well as the GNU or busybox <tt>cp -a</tt> or <tt>mv</tt> commands.
-</p>
-
-<p>
- The <tt><em>basedir</em>/bin</tt> directory contains scripts, or
-links to programs, that are suitable as System V-compatible programs
-of the same name; the administrator should copy them to (or symlink
-them from) a place where those programs are usually found, typically
-<tt>/sbin</tt>.
-</p>
-
-<p>
- In particular, the <tt><em>basedir</em>/bin/init</tt> script
-suitable as a "stage 1" init program, i.e. the first program
-run by the kernel (possibly after an initramfs execution).
-Once this script is copied to, or symlinked from,
-<tt>/sbin/init</tt>, the machine will be ready to boot on the
-new s6-based system.
-</p>
+tool can do it, as well as the GNU or busybox <tt>cp -a</tt> or <tt>mv</tt> commands. </li>
+ <li> Back up your <tt>/sbin</tt>. Then copy, link or symlink all the scripts
+and symlinks in the <em>basedir</em><tt>/bin</tt> directory into <tt>/sbin</tt>.
+ In particular, the <tt><em>basedir</em>/bin/init</tt> script should
+be accessible as <tt>/sbin/init</tt>. </li>
+</ol>
 
 <h2> Boot sequence </h2>
 
 <p>
  When the kernel boots, it may run an initramfs first, but in any
 case it then runs the <tt><em>basedir</em>/init</tt> script,
-also known as <em>stage 1</em>. This is what happens during stage 1:
-</p>
-
-<ul>
- <li> <em>stage 1</em> is an
-<a href="//skarnet.org/software/execline/">execline</a> script, so
-the first process run by the kernel is the
-<a href="//skarnet.org/software/execline/execlineb.html">execlineb</a>
-program launcher. </li>
- <li> <em>stage 1</em> mounts a
-<a href="https://www.kernel.org/doc/Documentation/filesystems/tmpfs.txt">tmpfs</a>
-filesystem on <em>tmpfsdir</em>. </li>
- <li> <em>stage 1</em> copies <tt><em>basedir</em>/run-image</tt> verbatim to
-<em>tmpfsdir</em>. </li>
- <li> <em>stage 1</em> empties its environment, then reads a global set of environment variables from the
-<tt><em>basedir</em>/env</tt>
-<a href="//skarnet.org/software/s6/s6-envdir.html">environment directory</a>. </li>
- <li> <em>stage 1</em> forks a child that will block until
-<a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a> is running. </li>
- <li> <em>stage 1</em> executes, as process 1, into
-<a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>,
-with <tt><em>tmpfsdir</em>/service</tt> as a
-<a href="//skarnet.org/software/s6/scandir.html">scan directory</a>. </li>
- <li> This scan directory already contains at least one service, which is the
-<em>catch-all logger</em>: error messages from the supervision tree, and
-from services that do not have a dedicated logger, are handled by a
-special <a href="//skarnet.org/software/s6/s6-log.html">s6-log</a>
-instance and made available in <tt><em>tmpfsdir</em>/uncaught-logs</tt>
-instead of clogging the system console. </li>
- <li> If the <tt>-G</tt> option has been given to s6-linux-init-maker, the
-scan directory will also contain a service for an early getty. </li>
- <li> s6-svscan starts all the services defined in the scan directory,
-and unblocks the child forked by <em>stage 1</em>. </li>
- <li> This child executes into <em>initscript</em>. </li>
-</ul>
-
-<p>
- <em>initscript</em> is the responsibility of the administrator - it will
-not be written automatically!
-It should
-contain all the necessary initialization sequence to bring up a proper
-system. When <em>initscript</em> is executed, the machine state is as follows:
-</p>
-
-<ul>
- <li> <em>initscript</em>'s working directory is <tt>/</tt> and its stdin
-is <tt>/dev/null</tt>. Its
-stdout and stderr both point either to <tt>/dev/console</tt> or to the pipe
-to the catch-all logger, depending on the <tt>-r</tt> option. </li>
- <li> The system has a valid device directory mounted on <tt>/dev</tt>. </li>
- <li> Depending on the kernel boot command line, the root filesystem
-may be in read-only mode. </li>
- <li> There is a tmpfs available for root only in <em>tmpfsdir</em>. </li>
- <li> <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
-is running as process 1. At any time, it is possible to make it supervise a long-lived
-process by linking the appropriate
-<a href="//skarnet.org/software/s6/servicedir.html">service directory</a>
-into <tt><em>tmpfsdir</em>/service</tt>, then running the command
-<tt>s6-svscanctl -a <em>tmpfsdir</em>/service</tt>. Services without a
-dedicated logger will send their output to the catch-all logger. </li>
- <li> A getty service may already be available. The point of this early
-getty is essentially to make it easier to debug if <em>initscript</em> fails. </li>
-</ul>
-
-<p>
- There is <em>nothing else</em>. In particular, no filesystem has been
-mounted yet, including <tt>/proc</tt> and <tt>/sys</tt>; and no one-time
-initialization
-has been performed. The point of <em>stage 1</em> is only to make it
-possible to run <em>initscript</em> with a logging infrastructure and a
-supervision infrastructure already available, and all the
-real machine and service initialization should happen in <em>initscript</em>,
-also known as <em>stage 2</em>.
-</p>
-
-<h2> Shutdown sequence </h2>
-
-<ul>
-
- <li> A shutdown is performed when the administrator runs one of the
-<a href="s6-halt.html">s6-halt</a>,
-<a href="s6-poweroff.html">s6-poweroff</a> or
-<a href="s6-reboot.html">s6-reboot</a> commands. </li>
-
- <li> Those commands send a signal to the
-<a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
-process running as pid 1; this signal is caught and s6-svscan runs the
-corresponding "signal handler" script that has been placed by
-s6-linux-init-maker into the
-<tt><em>basedir</em>/run-image/service/.s6-svscan</tt> directory (and that
-has been copied at boot time to <tt><em>tmpfsdir</em>/service/.s6-svscan</tt>). </li>
-
- <li> That script first spawns the <em>shutdownscript</em> script, who
-must have been written by the administrator. The purpose of
-<em>shutdownscript</em> is to perform the high-level shutdown sequence
-while the supervision tree is still alive. Typically, when using a
-service manager, <em>shutdownscript</em> would tell the service manager
-to bring all services down. When using
-<a href="//skarnet.org/software/s6-rc/">s6-rc</a>, a typical
-<em>stage2_finish</em> script just contains <tt>s6-rc -da change</tt>.
- More generally speaking, <em>shutdownscript</em> should undo what
-<em>stage2</em> has done at boot time. </li>
-
- <li> The "signal handler" script then tells s6-svscan to exit via an
-appropriate <a href="//skarnet.org/software/s6/s6-svscanctl.html">s6-svscanctl</a>
-command: s6-svscan then executes into the final shutdown sequence. This
-sequence is made of the following actions:
-
-<ul>
- <li> The supervision tree gets torn down. </li>
- <li> All data is flushed to disk. </li>
- <li> All processes get a SIGTERM, a SIGHUP, and a SIGCONT. This should
-allow all processes to die gracefully. Note that most processes should
-already have been killed during the <tt>/etc/rc.shutdown</tt> execution;
-this phase only catches stragglers, background processs, etc. </li>
- <li> The sequence sleeps for <em>finalsleeptime</em> milliseconds, to
-allow all processes to finish their clean exit routine. </li>
- <li> All processes get a SIGKILL. </li>
- <li> All zombies are reaped. </li>
- <li> All filesystems get unmounted, and the root filesystem is remounted
-read-only. </li>
- <li> The machine performs a hardware reboot, halt or poweroff, depending
-on the command that has been used. </li>
-</ul> </li>
-
-</ul>
-
-<p>
- The <tt>examples/</tt> subdirectory of the s6-linux-init package
-contains an example of <tt>/etc/rc.init</tt>
-and <tt>/etc/rc.shutdown</tt> scripts, suitable for
-<em>initscript</em> and <em>shutdownscript</em>
-respectively. Those scripts can practically be used as is if the machine
-is managed by the <a href="//skarnet.org/software/s6-rc/">s6-rc</a>
-service manager.
+also known as <em>stage 1</em>. This script is just an execution
+of the <a href="s6-linux-init.html">s6-linux-init</a> program with
+some command-line options that are directly transferred from the
+<tt>s6-linux-init-maker</tt> invocation. Refer to the
+<a href="s6-linux-init.html">s6-linux-init</a> man page to know
+exactly what it does.
 </p>
 
 <h2> s6-linux-init-maker options </h2>
@@ -248,60 +149,50 @@ service manager.
  <li> <tt>-c</tt>&nbsp;<em>basedir</em>&nbsp;: at boot time, <em>stage 1</em>,
 which should be accessible as <tt><em>basedir</em>/init</tt>,
 will read its read-only data from <em>basedir</em>. After running
-s6-linux-init-maker, the administrator should make sure to copy the
+<tt>s6-linux-init-maker</tt>, you should make sure to copy the
 created directory <em>dir</em> to <em>basedir</em>. <em>basedir</em>
 must be absolute. Default is
-<strong><tt>/etc/s6-linux-init</tt></strong>. </li> <p />
+<strong><tt>/etc/s6-linux-init/current</tt></strong>. </li> <p />
 
- <li> <tt>-u</tt>&nbsp;<em>log_uid</em>&nbsp;: the catch-all
-logger will run with the uid <em>log_uid</em>. Default is 0. </li> <p />
-
- <li> <tt>-g</tt>&nbsp;<em>log_gid</em>&nbsp;: the catch-all
-logger will run with the gid <em>log_gid</em>. Default is 0. </li> <p />
-
- <li> <tt>-U</tt>&nbsp;: the correct <em>log_uid</em> and
-<em>log_gid</em> values for the catch-all logger will be read from the
-UID and GID environment variables that have been passed to
-s6-linux-init-maker. This allows for invocations such as
-<tt>s6-envuidgid nobody s6-linux-init-maker -U ...</tt> so that
-the catch-all logger runs as the <tt>nobody</tt> user. Be aware that
-this option is only safe when the user database on the
-<em>boot-time</em> machine is the same as on the <em>run-time</em>
-machine, else the catch-all logger may run with an unexpected uid
-and gid. </li> <p />
+ <li> <tt>-u</tt>&nbsp;<em>log_user</em>&nbsp;: the catch-all
+logger will run as the <em>log_user</em> user. Default is <tt>root</tt>. </li> <p />
 
  <li> <tt>-G</tt>&nbsp;<em>early_getty</em>&nbsp;: if this option
-is set, s6-linux-init-maker will define a service that will run
-very early, before <em>stage2</em> is executed. This early service
-should be a getty, to allow logins even if <em>stage2</em> fails.
+is set, <tt>s6-linux-init-maker</tt> will define an additional s6 service
+that will be named <tt>s6-linux-init-early-getty</tt> and started
+at the same time <em>rc.init</em> is executed. This early service
+should be a getty, or equivalent, to allow logins even if <em>stage2</em> fails.
 <em>early_getty</em> should be a simple command line: for instance,
 <tt>"/sbin/getty 38400 tty1"</tt>. By default, no early service
 is defined. </li> <p />
 
  <li> <tt>-1</tt>&nbsp;: make it so that all the messages that are
 sent to the catch-all logger (i.e. all the error messages that are not
-caught by a dedicated logger, as well as the output from <em>stage2</em>)
+caught by a dedicated logger, as well as the output from <em>rc.init</em>,
+<em>runlevel</em> and <em>rc.shutdown</em>,
 are also copied to <tt>/dev/console</tt>. This is generally useful to
 debug a system at a glance, but if a failing program keeps sending
 error messages, it may interfere with comfortable usage of an early
-getty. </li>
+getty. A common workaround is to make the early getty start on
+<tt>tty2</tt> and leave tty1 for <tt>/dev/console</tt> to print on. </li> <p />
+
+ <li> <tt>-L</tt>&nbsp;: add an early <tt>s6-linux-init-logouthookd</tt>
+service to clean up utmp records at user logout time. Check the
+<a href="s6-linux-init-logouthookd">s6-linux-init-logouthookd</a> page
+for details. </li> <p />
 
  <li> <tt>-p</tt>&nbsp;<em>initial_path</em>&nbsp;: the value to
 set the PATH environment variable to, for all the starting processes.
-This will be done as early as possible in <em>stage 1</em>. It is
-absolutely necessary for
-<a href="//skarnet.org/software/execline/">execline</a>,
-<a href="//skarnet.org/software/s6/">s6</a>,
-<a href="//skarnet.org/software/s6-portable-utils/">s6-portable-utils</a> and
-<a href="//skarnet.org/software/s6-linux-utils/">s6-linux-utils</a>
+It is absolutely necessary for
+<a href="//skarnet.org/software/execline/">execline</a> and
+<a href="//skarnet.org/software/s6/">s6</a>
 binaries to be accessible via <em>initial_path</em>, else the machine
 will not boot. Default is
 <strong><tt>/usr/bin:/bin</tt></strong>. </li> <p />
 
  <li> <tt>-m</tt>&nbsp;<em>initial_umask</em>&nbsp;: the value of
 the initial file umask for all the starting processes, in octal.
-Default is
-<strong><tt>022</tt></strong>. </li> <p />
+Default is <strong><tt>022</tt></strong>. </li> <p />
 
  <li> <tt>-t</tt>&nbsp;<em>timestamp_style</em>&nbsp;: how
 logs are timestamped by the catch-all logger. 0 means no
@@ -319,38 +210,36 @@ devtmpfs automounted by the kernel at boot time. Default is
 <strong><tt>2</tt></strong>. </li> <p />
 
  <li> <tt>-s</tt>&nbsp;<em>env_store</em>&nbsp;: stage 1 init sometimes
-inherits a few environment variables from the kernel. It empties its
-environment before spawning stage2 and executing into s6-svscan, in
+inherits a few environment variables from the kernel. (These variables
+correspond to the arguments on the kernel command line that are of the
+form <em>key=value</em>.) It empties its
+environment before spawning <em>rc.init</em> and executing into s6-svscan, in
 order to prevent those "kernel" environment variables from leaking
 into the whole process tree. However, sometimes those variables are
 needed at a later time; in that case, giving the <tt>-s</tt> option
-to s6-linux-init-maker makes stage 1 init dump the "kernel" environment
-variables into the <em>env_store</em> directory, via the
-<a href="//skarnet.org/software/s6-portable-utils/s6-dumpenv.html">s6-dumpenv</a>
-program, before erasing them. <em>env_store</em> should obviously be
-a writable directory, so it should be located under <em>tmpfsdir</em>!
-If this option is not given (which is the default), the environment
-inherited from the kernel isn't saved anywhere. </li> <p />
+to <tt>s6-linux-init-maker</tt> makes stage 1 init dump the "kernel" environment
+variables into the <em>env_store</em> directory (under a format that is
+later readable with
+<a href="//skarnet.org/software/s6/s6-envdir.html">s6-envdir -fn</a>)
+before erasing them. <em>env_store</em> should obviously be
+a writable directory, so it should be located under <tt>/run</tt>
+(or your chosen tmpfsdir)!
+If this option is not given, the environment inherited from the kernel
+isn't saved anywhere - which is the default. </li> <p />
 
  <li> <tt>-e</tt>&nbsp;<em>initial_envvar</em>&nbsp;: this option
-can be repeated. For every <em>initial_envvar</em>, s6-linux-init-maker
+can be repeated. For every <em>initial_envvar</em>, <tt>s6-linux-init-maker</tt>
 will adjust the global environment directory in <em>dir</em>/env.
 <em>initial_envvar</em> must either be of the form <em>VAR</em>,
 to make sure that <em>VAR</em> does not appear in the global
 environment, or of the form <em>VAR=VALUE</em>, to add an
 environment variable <em>VAR</em> with the value <em>VALUE</em>.
 The global environment is the environment that every supervised
-process (as well as the <em>stage2</em> script) will run with,
+process (as well as the <em>rc.init</em> script) will run with,
 so it will be inherited by default by every process running on
 the system.
 The TZ variable, for instance, is a good candidate to be set in
 the global environment. </li> <p />
-
- <li> <tt>-E</tt>&nbsp;<em>stage2_envvar</em>&nbsp;: same behaviour
-as the <tt>-e</tt> option, except that every declared
-<em>stage2_envvar</em> will be put in the environment run by the
-<em>stage2</em> script. They will not be put in the global
-environment. </li>
 
  <li> <tt>-q</tt>&nbsp;<em>finalsleeptime</em>&nbsp;: when the machine
 shuts down, all processes that have not already been killed during
@@ -361,9 +250,112 @@ will go on. This option configures the amount of time that will
 elapse between the SIGTERM/SIGHUP and the SIGKILL.
 Default is <strong>2000</strong>, meaning a grace period of 2 seconds. </li> <p />
 
+ <li> <tt>-D</tt>&nbsp;<em>initdefault</em>&nbsp;: boot the system with
+a runlevel set to <em>initdefault</em>, which can be an arbitrary
+string, but is usually <tt>2</tt>, <tt>3</tt>, <tt>5</tt> (traditional
+sysvinit behaviour) or <tt>default</tt> (OpenRC behaviour). Default is
+<tt>default</tt>. Note that if a <tt>2</tt>, <tt>3</tt>, <tt>4</tt>,
+<tt>5</tt>, or <tt>default</tt> argument is encountered in the kernel
+command line, it will be interpreted as the runlevel to boot the system
+on, and will override the default given here. </li> <p />
+
+ <li> <tt>-U</tt>&nbsp;<em>utmp_user</em>&nbsp;: this option is only
+available when the s6-linux-init package has been built with the
+<tt>--enable-utmps</tt> configure option, that enables support for the
+<a href="//skarnet.org/software/utmps/">utmps</a> package. The option
+defines the user that the <tt>utmpd</tt> and <tt>wtmpd</tt> services
+will run as. Default is <tt>utmp</tt>. </li> <p />
+</ul>
+
+<h2> Organization of the created directory </h2>
+
+<p>
+ If <tt>s6-linux-init-maker</tt> returns successfully, <em>dir</em>
+contains data that will be used at boot time. (Actually,
+<em>basedir</em> will be used at boot time, not <em>dir</em>. Do not
+forget to copy <em>dir</em> to <em>basedir</em> once you have checked
+you are happy with what <tt>s6-linux-init-maker</tt> has created.)
+</p>
+
+<p>
+ This boot-time data is made of several subdirectories:
+</p>
+
+<ul>
+ <li> <tt>bin</tt>: this subdirectory contains scripts and symlinks
+that should be copied to <tt>/sbin</tt> or <tt>/bin</tt>. There is
+an <tt>init</tt> program performing stage 1 init, a <tt>telinit</tt>
+program to change runlevels, and utilities to order a machine shutdown. </li>
+ <li> <tt>env</tt>: this subdirectory is the envdir that is
+used to store the global environment. It will be read at boot time
+by stage 1 init, and transmitted to all spawned processes. </li>
+ <li> <tt>scripts</tt>: this subdirectory contains a copy of the
+skeleton scripts that have been installed in <tt>/etc/s6-linux-init/skel</tt>
+(or the argument to the <tt>--skeldir</tt> configure option at
+build time). These scripts should be edited before booting. They are
+described above. </li>
+ <li> <tt>run-image</tt>: this is a file hierarchy that will be
+copied verbatim at boot time to the newly made and mounted
+<tt>/run</tt> tmpfs (or whatever your <em>tmpfsdir</em> is). The
+subdirectories it contains are the following:
+  <ul>
+   <li> <tt>uncaught-logs</tt>: this is the directory where the
+catch-all logger will store and rotate the error messages produced
+by the s6 supervision tree and the services that do not redirect
+their own logs. </li>
+   <li> <tt>service</tt>: <tt>/run/service</tt> will be the scandir.
+It initially contains a <tt>.s6-svscan</tt> subdirectory that
+tells <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
+what to do if it receives a signal (typically via the ctrlaltdel
+combination) and ensures a hard reboot if <tt>s6-svscan</tt> ever fails. It
+also contains a list of early services, i.e. s6 services that will
+be run at boot time as soon as <tt>s6-svscan</tt> is executed. These
+services are:
+    <ul>
+     <li> <tt>s6-svscan-log</tt>: the catch-all logger. </li>
+     <li> <tt>s6-linux-init-shutdownd</tt>: a service that listens
+to shutdown commands such as <tt>reboot</tt> and triggers the software
+shutdown procedure. The service is asleep for the whole lifetime of
+the machine and uses very few resources. </li>
+     <li> <tt>s6-linux-init-runleveld</tt>: a service that listens
+to runlevel change commands such as <tt>telinit</tt> and calls the
+<em>runlevel</em> script in a reproducible environment to bring the
+machine to the wanted state. </li>
+     <li> (If the <tt>-L</tt> option has been given to
+<tt>s6-linux-init-maker</tt>) <tt>s6-linux-init-logouthookd</tt>:
+the "clean up user utmp records at logout time" service. See the
+<a href="s6-linux-init-logouthookd.html">s6-linux-init-logouthookd</a>
+page for details. </li>
+     <li> (If the <tt>-G</tt> option has been given to
+<tt>s6-linux-init-maker</tt>) <tt>s6-linux-init-early-getty</tt>:
+the early getty service, that will allow a user to log in even if
+<em>rc.init</em> fails to bring the machine to a state where logins
+are possible. </li>
+    </ul> </li>
+  </ul> </li>
+</ul>
+
+<p>
+ If s6-linux-init has been built with
+<a href="//skarnet.org/software/utmps/">utmps</a> support, some more
+directories may exist:
+</p>
+
+<ul>
+ <li> A directory somewhere under <tt>run-image</tt>, by default <tt>utmp</tt>,
+that is the location where the utmp and wtmp files will be created. </li>
+ <li> Two additional early services named <tt>utmpd</tt> and <tt>wtmpd</tt>,
+that are the <a href="//skarnet.org/software/utmps/">utmps</a> way of
+providing secure utmp functionality. </li>
 </ul>
 
 <h2> Notes </h2>
+
+<p>
+ A directory created by <tt>s6-linux-init-maker</tt> is only valid on
+the machine it has been created on. Pre-creating init directories for
+other machines is not supported.
+</p>
 
 <p>
  The difficult parts of
@@ -380,22 +372,27 @@ tree's output away from <tt>/dev/console</tt> (which is fine for a
 first process invocation but impractical for log management of a
 whole process tree) and into a logger that is itself managed by the
 supervision tree it's reading data from. </li>
+ <li> Keeping appearances of compatibility with another init system
+is difficult: in particular, the mechanisms around the shutdown
+procedure are fundamentally different from about any other init
+system, so even a simple command such as <tt>reboot</tt> needs an
+ad-hoc implementation. </li>
 </ul>
 
 <p>
- The main benefit of s6-linux-init-maker is that it automates those
-parts. This means that it has been designed for <em>real hardware</em>
-where the above issues apply.
- If you are building an init system for a
-virtual machine, a container, or anything similar that does not
-have the <tt>/dev/console</tt> issue or the read-only rootfs issue,
-you will probably not reap much benefit from using s6-linux-init-maker:
+ The main benefit of <tt>s6-linux-init-maker</tt> is that it offers
+transparent compatibility while automating the tricky technical part.
+That means that <tt>s6-linux-init-maker</tt> has been designed for
+<em>real hardware</em>, or at least full-fledged Linux systems,
+where the above issues apply. If you are building an init system for a
+container, or anything similar that does not
+have the <tt>/dev/console</tt> issue, the read-only rootfs issue,
+or the need for sysvinit compatibility,
+you will probably not reap much benefit from using <tt>s6-linux-init-maker</tt>:
 you could probably invoke
 <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
 directly as your process 1, or build a script by hand, which
 would result in a simpler init with less dependencies.
-Nevertheless, if you prefer using s6-linux-init-maker, it
-supports this case via the <tt>-n</tt> option.
 </p>
 
 </body>

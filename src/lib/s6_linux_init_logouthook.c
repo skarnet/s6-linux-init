@@ -3,6 +3,7 @@
 #include <skalibs/djbunix.h>
 #include <skalibs/webipc.h>
 
+#include <s6-linux-init/s6-linux-init.h>
 #include "initctl.h"
 
 int s6_linux_init_logouthook (void)

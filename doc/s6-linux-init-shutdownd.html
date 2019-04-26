@@ -42,7 +42,7 @@ created the shutdownd service. </li>
  <li> When this script exits, <tt>s6-linux-init-shutdownd</tt> kills all
 processes, first with a SIGTERM, then (after the grace time specified by
 the shutdown command) with a SIGKILL. </li>
- <li> It then runs the automatically-generated <em>stage 4</em> script,
+ <li> It then runs an automatically-generated script (called <em>stage 4</em>),
 which unmounts the file systems and halts, powers off or reboots the
 machine. </li>
 </ul>
@@ -58,8 +58,8 @@ machine. </li>
 
 <ul>
  <li> <tt>-c&nbsp;<em>basedir</em></tt>&nbsp;: look for the
-<em>stage3</em> and <em>stage4</em> scripts in the <em>basedir</em>
-directory. Default is <tt>/etc/s6-linux-init</tt>. </li>
+<em>rc.shutdown</em> script in the <em>basedir</em><tt>/scripts</tt>
+directory. Default is <tt>/etc/s6-linux-init/current</tt>. </li>
  <li> <tt>-g&nbsp;<em>gracetime</em></tt>&nbsp;: if the shutdown command
 does not specify a grace time between the SIGTERM and the SIGKILL, use
 <em>gracetime</em> milliseconds. Default is 3000. </li>

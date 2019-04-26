@@ -358,6 +358,13 @@ other machines is not supported.
 </p>
 
 <p>
+ After booting, <em>basedir</em> should remain untouched during the
+lifetime of the machine, because the machine state change and shutdown
+procedures will look for data in <em>basedir</em>. New invocations of
+<tt>s6-linux-init-maker</tt> should use a different <em>basedir</em>.
+</p>
+
+<p>
  The difficult parts of
 <a href="//skarnet.org/software/s6/s6-svscan-1.html">running
 s6-svscan as process 1</a> are:

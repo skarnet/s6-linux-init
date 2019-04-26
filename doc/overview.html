@@ -26,16 +26,16 @@ following:
 </p>
 
 <ul>
- <li> <em>Binaries</em>, that are typically installed in <tt>/bin</tt>
+ <li> <em>Binaries</em>, that are typically installed in <tt>/bin</tt>:
   <ul>
    <li> <a href="s6-linux-init-maker.html">s6-linux-init-maker</a> is the main
 program of the package and is used to create <tt>/sbin/init</tt> scripts
 and their supporting environment depending on configuration parameters
 given on its command line. </li>
    <li> <a href="s6-linux-init-hpr.html">s6-linux-init-hpr</a> is an
-implementation of the sysv <tt>halt</tt>, <tt>poweroff</tt> and <tt>reboot</tt>
+implementation of the SysV <tt>halt</tt>, <tt>poweroff</tt> and <tt>reboot</tt>
 commands; <a href="s6-linux-init-telinit.html">s6-linux-init-telinit</a>
-is an implementation of the sysv <tt>telinit</tt> command; and
+is an implementation of the SysV <tt>telinit</tt> command; and
  <a href="s6-linux-init-shutdown.html">s6-linux-init-shutdown</a>
 is an implementation of the
 <a href="http://refspecs.linuxbase.org/LSB_3.0.0/LSB-PDA/LSB-PDA/shutdown.html">shutdown</a>
@@ -44,8 +44,8 @@ implementation of stage 1 <tt>/sbin/init</tt>, but it needs to be
 given command-line options in order to do what the user has chosen.
 An invocation of <a href="s6-linux-init-maker.html">s6-linux-init-maker</a>
 will create proper wrappers for all those commands, named after their
-short sysv names; the wrappers are directly usable as turnkey replacements
-for sysv commands. </li>
+short SysV names; the wrappers are directly usable as turnkey replacements
+for SysV commands. </li>
    <li> Other binaries are support binaries, not meant to be called
 directly by the user. They are called internally, in scripts
 created by a
@@ -63,7 +63,7 @@ page for details. </li> <p />
  <li> <em>Skeleton scripts</em>, installed by default in
 <tt>/etc/s6-linux-init/skel</tt>; that location can be changed at build
 time via the <tt>--skeldir</tt> configure option. At
-<tt>s6-linux-init-maker</tt>, the scripts are copied from the skeleton
+<tt>s6-linux-init-maker</tt> invocation time, the scripts are copied from the skeleton
 directory to the <tt>scripts</tt> subdirectory of the directory created
 by <tt>s6-linux-init-maker</tt>, and the copy is meant to be edited
 by the user. The skeleton scripts are commented and examples of

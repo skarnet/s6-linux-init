@@ -106,14 +106,14 @@ it uses <em>initdefault</em>. </li>
   </ul> </li>
  <li> It also makes the catch-all logger's fifo its stderr. </li>
  <li> It execs into <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
-with <tt>/run/service</tt> as its scandir (or <em>tmpfsdir</em>/service) </li>.
+with <tt>/run/service</tt> as its scandir (or <em>tmpfsdir</em>/service). </li>
   <ul>
    <li> <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
 spawns the early services that are defined in
 <tt><em>basedir</em>/run-image/service</tt>, and have been copied into
 <tt>/run/service</tt> (or <em>tmpfsdir</em>/service). </li>
    <li> One of those early services is <tt>s6-svscan-log</tt>, which is
-the catch-all logger. When this service is up, <tt>s6-linux-init<tt>'s
+the catch-all logger. When this service is up, <tt>s6-linux-init</tt>'s
 child unblocks. </li>
    <li> The child execs into <tt><em>basedir</em>/scripts/rc.init</tt>.
 The first argument to <em>rc.init</em> is the chosen runlevel. The kernel

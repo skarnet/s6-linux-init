@@ -22,8 +22,9 @@
 <p>
  <tt>s6-linux-init-hpr</tt> triggers the software shutdown procedure,
 or, with the <tt>-f</tt> option, it perform an immediate hardware shutdown.
-It is normally invoked as <tt>/sbin/halt</tt>, <tt>/sbin/poweroff</tt> or
-<tt>/sbin/reboot</tt>.
+It is normally invoked through <tt>halt</tt>, <tt>poweroff</tt> or
+<tt>reboot</tt> wrappers created by
+<a href="s6-linux-init-maker.html">s6-linux-init-maker</a>.
 </p>
 
 <h2> Interface </h2>
@@ -33,7 +34,7 @@ It is normally invoked as <tt>/sbin/halt</tt>, <tt>/sbin/poweroff</tt> or
 </pre>
 
 <ul>
- <li> If the <tt>-f</tt> option is present, the hardware command is executed immediately. </li>
+ <li> If the <tt>-f</tt> option is present, the system is stopped or rebooted immediately. </li>
  <li> Else, the machine's shutdown procedure is started.
  <li> The command exits 0; the shutdown procedure happens asynchronously. </li>
 </ul>
@@ -44,14 +45,6 @@ It is normally invoked as <tt>/sbin/halt</tt>, <tt>/sbin/poweroff</tt> or
 <tt>s6-linux-init-hpr</tt> must always be called with one of the
 <tt>-h</tt>, <tt>-p</tt> or <tt>-r</tt> options.
 </p>
-
-<h2> Exit codes </h2>
-
-<ul>
- <li> 0: shutdown procedure triggered. </li>
- <li> 100: wrong usage, or user does not have root privileges. </li>
- <li> 111: system call failed. </li>
-</ul>
 
 <h2> Options </h2>
 

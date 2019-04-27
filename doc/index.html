@@ -148,8 +148,10 @@ the previous versions of s6-linux-init and the current one. </li>
 <h3> Commands </h3>
 
 <p>
- All these commands exit 111 if they encounter a temporary error, and
-100 if they encounter a permanent error - such as a misuse.
+ Unless more details are provided in an <em>Exit codes</em> section
+of a specific page, all these commands exit 0 on success, 111 if they encounter a
+temporary error (such as a system call failure) and 100 if they encounter a
+permanent error (such as a misuse).
 </p>
 
 <ul>

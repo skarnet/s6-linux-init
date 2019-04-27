@@ -57,7 +57,7 @@ machine</em>. If it is not the case, the system will fail to boot.
        [ -d <em>dev_style</em> ] \
        [ -s <em>env_store</em> ] \
        [ -e <em>initial_envvar</em> ] ... \
-       [ -q ] <em>finalsleeptime</em>
+       [ -q <em>finalsleeptime</em> ] \
        [ -D <em>initdefault</em> ] \
        [ -U <em>utmp_user</em> ] \
        <em>dir</em>
@@ -104,7 +104,7 @@ which have been stored into <em>env_store</em>. </li>
  <li> <tt>rc.shutdown</tt>: this script will be run as the
 <em>shutdown sequence</em>, when the administrator runs the
 <tt>shutdown</tt>, <tt>halt</tt>, <tt>poweroff</tt> or <tt>reboot</tt>
-command. (As well as <tt>init 0</tt>, <tt>init 6</tt>.
+command. (As well as <tt>init 0</tt>, <tt>init 6</tt>,
 <tt>telinit 0</tt> and <tt>telinit 6</tt> for compatibility
 reasons.) It should ask the service manager to bring all the
 services down, and exit when it's done (in other words: it should
@@ -134,7 +134,7 @@ be accessible as <tt>/sbin/init</tt>. </li>
 
 <p>
  When the kernel boots, it may run an initramfs first, but in any
-case it then runs the <tt><em>basedir</em>/init</tt> script,
+case it then runs the <tt>/sbin/init</tt> script,
 also known as <em>stage 1</em>. This script is just an execution
 of the <a href="s6-linux-init.html">s6-linux-init</a> program with
 some command-line options that are directly transferred from the
@@ -181,8 +181,10 @@ service to clean up utmp records at user logout time. Check the
 <a href="s6-linux-init-logouthookd">s6-linux-init-logouthookd</a> page
 for details. </li> <p />
 
- <li> <tt>-p</tt>&nbsp;<em>initial_path</em>&nbsp;: the value to
-set the PATH environment variable to, for all the starting processes.
+ <li> <tt>-p</tt>&nbsp;<em>initial_path</em>&nbsp;: the initial value
+for the PATH environment variable, that will be transmitted to all the
+starting process unless it's overridden by a PATH declaration via the
+<tt>-e</tt> option.
 It is absolutely necessary for
 <a href="//skarnet.org/software/execline/">execline</a> and
 <a href="//skarnet.org/software/s6/">s6</a>
@@ -315,8 +317,7 @@ services are:
      <li> <tt>s6-svscan-log</tt>: the catch-all logger. </li>
      <li> <tt>s6-linux-init-shutdownd</tt>: a service that listens
 to shutdown commands such as <tt>reboot</tt> and triggers the software
-shutdown procedure. The service is asleep for the whole lifetime of
-the machine and uses very few resources. </li>
+shutdown procedure. </li>
      <li> <tt>s6-linux-init-runleveld</tt>: a service that listens
 to runlevel change commands such as <tt>telinit</tt> and calls the
 <em>runlevel</em> script in a reproducible environment to bring the

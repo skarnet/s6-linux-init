@@ -10,7 +10,7 @@ int main (int argc, char const *const *argv)
 {
   char sep = ' ' ;
   char donl = 1 ;
-  PROG = "s6-echo" ;
+  PROG = "s6-linux-init-echo" ;
   {
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)

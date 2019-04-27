@@ -19,7 +19,7 @@
 <h1> The <tt>s6-linux-init-umountall</tt> program </h1>
 
 <p>
- <tt>s6-linux-init-umountall</tt> unmounts all the filesystems.
+ <tt>s6-linux-init-umountall</tt> unmounts all filesystems.
 </p>
 
 <h2> Interface </h2>
@@ -29,7 +29,7 @@
 </pre>
 
 <ul>
- <li> <tt>s6-linux-init-umountall</tt> unmounts all partitions according to <tt>/proc/mounts</tt>.
+ <li> <tt>s6-linux-init-umountall</tt> unmounts all filesystems according to <tt>/proc/mounts</tt>.
 It processes <tt>/proc/mounts</tt> in the reverse order, starting with the most recently mounted
 partition and ending with the root filesystem ("unmounting" the root filesystem means remounting
 it read-only). </li>
@@ -37,6 +37,13 @@ it read-only). </li>
  <li> If a filesystem fails to unmount, a warning is printed to stderr, but
 <tt>s6-linux-init-umountall</tt> still attempts to unmount all the other ones. </li>
 </ul>
+
+<h2> Exit codes </h2>
+
+<p>
+ <tt>s6-linux-init-umountall</tt> returns the number of errors it encountered
+when attempting to unmount all the filesystems listed in <tt>/proc/mounts</tt>.
+</p>
 
 <h2> Notes </h2>
 

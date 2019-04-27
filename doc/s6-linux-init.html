@@ -52,12 +52,11 @@ If there is a discrepancy, the system might not boot.
  <li> <tt>-c</tt>&nbsp;<em>basedir</em>&nbsp;: read all its initialization
 data from <em>basedir</em>. If the data has not indeed been copied to
 <em>basedir</em>, <strong>the system will not boot</strong>. </li>
- <li> <tt>-p</tt>&nbsp;<em>initial_path</em>&nbsp;: the value to
-set the initial PATH environment variable to.
+ <li> <tt>-p</tt>&nbsp;<em>initial_path</em>&nbsp;: the initial value for
+the PATH environment variable. </li>
  <li> <tt>-s</tt>&nbsp;<em>env_store</em>&nbsp;: the place where to dump
 kernel environment variables. </li>
- <li> <tt>-m</tt>&nbsp;<em>initial_umask</em>&nbsp;: the value of
-the initial file umask. </li>
+ <li> <tt>-m</tt>&nbsp;<em>initial_umask</em>&nbsp;: the initial file umask. </li>
  <li> <tt>-d</tt>&nbsp;<em>dev_style</em>&nbsp;: how <tt>/dev</tt> is
 handled on this system. 0 means a static <tt>/dev</tt>, 1 means
 devtmpfs but not automounted by the kernel at boot time, and 2 means
@@ -130,8 +129,16 @@ the arguments given to <em>rc.init</em>. </li>
 as pid 1 and has spawned its early services - at least the catch-all logger,
 and the other services, including the early getty if it has been defined, are
 started in parallel and will be ready instantly. <em>rc.init</em> can then
-perform <em>stage 2</em> of the initialization process, i.e. the initialization
-sequence per se.
+perform <em>stage 2</em> of the initialization process, i.e. the handoff to
+the service manager.
+</p>
+
+<h2> Exit codes </h2>
+
+<p>
+ <tt>s6-linux-init</tt> never exits. It spawns the <em>rc.init</em> script
+and execs into <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>,
+which runs forever until the machine stops or reboots.
 </p>
 
 <h2> Notes </h2>

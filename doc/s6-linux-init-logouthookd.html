@@ -70,6 +70,20 @@ local service, which will do nothing but wait until the user's shell dies;
 and when it happens, the user's utmp record will automatically be cleaned up.
 </p>
 
+<h2> Exit codes </h2>
+
+<p>
+ <tt>s6-linux-init-logouthookd</tt>'s exit code does not matter, because
+no program uses it. However, here's the list for completeness:
+</p>
+
+<ul>
+ <li> 0: success, whether or not there was an utmp record to clean up. </li>
+ <li> 1: connection attempt from a non-root user. </li>
+ <li> 2: write attempt from a (misprogrammed) client. </li>
+ <li> 111: system call failed. </li>
+</ul>
+
 <h2> Notes </h2>
 
 <ul>

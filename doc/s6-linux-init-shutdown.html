@@ -32,8 +32,10 @@ It is normally invoked as <tt>/sbin/shutdown</tt>.
 
 <ul>
  <li> If the <tt>-c</tt> option is present, a pending shutdown is cancelled. </li>
- <li> Else, it triggers the shutdown procedure. </li>
- <li> It exits 0. The shutdown procedure happens asynchronously. </li>
+ <li> Else, it plans the shutdown procedure at time <em>time</em>. </li>
+ <li> If a <em>message</em> argument has been given, <em>message</em> is
+broadcast to all logged in users (as tracked by utmp). </li>
+ <li> <tt>shutdown</tt> exits 0. The shutdown procedure happens asynchronously. </li>
 </ul>
 
 <p>
@@ -42,12 +44,42 @@ It is normally invoked as <tt>/sbin/shutdown</tt>.
 interface.
 </p>
 
-<h2> Exit codes </h2>
+<p>
+ <em>time</em> must follow the following format:
+<tt>[&nbsp;now&nbsp;|&nbsp;[+]<em>mins</em>&nbsp;|&nbsp;<em>hh</em>:<em>mm</em>&nbsp;]
+</p>
 
 <ul>
- <li> 0: shutdown procedure triggered. </li>
- <li> 100: wrong usage, or user does not have root privileges. </li>
- <li> 111: system call failed. </li>
+ <li> <tt>now</tt> means: trigger the shutdown sequence immediately. </li>
+ <li> <em>hh</em>:<em>mm</em> means: absolute time. Trigger the shutdown sequence when the time
+<em>hh</em>:<em>mm</em> occurs. If that time has passed for the day, it will wait for the
+next day. <em>hh</em> must have 1 or 2 digits; <em>mm</em> must have 2 digits. </li>
+ <li> <em>mins</em> or <tt>+</tt><em>mins</em> means: relative time. Trigger the shutdown
+sequence after <em>mins</em> minutes. </li>
+</ul>
+
+<h2> Options </h2>
+
+<ul>
+ <li> <tt>-a</tt>&nbsp;: access control. The shutdown sequence will only be
+launched if one of the users listed in <tt>/etc/shutdown.allow</tt>
+is currently logged in (as tracked by utmp). <tt>/etc/shutdown.allow</tt>
+is a text file, one user per line, lines starting with <tt>#</tt> are comments. </li>
+ <li> <tt>-t</tt>&nbsp;<em>sec</em>&nbsp;: at the end of the shutdown sequence,
+when it's time to kill all processes, have a "grace time" period
+of <em>sec</em> seconds between the SIGTERM and the SIGKILL (to allow processes
+receiving SIGTERM to exit cleanly). Default is 3 seconds. </li>
+ <li> <tt>-k</tt>&nbsp;: warning only. <em>message</em> will be sent to all
+logged in users, but the shutdown sequence will not be triggered. </li>
+ <li> <tt>-h</tt>&nbsp;: at the end of the shutdown sequence, halt the system. </li>
+ <li> <tt>-p</tt>&nbsp;: at the end of the shutdown sequence, power off the system.
+(This option is provided as an extension, it is not required by the LSB interface.) </li>
+ <li> <tt>-r</tt>&nbsp;: at the end of the shutdown sequence, reboot the system. </li>
+ <li> <tt>-f</tt>&nbsp;: ignored. </li>
+ <li> <tt>-F</tt>&nbsp;: ignored. </li>
+ <li> <tt>-c</tt>&nbspl: cancel a planned shutdown (i.e. cancel the effect of a
+previous call to <tt>shutdown</tt> with a <em>time</em> argument that was not <tt>now</tt>).
+This cannot be used to interrupt a shutdown sequence that has already started. </li>
 </ul>
 
 <h2> Notes </h2>
@@ -60,6 +92,11 @@ the <tt>bin/</tt> subdirectory of the target will contain a <tt>shutdown</tt>
 symlink to <tt>s6-linux-init-shutdown</tt>. The <tt>bin/</tt> subdirectory
 should be copied by the administrator into <tt>/sbin</tt> for full
 interface compatibility with sysvinit. </li>
+ <li> The <tt>-f</tt> and <tt>-F</tt> options are only accepted for compatibility.
+LSB says they are used to advise the system to skip or enforce a <tt>fsck</tt>
+after rebooting. But they are only advisory, and for decades now systems have used
+other methods of evaluating whether they should perform filesystem checks, so these
+options are largely obsolete nowadays. </li>
 </ul>
 
 </body>

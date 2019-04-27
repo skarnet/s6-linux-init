@@ -46,6 +46,18 @@ for compatibility with sysvinit's <em>0</em> and <em>6</em> runlevels
 that respectively halt and reboot the machine. </li>
 </ul>
 
+<h2> Exit codes </h2>
+
+<ul>
+ <li> 100: wrong usage </li>
+ <li> 111: system call failed </li>
+ <li> Else, <tt>s6-linux-init-telinit</tt> exits with the same exit code
+as the <em>runlevel</em> script called with the <em>rl</em> argument. </li>
+ <li> If <em>rl</em> is 0 or 6, in case of success
+<tt>s6-linux-init-telinit</tt> exits 0, but the system shuts down
+immediately as it returns. </li>
+</ul>
+
 <h2> Notes </h2>
 
 <ul>

@@ -45,7 +45,7 @@ static char const *robase = BASEDIR ;
 static char const *initial_path = INITPATH ;
 static char const *env_store = 0 ;
 static char const *early_getty = 0 ;
-static char const *slashdev = 0 ;
+static char const *slashdev = "2" ;
 static char const *log_user = "root" ;
 static char const *initdefault = 0 ;
 static unsigned int initial_umask = 0022 ;
@@ -121,13 +121,7 @@ static int s6_svscan_log_script (buffer *b, char const *data)
   if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
   if (buffer_puts(b, "\ns6-log -bpd3 -- ") < 0) return 0 ;
-  if (console)
-  {
-    if (timestamp_style & 1 && buffer_puts(b, "t ") < 0
-     || timestamp_style & 2 && buffer_puts(b, "T ") < 0
-     || buffer_puts(b, "1 ") < 0)
-      return 0 ;
-  }
+  if (console && buffer_puts(b, "1 ") < 0) return 0 ;
   if (timestamp_style & 1 && buffer_puts(b, "t ") < 0
    || timestamp_style & 2 && buffer_puts(b, "T ") < 0
    || buffer_puts(b, S6_LINUX_INIT_TMPFS "/" UNCAUGHT_DIR "\n") < 0)
@@ -593,14 +587,20 @@ int main (int argc, char const *const *argv, char const *const *envp)
 
   if (robase[0] != '/')
     strerr_dief3x(100, "base directory ", robase, " is not absolute") ;
-  if (slashdev && slashdev[0] != '/')
-    strerr_dief3x(100, "devtmpfs mounting location ", slashdev, " is not absolute") ;
-  if (env_store[0] != '/')
-    strerr_dief3x(100, "kernel environment storage directory ", env_store, " is not absolute") ;
+  if (env_store)
+  {
+    if (env_store[0] != '/')
+      strerr_dief3x(100, "kernel environment store ", env_store, " is not absolute") ;
+    if (!str_start(env_store, S6_LINUX_INIT_TMPFS "/"))
+      strerr_warnw3x("kernel environment store ", env_store, " is not located under initial tmpfs " S6_LINUX_INIT_TMPFS) ;
+  }
   if (timestamp_style > 3)
     strerr_dief1x(100, "-t timestamp_style must be 0, 1, 2 or 3") ;
-  if (env_store && !str_start(env_store, S6_LINUX_INIT_TMPFS "/"))
-    strerr_warnw3x("declared environment store ", env_store, " is not located under initial tmpfs " S6_LINUX_INIT_TMPFS) ;
+  {
+    unsigned int u ;
+    if (!uint0_scan(slashdev, &u) || u > 2)
+      strerr_dief1x(100, "-d dev_style must be 0, 1 or 2") ;
+  }
 
   umask(0) ;
   if (mkdir(argv[0], 0755) < 0)

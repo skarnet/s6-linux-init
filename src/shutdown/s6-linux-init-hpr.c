@@ -93,8 +93,21 @@ int main (int argc, char const *const *argv)
       strerr_warnwu1sys("gethostname") ;
     }
     else utx.ut_host[UT_HOSTSIZE - 1] = 0 ;
+
+/* glibc multilib can go fuck itself */
+#ifdef  __WORDSIZE_TIME64_COMPAT32
+    {
+      struct timeval tv ;
+      if (!timeval_from_tain(&tv, &STAMP))
+        strerr_warnwu1sys("timeval_from_tain") ;
+      utx.ut_tv.tv_sec = tv.tv_sec ;
+      utx.ut_tv.tv_usec = tv.tv_usec ;
+    }
+#else
     if (!timeval_from_tain(&utx.ut_tv, &STAMP))
       strerr_warnwu1sys("timeval_from_tain") ;
+#endif
+
     updwtmpx(_PATH_WTMP, &utx) ;
   }
   if (dowall) hpr_wall(HPR_WALL_BANNER) ;

@@ -170,7 +170,8 @@ is defined. </li> <p />
 sent to the catch-all logger (i.e. all the error messages that are not
 caught by a dedicated logger, as well as the output from <em>rc.init</em>,
 <em>runlevel</em> and <em>rc.shutdown</em>,
-are also copied to <tt>/dev/console</tt>. This is generally useful to
+are also copied to <tt>/dev/console</tt>. (Timestamps are not
+copied to <tt>/dev/console</tt>.) This is generally useful to
 debug a system at a glance, but if a failing program keeps sending
 error messages, it may interfere with comfortable usage of an early
 getty. A common workaround is to make the early getty start on

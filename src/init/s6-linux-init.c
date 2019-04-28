@@ -47,7 +47,7 @@ static inline void run_stage2 (char const *basedir, char const **argv, unsigned 
   memcpy(fn, basedir, dirlen) ;
   memcpy(fn + dirlen, "/scripts/" STAGE2, sizeof("/scripts/" STAGE2)) ;
   childargv[0] = fn ;
-  childargv[1] = scan_cmdline(initdefault, argv + 1, argc - 1) ;
+  childargv[1] = scan_cmdline(initdefault, argv, argc) ;
   for (unsigned int i = 0 ; i < argc ; i++)
     childargv[i+2] = argv[i] ;
   childargv[argc + 2] = 0 ;
@@ -73,7 +73,7 @@ int main (int argc, char const **argv, char const *const *envp)
 
   if (getpid() != 1)
   {
-    argv[0] = S6_LINUX_INIT_BINPREFIX "/s6-linux-init-telinit" ;
+    argv[0] = S6_LINUX_INIT_BINPREFIX "s6-linux-init-telinit" ;
     pathexec_run(argv[0], argv, envp) ;
     strerr_dieexec(111, argv[0]) ;
   }

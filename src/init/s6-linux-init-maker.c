@@ -145,7 +145,7 @@ static int logouthookd_script (buffer *b, char const *data)
   (void)data ;
   return put_shebang(b)
    && buffer_puts(b,
-    S6_EXTBINPREFIX "s6-ipcserver -1 -l0 -- " LOGOUTHOOKD_SOCKET "\n"
+    S6_EXTBINPREFIX "s6-ipcserver -1 -a 0700 -c 1000 -C 1000 -- " LOGOUTHOOKD_SOCKET "\n"
     S6_LINUX_INIT_BINPREFIX "s6-linux-init-logouthookd\n") >= 0 ;
 }
 
@@ -176,9 +176,7 @@ static int runleveld_script (buffer *b, char const *data)
    || buffer_puts(b,
     EXECLINE_EXTBINPREFIX "fdmove -c 2 1\n"
     EXECLINE_EXTBINPREFIX "fdmove 1 3\n"
-    S6_EXTBINPREFIX "s6-ipcserver-socketbinder -- " RUNLEVELD_SOCKET "\n"
-    S6_EXTBINPREFIX "s6-ipcserverd -1 -c1 --\n"
-    S6_EXTBINPREFIX "s6-ipcserver-access -v0 -E -l0 -i data/rules --\n"
+    S6_EXTBINPREFIX "s6-ipcserver -1 -a 0700 -c 1 -- " RUNLEVELD_SOCKET "\n"
     S6_EXTBINPREFIX "s6-sudod -0 -1 -2 -t 30000 --\n") < 0
    || !string_quote(&satmp, robase, strlen(robase))) return 0 ;
   if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
@@ -456,7 +454,7 @@ static int utmpd_script (buffer *b, char const *uw)
   if (buffer_puts(b, "\n"
     EXECLINE_EXTBINPREFIX "cd " S6_LINUX_INIT_TMPFS "/" UTMPS_DIR "\n"
     EXECLINE_EXTBINPREFIX "fdmove 1 3\n"
-    S6_EXTBINPREFIX "s6-ipcserver -1 -- ") < 0) return 0 ;
+    S6_EXTBINPREFIX "s6-ipcserver -1 -c 1000 -- ") < 0) return 0 ;
   if (buffer_puts(b, uw[0] == 'u' ? UTMPS_UTMPD_PATH : UTMPS_WTMPD_PATH) < 0
    || buffer_puts(b, "\n"
     UTMPS_EXTBINPREFIX "utmps-") < 0
@@ -519,14 +517,6 @@ static inline void make_image (char const *base)
   auto_script(base, "run-image/" SCANDIR "/" SHUTDOWND_SERVICEDIR "/run", &shutdownd_script, 0) ;
 
   auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR, 0, 0, 0755) ;
-  auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data", 0, 0, 0755) ;
-  auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules", 0, 0, 0755) ;
-  auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/gid", 0, 0, 0755) ;
-  auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/gid/0", 0, 0, 0755) ;
-  auto_file(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/gid/0/allow", "", 0) ;
-  auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/uid", 0, 0, 0755) ;
-  auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/uid/0", 0, 0, 0755) ;
-  auto_file(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/data/rules/uid/0/allow", "", 0) ;
   auto_file(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/notification-fd", "3\n", 2) ;
   auto_script(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/run", &runleveld_script, 0) ;
 

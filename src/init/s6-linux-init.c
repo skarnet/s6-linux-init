@@ -37,7 +37,7 @@ static inline char const *scan_cmdline (char const *initdefault, char const *con
   return initdefault ;
 }
 
-static inline void run_stage2 (char const *basedir, char const **argv, unsigned int argc, char const *const *envp, size_t envlen, stralloc *envmodifs, char const *initdefault)
+static inline void run_stage2 (char const *basedir, char const **argv, unsigned int argc, char const *const *envp, size_t envlen, char const *modifs, size_t modiflen, char const *initdefault)
 {
   size_t dirlen = strlen(basedir) ;
   char const *childargv[argc + 3] ;
@@ -58,7 +58,7 @@ static inline void run_stage2 (char const *basedir, char const **argv, unsigned 
     strerr_diefu1sys(111, "open " LOGFIFO " for writing") ;
   if (fd_copy(2, 1) == -1)
     strerr_diefu1sys(111, "fd_copy stdout to stderr") ;
-  xpathexec_r(childargv, envp, envlen, envmodifs->s, envmodifs->len) ;
+  xpathexec_r(childargv, envp, envlen, modifs, modiflen) ;
 }
 
 int main (int argc, char const **argv, char const *const *envp)
@@ -167,7 +167,7 @@ int main (int argc, char const **argv, char const *const *envp)
     }
     pid = fork() ;
     if (pid == -1) strerr_diefu1sys(111, "fork") ;
-    if (!pid) run_stage2(basedir, argv, argc, newenvp, !!path, &envmodifs, initdefault) ;
+    if (!pid) run_stage2(basedir, argv, argc, newenvp, !!path, envmodifs.s, envmodifs.len, initdefault) ;
     if (fd_copy(2, 1) == -1)
       strerr_diefu1sys(111, "redirect output file descriptor") ;
     xpathexec_r(newargv, newenvp, !!path, envmodifs.s, envmodifs.len) ;

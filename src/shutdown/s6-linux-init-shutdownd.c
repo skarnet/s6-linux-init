@@ -40,10 +40,10 @@ static inline void run_stage3 (char const *basedir, char const *const *envp)
 {
   pid_t pid ;
   size_t basedirlen = strlen(basedir) ;
-  char stage3[basedirlen + sizeof("/" STAGE3)] ;
+  char stage3[basedirlen + sizeof("/scripts/" STAGE3)] ;
   char const *stage3_argv[2] = { stage3, 0 } ;
   memcpy(stage3, basedir, basedirlen) ;
-  memcpy(stage3 + basedirlen, "/" STAGE3, sizeof("/" STAGE3)) ;
+  memcpy(stage3 + basedirlen, "/scripts/" STAGE3, sizeof("/scripts/" STAGE3)) ;
   pid = child_spawn0(stage3_argv[0], stage3_argv, envp) ;
   if (pid)
   {

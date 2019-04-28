@@ -41,12 +41,11 @@ static inline void run_stage2 (char const *basedir, char const **argv, unsigned 
 {
   size_t dirlen = strlen(basedir) ;
   char const *childargv[argc + 3] ;
-  char fn[dirlen + 1 + sizeof(STAGE2)] ;
+  char fn[dirlen + sizeof("/scripts/" STAGE2)] ;
   PROG = "s6-linux-init (child)" ;
   argv[0] = PROG ;
   memcpy(fn, basedir, dirlen) ;
-  fn[dirlen] = '/' ;
-  memcpy(fn + dirlen + 1, STAGE2, sizeof(STAGE2)) ;
+  memcpy(fn + dirlen, "/scripts/" STAGE2, sizeof("/scripts/" STAGE2)) ;
   childargv[0] = fn ;
   childargv[1] = scan_cmdline(initdefault, argv + 1, argc - 1) ;
   for (unsigned int i = 0 ; i < argc ; i++)

@@ -309,7 +309,10 @@ static void auto_symlink (char const *base, char const *name, char const *target
   fn[clen] = '/' ;
   memcpy(fn + clen + 1, name, dlen + 1) ;
   if (symlink(target, fn) == -1)
+  {
+    cleanup(base) ;
     strerr_diefu4sys(111, "make a symlink named ", fn, " pointing to ", target) ;
+  }
 }
 
 static void auto_fifo (char const *base, char const *fifo)
@@ -362,7 +365,10 @@ static void copy_script (char const *base, char const *src, char const *dst)
   fn[baselen] = '/' ;
   memcpy(fn + baselen + 1, dst, dstlen + 1) ;
   if (!filecopy_unsafe(src, fn, 0755))
+  {
+    cleanup(base) ;
     strerr_diefu4sys(111, "copy ", src, " to ", fn) ;
+  }
 }
 
 static void auto_exec (char const *base, char const *name, char const *target)
@@ -405,13 +411,14 @@ static void make_env (char const *base, char const *envname, char *modif, size_t
   }
 }
 
-static void getug (char const *s, uid_t *uid, gid_t *gid)
+static void getug (char const *base, char const *s, uid_t *uid, gid_t *gid)
 {
   struct passwd *pw ;
   errno = 0 ;
   pw = getpwnam(s) ;
   if (!pw)
   {
+    cleanup(base) ;
     if (!errno) strerr_diefu3x(100, "find user ", s, " in passwd database") ;
     else strerr_diefu2sys(111, "getpwnam for ", s) ;
   }
@@ -473,7 +480,7 @@ static inline void make_utmps (char const *base)
   {
     uid_t uid ;
     gid_t gid ;
-    getug(utmp_user, &uid, &gid) ;
+    getug(base, utmp_user, &uid, &gid) ;
     auto_dir(base, "run-image/" UTMPS_DIR, uid, gid, 0755) ;
     auto_basedir(base, "run-image/" S6_LINUX_INIT_UTMPD_PATH, uid, gid, 0755) ;
     auto_basedir(base, "run-image/" S6_LINUX_INIT_WTMPD_PATH, uid, gid, 0755) ;
@@ -488,7 +495,7 @@ static inline void make_image (char const *base)
   {
     uid_t uid ;
     gid_t gid ;
-    getug(log_user, &uid, &gid) ;
+    getug(base, log_user, &uid, &gid) ;
     auto_dir(base, "run-image/" UNCAUGHT_DIR, uid, gid, 02700) ;
   }
   auto_dir(base, "run-image/" SCANDIR, 0, 0, 0755) ;
@@ -600,6 +607,8 @@ int main (int argc, char const *const *argv, char const *const *envp)
     strerr_dief3x(100, "devtmpfs mounting location ", slashdev, " is not absolute") ;
   if (timestamp_style > 3)
     strerr_dief1x(100, "-t timestamp_style must be 0, 1, 2 or 3") ;
+  if (env_store && !str_start(env_store, S6_LINUX_INIT_TMPFS "/"))
+    strerr_warnw3x("declared environment store ", env_store, " is not located under initial tmpfs " S6_LINUX_INIT_TMPFS) ;
 
   umask(0) ;
   if (mkdir(argv[0], 0755) < 0)

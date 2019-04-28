@@ -379,7 +379,7 @@ static void auto_exec (char const *base, char const *name, char const *target)
     auto_script(base, name, &linewithargs_script, target) ;
 }
 
-static void make_env (char const *base, char const *envname, char const *modif, size_t modiflen)
+static void make_env (char const *base, char const *envname, char *modif, size_t modiflen)
 {
   size_t envnamelen = strlen(envname) ;
   auto_dir(base, envname, 0, 0, 0755) ;
@@ -393,7 +393,12 @@ static void make_env (char const *base, char const *envname, char const *modif, 
     memcpy(fn + envnamelen + 1, modif, pos) ;
     fn[envnamelen + 1 + pos] = 0 ;
     
-    if (pos + 1 < len) auto_file(base, fn, modif + pos + 1, len - pos - 1) ;
+    if (pos + 1 < len)
+    {
+      modif[len] = '\n' ;
+      auto_file(base, fn, modif + pos + 1, len - pos) ;
+      modif[len] = 0 ;
+    }
     else if (pos + 1 == len) auto_file(base, fn, "\n", 1) ;
     else auto_file(base, fn, "", 0) ;
     modif += len+1 ; modiflen -= len+1 ;

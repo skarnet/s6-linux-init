@@ -71,11 +71,11 @@ static inline void run_stage3 (char const *basedir, char const *const *envp)
   else strerr_warnwu2sys("spawn ", stage3) ;
 }
 
-static inline void prepare_shutdown (char c, unsigned int *what, tain_t *deadline, unsigned int *grace_time)
+static inline void prepare_shutdown (buffer *b, char c, unsigned int *what, tain_t *deadline, unsigned int *grace_time)
 {
   uint32_t u ;
   char pack[TAIN_PACK] ;
-  ssize_t r = sanitize_read(buffer_get(buffer_0small, pack, TAIN_PACK)) ;
+  ssize_t r = sanitize_read(buffer_get(b, pack, TAIN_PACK)) ;
   if (r == -1) strerr_diefu1sys(111, "read from pipe") ;
   if (r < TAIN_PACK + 4) strerr_dief1x(101, "bad shutdown protocol") ;
   *what = byte_chr("Shpr", c, 4) ;
@@ -98,7 +98,7 @@ static inline void handle_fifo (buffer *b, unsigned int *what, tain_t *deadline,
       case 'h' :
       case 'p' :
       case 'r' :
-        prepare_shutdown(c, what, deadline, grace_time) ;
+        prepare_shutdown(b, c, what, deadline, grace_time) ;
         break ;
       case 'c' :
         *what = 0 ;

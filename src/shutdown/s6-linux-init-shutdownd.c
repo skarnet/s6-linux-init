@@ -74,8 +74,8 @@ static inline void run_stage3 (char const *basedir, char const *const *envp)
 static inline void prepare_shutdown (buffer *b, char c, unsigned int *what, tain_t *deadline, unsigned int *grace_time)
 {
   uint32_t u ;
-  char pack[TAIN_PACK] ;
-  ssize_t r = sanitize_read(buffer_get(b, pack, TAIN_PACK)) ;
+  char pack[TAIN_PACK + 4] ;
+  ssize_t r = sanitize_read(buffer_get(b, pack, TAIN_PACK + 4)) ;
   if (r == -1) strerr_diefu1sys(111, "read from pipe") ;
   if (r < TAIN_PACK + 4) strerr_dief1x(101, "bad shutdown protocol") ;
   *what = byte_chr("Shpr", c, 4) ;
@@ -170,8 +170,8 @@ int main (int argc, char const *const *argv, char const *const *envp)
 
  /* if we're in stage 4, exec it immediately */
   {
-    char const *stage4_argv[2] = { STAGE4_FILE, 0 } ;
-    pathexec_run(stage4_argv[0], stage4_argv, envp) ;
+    char const *stage4_argv[2] = { "./" STAGE4_FILE, 0 } ;
+    execve(stage4_argv[0], (char **)stage4_argv, (char *const *)envp) ;
     if (errno != ENOENT)
       strerr_warnwu2sys("exec ", stage4_argv[0]) ;
   }

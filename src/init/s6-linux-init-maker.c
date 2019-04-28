@@ -605,6 +605,8 @@ int main (int argc, char const *const *argv, char const *const *envp)
     strerr_dief3x(100, "base directory ", robase, " is not absolute") ;
   if (slashdev && slashdev[0] != '/')
     strerr_dief3x(100, "devtmpfs mounting location ", slashdev, " is not absolute") ;
+  if (env_store[0] != '/')
+    strerr_dief3x(100, "kernel environment storage directory ", env_store, " is not absolute") ;
   if (timestamp_style > 3)
     strerr_dief1x(100, "-t timestamp_style must be 0, 1, 2 or 3") ;
   if (env_store && !str_start(env_store, S6_LINUX_INIT_TMPFS "/"))

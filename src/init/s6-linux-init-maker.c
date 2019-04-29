@@ -45,7 +45,7 @@ static char const *robase = BASEDIR ;
 static char const *initial_path = INITPATH ;
 static char const *env_store = 0 ;
 static char const *early_getty = 0 ;
-static char const *slashdev = "2" ;
+static char const *slashdev = 0 ;
 static char const *log_user = "root" ;
 static char const *initdefault = 0 ;
 static unsigned int initial_umask = 0022 ;
@@ -587,6 +587,8 @@ int main (int argc, char const *const *argv, char const *const *envp)
 
   if (robase[0] != '/')
     strerr_dief3x(100, "base directory ", robase, " is not absolute") ;
+  if (slashdev && slashdev[0] != '/')
+    strerr_dief3x(100, "devtmpfs directory ", slashdev, " is not absolute") ;
   if (env_store)
   {
     if (env_store[0] != '/')
@@ -596,11 +598,6 @@ int main (int argc, char const *const *argv, char const *const *envp)
   }
   if (timestamp_style > 3)
     strerr_dief1x(100, "-t timestamp_style must be 0, 1, 2 or 3") ;
-  {
-    unsigned int u ;
-    if (!uint0_scan(slashdev, &u) || u > 2)
-      strerr_dief1x(100, "-d dev_style must be 0, 1 or 2") ;
-  }
 
   umask(0) ;
   if (mkdir(argv[0], 0755) < 0)

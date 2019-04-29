@@ -54,7 +54,7 @@ machine</em>. If it is not the case, the system will fail to boot.
        [ -p <em>initial_path</em> ] \
        [ -m <em>initial_umask</em> ] \
        [ -t <em>timestamp_style</em> ] \
-       [ -d <em>dev_style</em> ] \
+       [ -d <em>slashdev</em> ] \
        [ -s <em>env_store</em> ] \
        [ -e <em>initial_envvar</em> ] ... \
        [ -q <em>finalsleeptime</em> ] \
@@ -206,11 +206,13 @@ timestamp, 1 means
 and 3 means both. Default is
 <strong><tt>1</tt></strong>. </li> <p />
 
- <li> <tt>-d</tt>&nbsp;<em>dev_style</em>&nbsp;: how <tt>/dev</tt> is
-handled on this system. 0 means a static <tt>/dev</tt>, 1 means
-devtmpfs but not automounted by the kernel at boot time, and 2 means
-devtmpfs automounted by the kernel at boot time. Default is
-<strong><tt>2</tt></strong>. </li> <p />
+ <li> <tt>-d</tt>&nbsp;<em>slashdev</em>&nbsp;: mount a devtmpfs.
+If this option is given, <a href="s6-linux-init.html">s6-linux-init</a>
+will mount a devtmpfs pseudo-filesystem on <em>slashdev</em>. This
+is useful if the kernel has not been configured to mount
+the devtmpfs at boot time and there is no static <tt>/dev</tt>.
+By default, it is assumed that there is a suitable <tt>/dev</tt>
+at boot time, and no additional devtmpfs is mounted. </li> <p />
 
  <li> <tt>-s</tt>&nbsp;<em>env_store</em>&nbsp;: stage 1 init sometimes
 inherits a few environment variables from the kernel. (These variables

@@ -2,6 +2,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
@@ -19,12 +20,14 @@
 #include <skalibs/sgetopt.h>
 #include <skalibs/sig.h>
 #include <skalibs/tai.h>
+#include <skalibs/direntry.h>
 #include <skalibs/djbunix.h>
 #include <skalibs/iopause.h>
 #include <skalibs/skamisc.h>
 
 #include <execline/config.h>
 
+#include <s6-linux-init/config.h>
 #include "defaults.h"
 #include "initctl.h"
 #include "hpr.h"
@@ -125,7 +128,7 @@ static inline void prepare_stage4 (char const *basedir, unsigned int what)
   buffer_init(&b, &buffer_write, fd, buf, 512) ;
 
   if (buffer_puts(&b,
-    "#!" EXECLINE_SHEBANGPREFIX "/execlineb -P\n\n"
+    "#!" EXECLINE_SHEBANGPREFIX "execlineb -P\n\n"
     EXECLINE_EXTBINPREFIX "foreground { "
     S6_LINUX_INIT_BINPREFIX "s6-linux-init-umountall }\n"
     S6_LINUX_INIT_BINPREFIX "s6-linux-init-hpr -") < 0
@@ -137,6 +140,41 @@ static inline void prepare_stage4 (char const *basedir, unsigned int what)
   fd_close(fd) ;
   if (rename(STAGE4_FILE ".new", STAGE4_FILE) == -1)
     strerr_diefu4sys(111, "rename ", STAGE4_FILE ".new", " to ", STAGE4_FILE) ;
+}
+
+static inline void unsupervise_tree (void)
+{
+  static char const *except[] =
+  {
+    LOGGER_SERVICEDIR,
+    SHUTDOWND_SERVICEDIR,
+    EARLYGETTY_SERVICEDIR,
+    0
+  } ;
+  DIR *dir = opendir(S6_LINUX_INIT_TMPFS "/" SCANDIR) ;
+  if (!dir)
+    strerr_diefu1sys(111, "opendir " S6_LINUX_INIT_TMPFS "/" SCANDIR) ;
+  for (;;)
+  {
+    char const *const *p = except ;
+    direntry *d ;
+    errno = 0 ;
+    d = readdir(dir) ;
+    if (!d) break ;
+    if (d->d_name[0] == '.') continue ;
+    for (; *p ; p++) if (!strcmp(*p, d->d_name)) break ;
+    if (!*p)
+    {
+      size_t dlen = strlen(d->d_name) ;
+      char fn[sizeof(S6_LINUX_INIT_TMPFS "/" SCANDIR "/") + dlen] ;
+      memcpy(fn, S6_LINUX_INIT_TMPFS "/" SCANDIR "/", sizeof(S6_LINUX_INIT_TMPFS "/" SCANDIR "/") - 1) ;
+      memcpy(fn + sizeof(S6_LINUX_INIT_TMPFS "/" SCANDIR "/") - 1, d->d_name, dlen + 1) ;
+      rm_rf(fn) ;
+    }
+  }
+  if (errno)
+    strerr_diefu1sys(111, "readdir " S6_LINUX_INIT_TMPFS "/" SCANDIR) ;
+  dir_close(dir) ;
 }
 
 int main (int argc, char const *const *argv, char const *const *envp)
@@ -208,7 +246,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
   fd_close(fdw) ;
   fd_close(fdr) ;
   fd_close(1) ;
-  if (open_write("/dev/console") != 1 || ndelay_off(1) == -1)
+  if (open("/dev/console", O_WRONLY) != 1)
     strerr_diefu1sys(111, "open /dev/console for writing") ;
   if (fd_copy(2, 1) == -1) strerr_warnwu1sys("fd_copy") ;
 
@@ -216,6 +254,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
  /* The end is coming! */
 
   prepare_stage4(basedir, what) ;
+  unsupervise_tree() ;
   sync() ;
   if (sig_ignore(SIGTERM) == -1) strerr_warnwu1sys("sig_ignore SIGTERM") ;
   strerr_warni1x("sending all processes the TERM signal...") ;

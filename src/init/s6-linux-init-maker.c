@@ -28,11 +28,11 @@
 
 #ifdef S6_LINUX_INIT_UTMPD_PATH
 # include <utmps/config.h>
-# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -U utmp_user ]"
+# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -U utmp_user ] dir"
 # define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:U:D:"
 # define UTMPS_DIR "utmps"
 #else
-# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ]"
+# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] dir"
 # define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:"
 #endif
 

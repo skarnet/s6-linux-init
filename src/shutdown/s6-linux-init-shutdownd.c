@@ -123,6 +123,11 @@ static inline void prepare_stage4 (char const *basedir, unsigned int what)
   int fd ;
   char buf[512] ;
   char c = "hpr"[what - 1] ;
+
+  char s[2] = { c, 0 } ;
+  buf[uint_fmt(buf, what)] = 0 ;
+  strerr_warn4x("preparing stage 4: what = ", buf, " ; c = ", s) ;  
+
   unlink_void(STAGE4_FILE ".new") ;
   fd = open_excl(STAGE4_FILE ".new") ;
   if (fd == -1) strerr_diefu3sys(111, "open ", STAGE4_FILE ".new", " for writing") ;
@@ -141,6 +146,7 @@ static inline void prepare_stage4 (char const *basedir, unsigned int what)
   fd_close(fd) ;
   if (rename(STAGE4_FILE ".new", STAGE4_FILE) == -1)
     strerr_diefu4sys(111, "rename ", STAGE4_FILE ".new", " to ", STAGE4_FILE) ;
+  sleep(20) ;
 }
 
 static inline void unsupervise_tree (void)

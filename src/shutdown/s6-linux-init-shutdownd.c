@@ -74,20 +74,19 @@ static inline void run_stage3 (char const *basedir, char const *const *envp)
   else strerr_warnwu2sys("spawn ", stage3) ;
 }
 
-static inline void prepare_shutdown (buffer *b, char c, unsigned int *what, tain_t *deadline, unsigned int *grace_time)
+static inline void prepare_shutdown (buffer *b, tain_t *deadline, unsigned int *grace_time)
 {
   uint32_t u ;
   char pack[TAIN_PACK + 4] ;
   ssize_t r = sanitize_read(buffer_get(b, pack, TAIN_PACK + 4)) ;
   if (r == -1) strerr_diefu1sys(111, "read from pipe") ;
   if (r < TAIN_PACK + 4) strerr_dief1x(101, "bad shutdown protocol") ;
-  *what = byte_chr("Shpr", c, 4) ;
   tain_unpack(pack, deadline) ;
   uint32_unpack_big(pack + TAIN_PACK, &u) ;
   if (u && u <= 300000) *grace_time = u ;
 }
 
-static inline void handle_fifo (buffer *b, unsigned int *what, tain_t *deadline, unsigned int *grace_time)
+static inline void handle_fifo (buffer *b, char *what, tain_t *deadline, unsigned int *grace_time)
 {
   for (;;)
   {
@@ -101,10 +100,11 @@ static inline void handle_fifo (buffer *b, unsigned int *what, tain_t *deadline,
       case 'h' :
       case 'p' :
       case 'r' :
-        prepare_shutdown(b, c, what, deadline, grace_time) ;
+        *what = c ;
+        prepare_shutdown(b, deadline, grace_time) ;
         break ;
       case 'c' :
-        *what = 0 ;
+        *what = 'S' ;
         tain_add_g(deadline, &tain_infinite_relative) ;
         break ;
       default :
@@ -117,17 +117,11 @@ static inline void handle_fifo (buffer *b, unsigned int *what, tain_t *deadline,
   }
 }
 
-static inline void prepare_stage4 (char const *basedir, unsigned int what)
+static inline void prepare_stage4 (char const *basedir, char what)
 {
   buffer b ;
   int fd ;
   char buf[512] ;
-  char c = "hpr"[what - 1] ;
-
-  char s[2] = { c, 0 } ;
-  buf[uint_fmt(buf, what)] = 0 ;
-  strerr_warn4x("preparing stage 4: what = ", buf, " ; c = ", s) ;  
-
   unlink_void(STAGE4_FILE ".new") ;
   fd = open_excl(STAGE4_FILE ".new") ;
   if (fd == -1) strerr_diefu3sys(111, "open ", STAGE4_FILE ".new", " for writing") ;
@@ -138,7 +132,7 @@ static inline void prepare_stage4 (char const *basedir, unsigned int what)
     EXECLINE_EXTBINPREFIX "foreground { "
     S6_LINUX_INIT_BINPREFIX "s6-linux-init-umountall }\n"
     S6_LINUX_INIT_BINPREFIX "s6-linux-init-hpr -f -") < 0
-   || buffer_put(&b, &c, 1) < 0
+   || buffer_put(&b, &what, 1) < 0
    || buffer_putsflush(&b, "\n") < 0)
     strerr_diefu2sys(111, "write to ", STAGE4_FILE ".new") ;
   if (fchmod(fd, S_IRWXU) == -1)
@@ -186,7 +180,7 @@ static inline void unsupervise_tree (void)
 
 int main (int argc, char const *const *argv, char const *const *envp)
 {
-  unsigned int what = 0 ;
+  char what = 'S' ;
   unsigned int grace_time = 3000 ;
   tain_t deadline ;
   int fdr, fdw ;
@@ -242,7 +236,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
     {
       run_stage3(basedir, envp) ;
       tain_now_g() ;
-      if (what) break ;
+      if (what != 'S') break ;
       tain_add_g(&deadline, &tain_infinite_relative) ;
       continue ;
     }

@@ -27,7 +27,7 @@ and execs into <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>.
 <h2> Interface </h2>
 
 <pre>
-     s6-linux-init [ -c <em>basedir</em> ] [ -p <em>initial_path</em> ] [ -s <em>env_store</em> ] [ -m <em>umask</em> ] [ -d <em>dev_style</em> ] [ -D <em>initdefault</em> ] [ <em>args...</em> ]
+     s6-linux-init [ -c <em>basedir</em> ] [ -p <em>initial_path</em> ] [ -s <em>env_store</em> ] [ -m <em>umask</em> ] [ -d <em>dev_style</em> ] [ -D <em>initdefault</em> ] [ -n | -N ] [ <em>args...</em> ]
 </pre>
 
 <ul>
@@ -57,14 +57,16 @@ the PATH environment variable. </li>
  <li> <tt>-s</tt>&nbsp;<em>env_store</em>&nbsp;: the place where to dump
 kernel environment variables. </li>
  <li> <tt>-m</tt>&nbsp;<em>initial_umask</em>&nbsp;: the initial file umask. </li>
- <li> <tt>-d</tt>&nbsp;<em>dev_style</em>&nbsp;: how <tt>/dev</tt> is
-handled on this system. 0 means a static <tt>/dev</tt>, 1 means
-devtmpfs but not automounted by the kernel at boot time, and 2 means
-devtmpfs automounted by the kernel at boot time. </li>
+ <li> <tt>-d</tt>&nbsp;<em>slashdev</em>&nbsp;: mount a devtmpfs on
+<em>slashdev</em>. By default, no such mount is performed - it is assumed
+that a devtmpfs is automounted on <tt>/dev</tt> at boot time by the kernel. </li>
  <li> <tt>-D</tt>&nbsp;<em>initdefault</em>&nbsp;: the initial runlevel
 to boot to, if it isn't overridden by the kernel command line.
 This is only given as a first argument to <em>rc.init</em>.
 Default is <tt>default</tt>. </li>
+ <li> <tt>-n</tt>&nbsp;: instead of unmounting <tt>/run</tt> and mounting
+a tmpfs on it, just remount <tt>/run</tt>. </li>
+ <li> <tt>-N</tt>&nbsp;: do not touch <tt>/run</tt> at all. </li>
 </ul>
 
 <h2> Early preparation </h2>
@@ -79,12 +81,13 @@ operations:
  <li> It chdirs to <tt>/</tt>. </li>
  <li> It sets the umask to <em>initial_umask</em>. </li>
  <li> It becomes a session leader. </li>
- <li> It mounts a devtmpfs on <tt>/dev</tt>, if necessary. </li>
+ <li> It mounts a devtmpfs on <em>slashdev</em>, if requested. </li>
  <li> It uses <tt>/dev/null</tt> as its stdin (instead of <tt>/dev/console</tt>).
 <tt>/dev/console</tt> is still used, for now, as stdout and stderr. </li>
  <li> It unmounts <tt>/run</tt> (or the directory you have given to the
-<tt>--tmpfsdir</tt> configure option at package build time), just in case. </li>
- <li> It creates a tmpfs on <tt>/run</tt> (or your chosen <em>tmpfsdir</em>). </li>
+<tt>--tmpfsdir</tt> configure option at package build time), just in case;
+then it creates a tmpfs on it. Alternatively, it remounts <tt>/run</tt>,
+or does not touch it at all. </li>
  <li> It copies the whole <tt><em>basedir</em>/run-image</tt> hierarchy to
 <tt>/run</tt> (or your chosen tmpfsdir). </li>
  <li> It reads the initial environment from <tt><em>basedir</em>/env</tt>. </li>

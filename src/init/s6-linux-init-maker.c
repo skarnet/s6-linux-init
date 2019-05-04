@@ -28,12 +28,12 @@
 
 #ifdef S6_LINUX_INIT_UTMPD_PATH
 # include <utmps/config.h>
-# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -U utmp_user ] dir"
-# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:U:D:"
+# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] [ -U utmp_user ] dir"
+# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNU:"
 # define UTMPS_DIR "utmps"
 #else
-# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] dir"
-# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:"
+# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] dir"
+# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:nN"
 #endif
 
 #define dieusage() strerr_dieusage(100, USAGE)
@@ -51,6 +51,7 @@ static char const *initdefault = 0 ;
 static unsigned int initial_umask = 0022 ;
 static unsigned int timestamp_style = 1 ;
 static unsigned int finalsleep = 3000 ;
+static int mounttype = 1 ;
 static int console = 0 ;
 static int logouthookd = 0 ;
 
@@ -233,6 +234,15 @@ static inline int stage1_script (buffer *b, char const *data)
     if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
     satmp.len = sabase ;
   }
+  if (mounttype == 2)
+  {
+    if (buffer_puts(b, " -n") < 0) return 0 ;
+  }
+  else if (!mounttype)
+  {
+    if (buffer_puts(b, " -N") < 0) return 0 ;
+  }
+
   if (buffer_puts(b, "\n") < 0) return 0 ;
   (void)data ;
   return 1 ;
@@ -575,6 +585,8 @@ int main (int argc, char const *const *argv, char const *const *envp)
         case 'e' : if (!stralloc_catb(&satmp, l.arg, strlen(l.arg) + 1)) dienomem() ; break ;
         case 'q' : if (!uint0_scan(l.arg, &finalsleep)) dieusage() ; break ;
         case 'D' : initdefault = l.arg ; break ;
+        case 'n' : mounttype = 2 ; break ;
+        case 'N' : mounttype = 0 ; break ;
 #ifdef S6_LINUX_INIT_UTMPD_PATH
         case 'U' : utmp_user = l.arg ; break ;
 #endif

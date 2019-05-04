@@ -23,7 +23,7 @@
 #include "defaults.h"
 #include "initctl.h"
 
-#define USAGE "s6-linux-init [ -c basedir ] [ -p initpath ] [ -s envdumpdir ] [ -m umask ] [ -d devtmpfs ] [ -D initdefault ]"
+#define USAGE "s6-linux-init [ -c basedir ] [ -p initpath ] [ -s envdumpdir ] [ -m umask ] [ -d devtmpfs ] [ -D initdefault ] [ -n | -N ]"
 #define dieusage() strerr_dieusage(100, USAGE)
 
 #define BANNER "\n  s6-linux-init version " S6_LINUX_INIT_VERSION "\n\n"
@@ -68,6 +68,7 @@ int main (int argc, char const **argv, char const *const *envp)
   char const *slashdev = 0 ;
   char const *envdumpdir = 0 ;
   char const *initdefault = "default" ;
+  int mounttype = 1 ;
   stralloc envmodifs = STRALLOC_ZERO ;
   PROG = "s6-linux-init" ;
 
@@ -82,7 +83,7 @@ int main (int argc, char const **argv, char const *const *envp)
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "c:p:s:m:d:D:", &l) ;
+      int opt = subgetopt_r(argc, argv, "c:p:s:m:d:D:nN", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
@@ -92,6 +93,8 @@ int main (int argc, char const **argv, char const *const *envp)
         case 'm' : if (!uint0_oscan(l.arg, &mask)) dieusage() ; break ;
         case 'd' : slashdev = l.arg ; break ;
         case 'D' : initdefault = l.arg ; break ;
+        case 'n' : mounttype = 2 ; break ;
+        case 'N' : mounttype = 0 ; break ;
         default : dieusage() ;
       }
     }
@@ -121,14 +124,26 @@ int main (int argc, char const **argv, char const *const *envp)
      || fd_move(2, 0) == -1) return 111 ;
   }
   if (open("/dev/null", O_RDONLY)) strerr_diefu1sys(111, "open /dev/null") ;
-  
-  if (umount(S6_LINUX_INIT_TMPFS) == -1)
+
+  if (mounttype)
   {
-    if (errno != EINVAL)
-      strerr_warnwu1sys("umount " S6_LINUX_INIT_TMPFS) ;
+    if (mounttype == 2)
+    {
+      if (mount("tmpfs", S6_LINUX_INIT_TMPFS, "tmpfs", MS_REMOUNT | MS_NODEV | MS_NOSUID, "mode=0755") == -1)
+        strerr_diefu1sys(111, "remount " S6_LINUX_INIT_TMPFS) ;
+    }
+    else
+    {
+      if (umount(S6_LINUX_INIT_TMPFS) == -1)
+      {
+        if (errno != EINVAL)
+          strerr_warnwu1sys("umount " S6_LINUX_INIT_TMPFS) ;
+      }
+      if (mount("tmpfs", S6_LINUX_INIT_TMPFS, "tmpfs", MS_NODEV | MS_NOSUID, "mode=0755") == -1)
+        strerr_diefu1sys(111, "mount tmpfs on " S6_LINUX_INIT_TMPFS) ;
+    }
   }
-  if (mount("tmpfs", S6_LINUX_INIT_TMPFS, "tmpfs", MS_NODEV | MS_NOSUID, "mode=0755") == -1)
-    strerr_diefu1sys(111, "mount tmpfs on " S6_LINUX_INIT_TMPFS) ;
+
   {
     size_t dirlen = strlen(basedir) ;
     char fn[dirlen + 1 + (sizeof(RUNIMAGE) > sizeof(ENVSTAGE1) ? sizeof(RUNIMAGE) : sizeof(ENVSTAGE1))] ;

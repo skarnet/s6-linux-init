@@ -27,17 +27,44 @@
 
 #include <execline/config.h>
 
+#include <s6/s6-supervise.h>
+
 #include <s6-linux-init/config.h>
 #include "defaults.h"
 #include "initctl.h"
 #include "hpr.h"
 
 #define STAGE4_FILE "stage 4"
+#define SCANPREFIX S6_LINUX_INIT_TMPFS "/" SCANDIR "/"
+#define SCANPREFIXLEN (sizeof(SCANPREFIX) - 1)
+#define DOTPREFIX ".s6-linux-init-shutdownd:"
+#define DOTPREFIXLEN (sizeof(DOTPREFIX) - 1)
+#define DOTSUFFIX ":XXXXXX"
+#define DOTSUFFIXLEN (sizeof(DOTSUFFIX) - 1)
 
 #define USAGE "s6-linux-init-shutdownd [ -c basedir ] [ -g gracetime ]"
 #define dieusage() strerr_dieusage(100, USAGE)
 
 static char const *basedir = BASEDIR ;
+
+struct at_s
+{
+  int fd ;
+  char const *name ;
+} ;
+
+static int renametemp (char const *s, mode_t mode, void *data)
+{
+  struct at_s *at = data ;
+  (void)mode ;
+  return renameat(at->fd, at->name, at->fd, s) ;
+}
+
+static int mkrenametemp (int fd, char const *src, char *dst)
+{
+  struct at_s at = { .fd = fd, .name = src } ;
+  return mkfiletemp(dst, &renametemp, 0700, &at) ;
+}
 
 static inline void run_stage3 (char const *basedir, char const *const *envp)
 {
@@ -140,7 +167,6 @@ static inline void prepare_stage4 (char const *basedir, char what)
   fd_close(fd) ;
   if (rename(STAGE4_FILE ".new", STAGE4_FILE) == -1)
     strerr_diefu4sys(111, "rename ", STAGE4_FILE ".new", " to ", STAGE4_FILE) ;
-  sleep(20) ;
 }
 
 static inline void unsupervise_tree (void)
@@ -149,12 +175,16 @@ static inline void unsupervise_tree (void)
   {
     LOGGER_SERVICEDIR,
     SHUTDOWND_SERVICEDIR,
-    EARLYGETTY_SERVICEDIR,
+ /* EARLYGETTY_SERVICEDIR, */
     0
   } ;
   DIR *dir = opendir(S6_LINUX_INIT_TMPFS "/" SCANDIR) ;
+  int fdd ;
   if (!dir)
     strerr_diefu1sys(111, "opendir " S6_LINUX_INIT_TMPFS "/" SCANDIR) ;
+  fdd = dirfd(dir) ;
+  if (fdd == -1)
+    strerr_diefu1sys(111, "dir_fd " S6_LINUX_INIT_TMPFS "/" SCANDIR) ;
   for (;;)
   {
     char const *const *p = except ;
@@ -167,10 +197,18 @@ static inline void unsupervise_tree (void)
     if (!*p)
     {
       size_t dlen = strlen(d->d_name) ;
-      char fn[sizeof(S6_LINUX_INIT_TMPFS "/" SCANDIR "/") + dlen] ;
-      memcpy(fn, S6_LINUX_INIT_TMPFS "/" SCANDIR "/", sizeof(S6_LINUX_INIT_TMPFS "/" SCANDIR "/") - 1) ;
-      memcpy(fn + sizeof(S6_LINUX_INIT_TMPFS "/" SCANDIR "/") - 1, d->d_name, dlen + 1) ;
-      rm_rf(fn) ;
+      char fn[SCANPREFIXLEN + DOTPREFIXLEN + dlen + DOTSUFFIXLEN + 1] ;
+      memcpy(fn, SCANPREFIX DOTPREFIX, SCANPREFIXLEN + DOTPREFIXLEN) ;
+      memcpy(fn + SCANPREFIXLEN + DOTPREFIXLEN, d->d_name, dlen) ;
+      memcpy(fn + SCANPREFIXLEN + DOTPREFIXLEN + dlen, DOTSUFFIX, DOTSUFFIXLEN + 1) ;
+      if (mkrenametemp(fdd, d->d_name, fn + SCANPREFIXLEN) == -1)
+      {
+        strerr_warnwu4sys("rename " SCANPREFIX, d->d_name, " to something based on ", fn) ;
+        unlinkat(fdd, d->d_name, 0) ;
+        /* if it still fails, too bad, it will restart in stage 4 and race */
+      }
+      else
+        s6_svc_writectl(fn, S6_SUPERVISE_CTLDIR, "dx", 2) ;
     }
   }
   if (errno)

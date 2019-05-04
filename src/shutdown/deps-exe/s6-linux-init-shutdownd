@@ -1,3 +1,4 @@
+-ls6
 ${LIBUTMPS}
 -lskarnet
 ${TAINNOW_LIB}

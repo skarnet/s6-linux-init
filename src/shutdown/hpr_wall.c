@@ -1,7 +1,6 @@
 /* ISC license. */
 
 #include <string.h>
-#include <errno.h>
 #include <utmpx.h>
 
 #include <skalibs/posixishard.h>
@@ -25,23 +24,18 @@ void hpr_wall (char const *s)
   setutxent() ;
   for (;;)
   {
-    size_t linelen, idlen ;
-    struct utmpx *utx ;
+    size_t linelen ;
     int fd ;
-    errno = 0 ;
-    utx = getutxent() ;
+    struct utmpx *utx = getutxent() ;
     if (!utx) break ;
     if (utx->ut_type != USER_PROCESS) continue ;
     linelen = strnlen(utx->ut_line, UT_LINESIZE) ;
-    idlen = strnlen(utx->ut_id, 4) ;
     memcpy(tty + 5, utx->ut_line, linelen) ;
-    memcpy(tty + 5 + linelen, utx->ut_id, idlen) ;
-    tty[5 + linelen + idlen] = 0 ;
+    tty[5 + linelen] = 0 ;
     fd = open_append(tty) ;
     if (fd == -1) continue ;
     allwrite(fd, msg, n) ;
     fd_close(fd) ;
   }
-  if (errno) strerr_warnwu1sys("getutxent") ;
   endutxent() ;
 }

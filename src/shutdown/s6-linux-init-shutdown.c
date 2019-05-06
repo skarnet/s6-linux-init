@@ -52,7 +52,7 @@ static inline void add_one_day (struct tm *tm)
 static inline void parse_hourmin (tain_t *when, char const *s)
 {
   tai_t taithen ;
-  struct tm tmnow, tmthen ;
+  struct tm tmthen ;
   unsigned int hour, minute ;
   size_t len = uint_scan(s, &hour) ;
   if (!len || len > 2 || s[len] != ':' || hour > 23)
@@ -61,11 +61,11 @@ static inline void parse_hourmin (tain_t *when, char const *s)
   len = uint0_scan(s, &minute) ;
   if (!len || len != 2 || minute > 59)
     strerr_dief1x(100, "invalid time format") ;
-  if (!localtm_from_tai(&tmnow, tain_secp(&STAMP), 1))
+  if (!localtm_from_tai(&tmthen, tain_secp(&STAMP), 1))
     strerr_diefu1sys(111, "break down current time into struct tm") ;
-  tmthen = tmnow ;
   tmthen.tm_hour = hour ;
   tmthen.tm_min = minute ;
+  tmthen.tm_sec = 0 ;
   if (!tai_from_localtm(&taithen, &tmthen))
     strerr_diefu1sys(111, "assemble broken-down time into tain_t") ;
   if (tai_less(&taithen, tain_secp(&STAMP)))
@@ -74,7 +74,7 @@ static inline void parse_hourmin (tain_t *when, char const *s)
     if (!tai_from_localtm(&taithen, &tmthen))
       strerr_diefu1sys(111, "assemble broken-down time into tain_t") ;
   }
-  tai_sub(tain_secp(when), &taithen, tain_secp(&STAMP)) ;
+  when->sec = taithen ;
   when->nano = 0 ;
 }
 

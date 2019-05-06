@@ -78,22 +78,19 @@ static inline void parse_hourmin (tain_t *when, char const *s)
   when->nano = 0 ;
 }
 
+static void parse_mins (tain_t *when, char const *s)
+{
+  unsigned int mins ;
+  if (!uint0_scan(s, &mins)) dieusage() ;
+  tain_addsec_g(when, mins * 60) ;
+}
+
 static inline void parse_time (tain_t *when, char const *s)
 {
   if (!strcmp(s, "now")) tain_copynow(when) ;
-  else if (s[0] == '+')
-  {
-    unsigned int mins ;
-    if (!uint0_scan(s+1, &mins)) dieusage() ;
-    tain_addsec_g(when, mins * 60) ;
-  }
+  else if (s[0] == '+') parse_mins(when, s+1) ;
   else if (strchr(s, ':')) parse_hourmin(when, s) ;
-  else
-  {
-    unsigned int mins ;
-    if (!uint0_scan(s, &mins)) dieusage() ;
-    tain_addsec_g(when, mins * 60) ;
-  }
+  else parse_mins(when, s) ;
 }
 
 

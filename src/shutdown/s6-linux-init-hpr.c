@@ -52,7 +52,7 @@ int main (int argc, char const *const *argv)
         case 'r' : what = 3 ; break ;
         case 'f' : force = 1 ; break ;
         case 'd' : dowtmp = 0 ; break ;
-        case 'w' : dowtmp = 1 ; break ;
+        case 'w' : dowtmp = 2 ; break ;
         case 'W' : dowall = 0 ; break ;
         default : strerr_dieusage(100, USAGE) ;
       }

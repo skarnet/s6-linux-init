@@ -128,7 +128,7 @@ static inline unsigned int parse_authorized_users (char *buf, char const **users
     {
       if (n >= max)
       {
-        char fmt[UINT32_MAX] ;
+        char fmt[UINT32_FMT] ;
         fmt[uint32_fmt(fmt, AC_MAX)] = 0 ;
         strerr_warnw4x(AC_FILE, " lists more than ", fmt, " authorized users - ignoring the extra ones") ;
         break ;

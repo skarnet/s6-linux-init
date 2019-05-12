@@ -33,8 +33,6 @@
 #define AC_FILE "/etc/shutdown.allow"
 #define AC_BUFSIZE 4096
 #define AC_MAX 64
-#define AC_SHORT_MESSAGE "no authorized users logged in\n"
-#define AC_MESSAGE "s6-linux-init-shutdown: " AC_SHORT_MESSAGE
 
 
  /* shutdown 01:23: date/time format parsing */
@@ -153,7 +151,6 @@ static inline int match_users_with_utmp (char const *const *users, unsigned int 
     for (unsigned int i = 0 ; i < n ; i++)
       if (!strncmp(utx->ut_user, users[i], UT_NAMESIZE)) goto yes ;
   }
-  if (errno) strerr_warnwu1sys("getutxent") ;
   endutxent() ;
   return 0 ;
 
@@ -188,14 +185,7 @@ static inline void access_control (void)
   buf[st.st_size] = 0 ;
   n = parse_authorized_users(buf, users, AC_MAX) ;
   if (!n || !match_users_with_utmp(users, n))
-  {
-    fd = open_append("/dev/console") ;
-    if (fd == -1)
-      strerr_diefu1sys(111, "open /dev/console") ;
-    if (allwrite(fd, AC_MESSAGE, sizeof(AC_MESSAGE) - 1) < sizeof(AC_MESSAGE) - 1)
-      strerr_diefu1sys(111, "write to /dev/console") ;
-    strerr_dief1x(1, AC_SHORT_MESSAGE) ;
-  }
+    strerr_dief1x(1, "no authorized users logged in") ;
 }
 
 

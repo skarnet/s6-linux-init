@@ -34,7 +34,7 @@
  <li> Make sure you have a <tt>/run</tt> directory. </li>
  <li> Edit the scripts in <tt>/etc/s6-linux-init/skel</tt>. </li>
  <li> Check that your devtmpfs is automounted by your kernel at boot time. If it is not,
-add the <tt>-d 1</tt> option to the <tt>s6-linux-init-maker</tt> command line below. </li>
+add the <tt>-d /dev</tt> option to the <tt>s6-linux-init-maker</tt> command line below. </li>
  <li> As root, run: <pre>
      rm -rf /tmp/blah
      s6-linux-init-maker -1 -G "/sbin/getty 38400 tty1" /tmp/blah

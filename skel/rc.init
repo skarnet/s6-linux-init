@@ -30,5 +30,9 @@ shift
 ### 2. Starting the wanted set of services
 ### This is also called every time you change runlevels with telinit.
 ### (edit the location to suit your installation)
+### By default, $rl is the string "default", unless you changed it
+### via the -D option to s6-linux-init-maker.
+### Numeric arguments from 1 to 5 on the kernel command line will
+### override the default.
 
 # exec /etc/s6-linux-init/current/scripts/runlevel "$rl"

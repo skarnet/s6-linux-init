@@ -12,4 +12,4 @@
 # exec /sbin/openrc "$1"
 
 ### If your services are managed by s6-rc:
-# exec s6-rc -v2 change "$1"
+# exec s6-rc -v2 -up change "$1"

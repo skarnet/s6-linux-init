@@ -9,6 +9,8 @@ In 1.0.0.0
 that are a drop-in replacement for a sysvinit installation, and
 that respect the LSB-3.0.0 specification.
  - utmp management, runlevel management.
+ - See doc/upgrade.html if rebooting from a system using a previous
+version of s6-linux-init.
    
 
 In 0.4.0.1

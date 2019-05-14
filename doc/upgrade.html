@@ -25,6 +25,12 @@
  <li> This is a complete rewrite and redesign of s6-linux-init: the
 <em>lifetime</em> version number has increased. No compatibility
 whatsoever is retained with previous versions. </li>
+ <li> When rebooting after upgrading from a 0.4.0.<em>x</em> version
+of s6-linux-init to 1.0.0.0: the <tt>s6-reboot</tt> command, which
+is needed for the 0.4.0.<em>x</em> shutdown procedure, may not be
+accessible via PATH anymore. Make sure to have (a copy of)
+<tt>s6-reboot</tt> available in your PATH; you can remove it after
+rebooting on the new system. </li>
 </ul>
 
 <h2> in 0.4.0.1 </h2>

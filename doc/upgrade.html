@@ -18,6 +18,18 @@
 
 <h1> What has changed in s6-linux-init </h1>
 
+<h2> in 1.0.1.0 </h2>
+
+<ul>
+ <li> <tt>-f</tt> option added to
+<a href="s6-linux-init-maker.html">s6-linux-init-maker</a> for use
+in distribution packaging scripts with a staging directory. </li>
+ <li> Permissions on the binaries have been adjusted. </li>
+ <li> The skeleton <tt>runlevel</tt> script now includes a guard to
+avoid calling the service manager without an argument. </li>
+ <li> The permissions of the <tt>/run/uncaught-logs</tt> directory
+in the generated image have been changed to 02750. </li>
+</ul>
 
 <h2> in 1.0.0.0 </h2>
 

@@ -1,9 +1,9 @@
-s6-linux-init			0700
-s6-linux-init-hpr		0750
-s6-linux-init-shutdown		0755
-s6-linux-init-shutdownd		0700
-s6-linux-init-telinit		0750
-s6-linux-init-logouthookd	0700
+s6-linux-init			0744
+s6-linux-init-hpr		0744
+s6-linux-init-shutdown		0744
+s6-linux-init-shutdownd		0744
+s6-linux-init-telinit		0744
+s6-linux-init-logouthookd	0744
 s6-linux-init-echo		0755
-s6-linux-init-umountall		0750
-s6-linux-init-maker		0700
+s6-linux-init-umountall		0744
+s6-linux-init-maker		0744

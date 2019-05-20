@@ -28,12 +28,12 @@
 
 #ifdef S6_LINUX_INIT_UTMPD_PATH
 # include <utmps/config.h>
-# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] [ -U utmp_user ] dir"
-# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNU:"
+# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] [ -f skeldir ] [ -U utmp_user ] dir"
+# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:U:"
 # define UTMPS_DIR "utmps"
 #else
-# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] dir"
-# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:nN"
+# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] [ -f skeldir ] dir"
+# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:"
 #endif
 
 #define dieusage() strerr_dieusage(100, USAGE)
@@ -48,6 +48,7 @@ static char const *early_getty = 0 ;
 static char const *slashdev = 0 ;
 static char const *log_user = "root" ;
 static char const *initdefault = 0 ;
+static char const *skeldir = S6_LINUX_INIT_SKELDIR ;
 static unsigned int initial_umask = 0022 ;
 static unsigned int timestamp_style = 1 ;
 static unsigned int finalsleep = 3000 ;
@@ -272,10 +273,10 @@ static void auto_dir_internal (char const *base, char const *dir, uid_t uid, gid
   {
     if (errno != EEXIST || strict) goto err ;
   }
-  else if (uid || gid)
+  else
   {
-    if (chown(fn, uid, gid) < 0
-     || chmod(fn, mode) < 0) goto err ;
+    if ((uid || gid) && chown(fn, uid, gid) < 0) goto err ;
+    if (mode & 07000 && chmod(fn, mode) < 0) goto err ;
   }
   return ;
 
@@ -358,18 +359,23 @@ static void auto_script (char const *base, char const *file, writetobuf_func_t_r
   fd_close(fd) ;
 }
 
-static void copy_script (char const *base, char const *src, char const *dst)
+static void copy_script (char const *base, char const *name)
 {
   size_t baselen = strlen(base) ;
-  size_t dstlen = strlen(dst) ;
-  char fn[baselen + dstlen + 2] ;
-  memcpy(fn, base, baselen) ;
-  fn[baselen] = '/' ;
-  memcpy(fn + baselen + 1, dst, dstlen + 1) ;
-  if (!filecopy_unsafe(src, fn, 0755))
+  size_t namelen = strlen(name) ;
+  size_t skellen = strlen(skeldir) ;
+  char dst[baselen + sizeof("/scripts/") + namelen] ;
+  char src[skellen + namelen + 2] ;
+  memcpy(dst, base, baselen) ;
+  memcpy(dst + baselen, "/scripts/", sizeof("/scripts/") - 1) ;
+  memcpy(dst + baselen + sizeof("/scripts/") - 1, name, namelen + 1) ;
+  memcpy(src, skeldir, skellen) ;
+  src[skellen] = '/' ;
+  memcpy(src + skellen + 1, name, namelen + 1) ;
+  if (!filecopy_unsafe(src, dst, 0755))
   {
     cleanup(base) ;
-    strerr_diefu4sys(111, "copy ", src, " to ", fn) ;
+    strerr_diefu4sys(111, "copy ", src, " to ", dst) ;
   }
 }
 
@@ -498,7 +504,7 @@ static inline void make_image (char const *base)
     uid_t uid ;
     gid_t gid ;
     getug(base, log_user, &uid, &gid) ;
-    auto_dir(base, "run-image/" UNCAUGHT_DIR, uid, gid, 02700) ;
+    auto_dir(base, "run-image/" UNCAUGHT_DIR, uid, gid, 02750) ;
   }
   auto_dir(base, "run-image/" SCANDIR, 0, 0, 0755) ;
   auto_dir(base, "run-image/" SCANDIR "/.s6-svscan", 0, 0, 0755) ;
@@ -545,9 +551,9 @@ static inline void make_image (char const *base)
 static inline void make_scripts (char const *base)
 {
   auto_dir(base, "scripts", 0, 0, 0755) ;
-  copy_script(base, S6_LINUX_INIT_SKELDIR "/runlevel", "scripts/runlevel") ;
-  copy_script(base, S6_LINUX_INIT_SKELDIR "/" STAGE2, "scripts/" STAGE2) ;
-  copy_script(base, S6_LINUX_INIT_SKELDIR "/" STAGE3, "scripts/" STAGE3) ;
+  copy_script(base, "runlevel") ;
+  copy_script(base, STAGE2) ;
+  copy_script(base, STAGE3) ;
 }
 
 static inline void make_bins (char const *base)
@@ -587,6 +593,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
         case 'D' : initdefault = l.arg ; break ;
         case 'n' : mounttype = 2 ; break ;
         case 'N' : mounttype = 0 ; break ;
+        case 'f' : skeldir = l.arg ; break ;
 #ifdef S6_LINUX_INIT_UTMPD_PATH
         case 'U' : utmp_user = l.arg ; break ;
 #endif

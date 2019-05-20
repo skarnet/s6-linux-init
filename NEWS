@@ -1,5 +1,16 @@
 Changelog for s6-linux-init.
 
+In 1.0.1.0
+----------
+
+ - New -f option to s6-linux-init-maker, for use
+in distribution packaging scripts with a staging directory.
+ - Better permissions on the binaries.
+ - The skeleton runlevel script now includes a guard to
+avoid calling the service manager without an argument.
+ - /run/uncaught-logs directory permissions changed to 02750.
+
+
 In 1.0.0.0
 ----------
 

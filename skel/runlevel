@@ -5,6 +5,9 @@
 ### requests a machine state change via telinit.
 ### Ideally, it should just be a call to the service manager.
 
+test "$#" -gt 0 || { echo 'runlevel: fatal: too few arguments' 1>&2 ; exit 100 ; }
+
+
 ### If your services are managed by sysv-rc:
 # exec /etc/init.d/rc "$1"
 

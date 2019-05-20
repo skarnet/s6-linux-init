@@ -59,7 +59,8 @@ machine</em>. If it is not the case, the system will fail to boot.
        [ -e <em>initial_envvar</em> ] ... \
        [ -q <em>finalsleeptime</em> ] \
        [ -D <em>initdefault</em> ] \
-       [ -n | -N ]
+       [ -n | -N ] \
+       [ -f <em>skeldir</em> ] \
        [ -U <em>utmp_user</em> ] \
        <em>dir</em>
 </pre>
@@ -294,6 +295,14 @@ an additional tmpfs is unnecessary. <strong>Do not</strong> use this
 option if your rootfs is read-only: failure to write to <tt>/run</tt>
 will cause init to die and the kernel to panic. This option is
 incompatible with the <tt>-n</tt> option. </li> <p />
+
+ <li> <tt>-f</tt>&nbsp;<em>skeldir</em>&nbsp;: copy the skeleton
+scripts from directory <em>skeldir</em>. By default, <em>skeldir</em>
+is <tt>/etc/s6-linux-init/skel</tt>, or the directory that has been
+given as an argument to the <tt>--skeldir</tt> configure option at
+build time. This option is typically useful when distributions run
+<tt>s6-linux-init-maker</tt> in packaging scripts, when preparing
+files in a staging directory. </li> <p />
 
  <li> <tt>-U</tt>&nbsp;<em>utmp_user</em>&nbsp;: this option is only
 available when the s6-linux-init package has been built with the

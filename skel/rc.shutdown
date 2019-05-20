@@ -11,6 +11,9 @@
 # exec /etc/init.d/rc 6
 
 ### If your services are managed by OpenRC:
+### also remove the "killprocs" and "mount-ro" symlinks from
+### /etc/runlevels/shutdown - because OpenRC does not properly
+### separate the service manager from the shutdown manager either.
 # exec /sbin/openrc shutdown
 
 ### If your services are managed by s6-rc:

@@ -26,7 +26,7 @@ It is normally invoked as <tt>/sbin/shutdown</tt>.
 <h2> Interface </h2>
 
 <pre>
-     s6-linux-init-shutdown [ -h | -p | -r | -k ] [ -a ] [ -t <em>sec</em> ] [ -f | -F ] <em>time</em> [ <em>message</em> ]
+     s6-linux-init-shutdown [ -h [ -H | -P ] | -p | -r | -k ] [ -a ] [ -t <em>sec</em> ] [ -f | -F ] <em>time</em> [ <em>message</em> ]
      s6-linux-init-shutdown -c [ <em>message</em> ]
 </pre>
 
@@ -71,7 +71,8 @@ of <em>sec</em> seconds between the SIGTERM and the SIGKILL (to allow processes
 receiving SIGTERM to exit cleanly). Default is 3 seconds. </li>
  <li> <tt>-k</tt>&nbsp;: warning only. <em>message</em> will be sent to all
 logged in users, but the shutdown sequence will not be triggered. </li>
- <li> <tt>-h</tt>&nbsp;: at the end of the shutdown sequence, halt the system. </li>
+ <li> <tt>-h</tt>&nbsp;: at the end of the shutdown sequence, halt the system. The
+behaviour of this option may be altered with <tt>-H</tt> or <tt>-P</tt>. </li>
  <li> <tt>-p</tt>&nbsp;: at the end of the shutdown sequence, power off the system.
 (This option is provided as an extension, it is not required by the LSB interface.) </li>
  <li> <tt>-r</tt>&nbsp;: at the end of the shutdown sequence, reboot the system. </li>
@@ -80,6 +81,12 @@ logged in users, but the shutdown sequence will not be triggered. </li>
  <li> <tt>-c</tt>&nbspl: cancel a planned shutdown (i.e. cancel the effect of a
 previous call to <tt>shutdown</tt> with a <em>time</em> argument that was not <tt>now</tt>).
 This cannot be used to interrupt a shutdown sequence that has already started. </li>
+ <li> <tt>-H</tt>&nbsp;: this option can only be used in conjunction with <tt>-h</tt>.
+Ensures the system is halted, not powered off, at the end of the shutdown sequence.
+<tt>-Hh</tt> is equivalent to <tt>-h</tt>. </li>
+ <li> <tt>-P</tt>&nbsp;: this option can only be used in conjunction with <tt>-h</tt>.
+Ensures the system is powered off at the end of the shutdown sequence.
+<tt>=Ph</tt> is equivalent to <tt>-p</tt>. </li>
 </ul>
 
 <h2> Notes </h2>

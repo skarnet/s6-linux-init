@@ -27,7 +27,7 @@
 #define UT_NAMESIZE 32
 #endif
 
-#define USAGE "s6-linux-init-shutdown [ -h | -p | -r | -k ] [ -f | -F ] [ -a ] [ -t sec ] time [ message ]  or  s6-linux-init-shutdown -c [ message ]"
+#define USAGE "s6-linux-init-shutdown [ -h [ -H | -P ] | -p | -r | -k ] [ -f | -F ] [ -a ] [ -t sec ] time [ message ]  or  s6-linux-init-shutdown -c [ message ]"
 #define dieusage() strerr_dieusage(100, USAGE)
 
 #define AC_FILE "/etc/shutdown.allow"
@@ -195,6 +195,7 @@ int main (int argc, char const *const *argv)
 {
   unsigned int gracetime = 0 ;
   int what = 0 ;
+  int subwhat = 0 ;
   int doactl = 0 ;
   int docancel = 0 ;
   tain_t when ;
@@ -204,10 +205,12 @@ int main (int argc, char const *const *argv)
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "hprkafFct:", &l) ;
+      int opt = subgetopt_r(argc, argv, "HPhprkafFct:", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
+        case 'H' : subwhat = 1 ; break ;
+        case 'P' : subwhat = 2 ; break ;
         case 'h' : what = 1 ; break ;
         case 'p' : what = 2 ; break ;
         case 'r' : what = 3 ; break ;
@@ -223,6 +226,11 @@ int main (int argc, char const *const *argv)
     argc -= l.ind ; argv += l.ind ;
   }
 
+  if (subwhat)
+  {
+    if (what == 1) what = subwhat ;
+    else strerr_dieusage(100, USAGE) ;
+  }
   if (geteuid())
   {
     errno = EPERM ;

@@ -1,5 +1,11 @@
 Changelog for s6-linux-init.
 
+In 1.0.2.0
+----------
+ - New -H and -P options to s6-linux-init-shutdown, for
+better compatibility with sysvinit shutdown.
+
+
 In 1.0.1.0
 ----------
 

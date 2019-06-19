@@ -157,7 +157,8 @@ must be absolute. Default is
 <strong><tt>/etc/s6-linux-init/current</tt></strong>. </li> <p />
 
  <li> <tt>-u</tt>&nbsp;<em>log_user</em>&nbsp;: the catch-all
-logger will run as the <em>log_user</em> user. Default is <tt>root</tt>. </li> <p />
+logger will run as the <em>log_user</em> user. Default is
+<strong><tt>root</tt></strong>. </li> <p />
 
  <li> <tt>-G</tt>&nbsp;<em>early_getty</em>&nbsp;: if this option
 is set, <tt>s6-linux-init-maker</tt> will define an additional s6 service
@@ -261,10 +262,10 @@ Default is <strong>3000</strong>, meaning a grace period of 3 seconds. </li> <p 
 a runlevel set to <em>initdefault</em>, which can be an arbitrary
 string, but is usually <tt>2</tt>, <tt>3</tt>, <tt>5</tt> (traditional
 sysvinit behaviour) or <tt>default</tt> (OpenRC behaviour). Default is
-<tt>default</tt>. Note that if a <tt>2</tt>, <tt>3</tt>, <tt>4</tt>,
-<tt>5</tt>, or <tt>default</tt> argument is encountered in the kernel
-command line, it will be interpreted as the runlevel to boot the system
-on, and will override the default given here. </li> <p />
+<strong><tt>default</tt></strong>. Note that if a <tt>2</tt>, <tt>3</tt>,
+<tt>4</tt>, <tt>5</tt>, or <tt>default</tt> argument is encountered in
+the kernel command line, it will be interpreted as the runlevel to boot
+the system on, and will override the default given here. </li> <p />
 
  <li> <tt>-n</tt>&nbsp;: at boot time, assume that a tmpfs is already
 present on <tt>/run</tt> (or the argument that was given to the
@@ -298,7 +299,8 @@ incompatible with the <tt>-n</tt> option. </li> <p />
 
  <li> <tt>-f</tt>&nbsp;<em>skeldir</em>&nbsp;: copy the skeleton
 scripts from directory <em>skeldir</em>. By default, <em>skeldir</em>
-is <tt>/etc/s6-linux-init/skel</tt>, or the directory that has been
+is <strong><tt>/etc/s6-linux-init/skel</tt></strong>, or the directory
+that has been
 given as an argument to the <tt>--skeldir</tt> configure option at
 build time. This option is typically useful when distributions run
 <tt>s6-linux-init-maker</tt> in packaging scripts, when preparing
@@ -309,7 +311,7 @@ available when the s6-linux-init package has been built with the
 <tt>--enable-utmps</tt> configure option, that enables support for the
 <a href="//skarnet.org/software/utmps/">utmps</a> package. The option
 defines the user that the <tt>utmpd</tt> and <tt>wtmpd</tt> services
-will run as. Default is <tt>utmp</tt>. </li> <p />
+will run as. Default is <strong><tt>utmp</tt></strong>. </li> <p />
 </ul>
 
 <h2> Organization of the created directory </h2>

@@ -41,8 +41,10 @@ add the <tt>-d /dev</tt> option to the <tt>s6-linux-init-maker</tt> command line
      rm -rf /etc/s6-linux-init/current
      mv /tmp/blah /etc/s6-linux-init/current
      cp -a /etc/s6-linux-init/current/bin/* /sbin/ </pre> </li>
- <li> Reboot. </li>
- <li> Congratulations! your machine is now running a s6-based init system. </li>
+ <li> Reboot. Warning: use your <em>old</em> reboot command, that you saved, not the new one
+that has just been created by <tt>s6-linux-init-maker</tt>, because you're still running on
+your old init system and need to use a reboot command that matches it. </li>
+ <li> After the reboot: congratulations! your machine is now running a s6-based init system. </li>
  <li> To shut the machine down, use <tt>/sbin/shutdown</tt>, <tt>/sbin/halt</tt>,
 <tt>/sbin/poweroff</tt> or <tt>/sbin/reboot</tt> as usual. </li>
 </ol>

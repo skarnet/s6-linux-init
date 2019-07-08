@@ -43,7 +43,6 @@ static inline void run_stage2 (char const *basedir, char const **argv, unsigned 
   char const *childargv[argc + 3] ;
   char fn[dirlen + sizeof("/scripts/" STAGE2)] ;
   PROG = "s6-linux-init (child)" ;
-  argv[0] = PROG ;
   memcpy(fn, basedir, dirlen) ;
   memcpy(fn + dirlen, "/scripts/" STAGE2, sizeof("/scripts/" STAGE2)) ;
   childargv[0] = fn ;

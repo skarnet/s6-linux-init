@@ -88,12 +88,6 @@ static inline void run_stage3 (char const *basedir, char const *const *envp)
     else if (WEXITSTATUS(wstat))
     {
       char fmt[UINT_FMT] ;
-      fmt[uint_fmt(fmt, WTERMSIG(wstat))] = 0 ;
-      strerr_warnw3x(stage3, " was killed by signal ", fmt) ;
-    }
-    else if (WEXITSTATUS(wstat))
-    {
-      char fmt[UINT_FMT] ;
       fmt[uint_fmt(fmt, WEXITSTATUS(wstat))] = 0 ;
       strerr_warnw3x(stage3, " exited ", fmt) ;
     }

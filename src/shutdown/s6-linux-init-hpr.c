@@ -71,6 +71,7 @@ int main (int argc, char const *const *argv)
 
   if (force)
   {
+    sync() ;
     reboot(what == 3 ? RB_AUTOBOOT : what == 2 ? RB_POWER_OFF : RB_HALT_SYSTEM) ;
     strerr_diefu1sys(111, "reboot()") ;
   }

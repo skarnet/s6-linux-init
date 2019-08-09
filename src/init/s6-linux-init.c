@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
+#include <sys/reboot.h>
 
 #include <skalibs/types.h>
 #include <skalibs/allreadwrite.h>
@@ -19,7 +20,6 @@
 #include <s6/config.h>
 
 #include <s6-linux-init/config.h>
-
 #include "defaults.h"
 #include "initctl.h"
 
@@ -181,6 +181,8 @@ int main (int argc, char const **argv, char const *const *envp)
     pid = fork() ;
     if (pid == -1) strerr_diefu1sys(111, "fork") ;
     if (!pid) run_stage2(basedir, argv, argc, newenvp, !!path, envmodifs.s, envmodifs.len, initdefault) ;
+    if (reboot(RB_DISABLE_CAD) == -1)
+      strerr_warnwu1sys("trap ctrl-alt-del") ;
     if (fd_copy(2, 1) == -1)
       strerr_diefu1sys(111, "redirect output file descriptor") ;
     xpathexec_r(newargv, newenvp, !!path, envmodifs.s, envmodifs.len) ;

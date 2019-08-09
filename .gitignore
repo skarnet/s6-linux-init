@@ -6,9 +6,7 @@
 /config.mak
 /src/include/s6-linux-init/config.h
 /s6-linux-init
-/s6-linux-init-halt
-/s6-linux-init-poweroff
-/s6-linux-init-reboot
+/s6-linux-init-hpr
 /s6-linux-init-shutdown
 /s6-linux-init-shutdownd
 /s6-linux-init-telinit

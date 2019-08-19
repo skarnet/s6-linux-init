@@ -30,5 +30,6 @@
 #define ENVSTAGE1 "env"
 #define STAGE2 "rc.init"
 #define STAGE3 "rc.shutdown"
+#define STAGE4 "rc.shutdown.final"
 
 #endif

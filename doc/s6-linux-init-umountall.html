@@ -33,6 +33,10 @@
 It processes <tt>/proc/mounts</tt> in the reverse order, starting with the most recently mounted
 partition and ending with the root filesystem ("unmounting" the root filesystem means remounting
 it read-only). </li>
+ <li> It makes an exception for the first instances of <em>devtmpfs</em>, <em>proc</em>
+and <em>sysfs</em> filesystem types, but not for later instances. In other words: it
+does not attempt to unmount <tt>/dev</tt>, <tt>/proc</tt> and <tt>/sys</tt>, but it
+will attempt to unmount duplicates of those pseudo-filesystems. </li>
  <li> <tt>s6-linux-init-umountall</tt> does not touch <tt>/etc/mtab</tt>. </li>
  <li> If a filesystem fails to unmount, a warning is printed to stderr, but
 <tt>s6-linux-init-umountall</tt> still attempts to unmount all the other ones. </li>
@@ -42,7 +46,7 @@ it read-only). </li>
 
 <p>
  <tt>s6-linux-init-umountall</tt> returns the number of errors it encountered
-when attempting to unmount all the filesystems listed in <tt>/proc/mounts</tt>.
+when attempting to unmount the filesystems listed in <tt>/proc/mounts</tt>.
 </p>
 
 <h2> Notes </h2>
@@ -53,15 +57,11 @@ in "stage 4", i.e. after a SIGKILL has been sent to all the processes on the sys
 right before the system reboots (or halts, or is powered off). By that point, there is
 no possible process that could prevent real file systems from being unmounted. </li>
  <li> It is likely that some filesystems will still fail to unmount, typically
-<tt>/proc</tt> and <tt>/dev</tt>. That's okay: those are pseudo-filesystems, and
+cgroups or tmpfses. That's okay: those are pseudo-filesystems, and
 will not cause data loss or a fsck if the system shuts down while they are still mounted. </li>
  <li> Distributions usually provide a <tt>umount</tt> command with a <tt>-a</tt> option
 to unmount all filesystems. That command is usually bloated with historical artifacts
-and relies on unsafe interfaces, so it was decided not to use it. The
-<a href="//skarnet.org/software/s6-linux-utils/">s6-linux-utils</a> package also
-provides a <a href="//skarnet.org/software/s6-linux-utils/s6-umount.html">s6-umount</a>
-command with a <tt>-a</tt> option, but adding a dependency to that package would be a
-higher cost than simply reimplementing the specific functionality here. </li>
+and relies on unsafe interfaces, so it was decided not to use it. </li>
 </ul>
 
 </body>

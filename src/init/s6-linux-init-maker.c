@@ -554,6 +554,7 @@ static inline void make_scripts (char const *base)
   copy_script(base, "runlevel") ;
   copy_script(base, STAGE2) ;
   copy_script(base, STAGE3) ;
+  copy_script(base, STAGE4) ;
 }
 
 static inline void make_bins (char const *base)

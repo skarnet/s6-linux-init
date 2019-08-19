@@ -143,6 +143,7 @@ static inline void prepare_stage4 (char const *basedir, char what)
   buffer b ;
   int fd ;
   char buf[512] ;
+  size_t sabase = satmp.len ;
   unlink_void(STAGE4_FILE ".new") ;
   fd = open_excl(STAGE4_FILE ".new") ;
   if (fd == -1) strerr_diefu3sys(111, "open ", STAGE4_FILE ".new", " for writing") ;
@@ -152,10 +153,15 @@ static inline void prepare_stage4 (char const *basedir, char what)
     "#!" EXECLINE_SHEBANGPREFIX "execlineb -P\n\n"
     EXECLINE_EXTBINPREFIX "foreground { "
     S6_LINUX_INIT_BINPREFIX "s6-linux-init-umountall }\n"
+    EXECLINE_EXTBINPREFIX "foreground { ") < 0
+   || !string_quote(&satmp, basedir, strlen(basedir))
+   || buffer_put(&b, satmp.s + sabase, satmp.len - sabase) < 0
+   || buffer_puts(&b, "/scripts/" STAGE4 " }\n"
     S6_LINUX_INIT_BINPREFIX "s6-linux-init-hpr -f -") < 0
    || buffer_put(&b, &what, 1) < 0
    || buffer_putsflush(&b, "\n") < 0)
     strerr_diefu2sys(111, "write to ", STAGE4_FILE ".new") ;
+  satmp.len = sabase ;
   if (fchmod(fd, S_IRWXU) == -1)
     strerr_diefu2sys(111, "fchmod ", STAGE4_FILE ".new") ;
   fd_close(fd) ;

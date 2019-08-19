@@ -81,6 +81,10 @@ procedure when the admin runs a <tt>halt</tt>, <tt>poweroff</tt>,
    <li> <em>runlevel</em>: the script executing a machine state change
 at boot time (normally invoked by <em>rc.init</em>, towards the default
 runlevel) or when the administrator runs a <tt>telinit</tt> command. </li>
+   <li> <em>rc.shutdown.final</em>: a script that will be run at the
+very end of the shutdown procedure, after all processes have been killed
+and all filesystems have been unmounted, <em>just before</em> the system
+is rebooted or the power turned off. This script normally remains empty. </li>
   </ul> </li>
 </ul>
 

@@ -246,6 +246,7 @@ int main (int argc, char const *const *argv)
   }
   if (!argc) dieusage() ;
   parse_time(&when, argv[0]) ;
+  tain_sub(&when, &when, &STAMP) ;
   if (argv[1]) hpr_wall(argv[1]) ;
   if (what < 4)
   {

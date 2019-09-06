@@ -114,7 +114,7 @@ int main (int argc, char const *const *argv)
   if (dowall) hpr_wall(HPR_WALL_BANNER) ;
   if (dowtmp < 2)
   {
-    if (!hpr_shutdown(what, &STAMP, 0))
+    if (!hpr_shutdown(what, &tain_zero, 0))
       strerr_diefu1sys(111, "notify s6-linux-init-shutdownd") ;
   }
   return 0 ;

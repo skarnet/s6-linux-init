@@ -247,7 +247,15 @@ int main (int argc, char const *const *argv)
   if (!argc) dieusage() ;
   parse_time(&when, argv[0]) ;
   tain_sub(&when, &when, &STAMP) ;
-  if (argv[1]) hpr_wall(argv[1]) ;
+  if (argv[1])
+  {
+    size_t len = strlen(argv[1]) ;
+    char msg[sizeof(HPR_WALL_BANNER) + 1 + len] ;
+    memcpy(msg, HPR_WALL_BANNER, sizeof(HPR_WALL_BANNER) - 1) ;
+    msg[sizeof(HPR_WALL_BANNER) - 1] = '\n' ;
+    memcpy(msg + sizeof(HPR_WALL_BANNER), argv[1], len + 1) ;
+    hpr_wall(msg) ;
+  }
   if (what < 4)
   {
     if (gracetime > 300)

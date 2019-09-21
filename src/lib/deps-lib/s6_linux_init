@@ -1,4 +1,4 @@
 s6_linux_init_logouthook.o
 -lskarnet
 ${SOCKET_LIB}
-${TAINNOW_LIB}
+${SYSCLOCK_LIB}

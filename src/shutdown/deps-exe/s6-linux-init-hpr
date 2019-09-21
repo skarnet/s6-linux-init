@@ -1,5 +1,5 @@
 libhpr.a.xyzzy
 ${LIBUTMPS}
 -lskarnet
-${TAINNOW_LIB}
+${SYSCLOCK_LIB}
 ${SOCKET_LIB}

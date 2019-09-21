@@ -28,11 +28,11 @@ libs6_linux_init.a.xyzzy: src/lib/s6_linux_init_logouthook.o
 else
 libs6_linux_init.a.xyzzy: src/lib/s6_linux_init_logouthook.lo
 endif
-libs6_linux_init.so.xyzzy: EXTRA_LIBS := -lskarnet ${SOCKET_LIB} ${TAINNOW_LIB}
+libs6_linux_init.so.xyzzy: EXTRA_LIBS := -lskarnet ${SOCKET_LIB} ${SYSCLOCK_LIB}
 libs6_linux_init.so.xyzzy: src/lib/s6_linux_init_logouthook.lo
 s6-linux-init-echo: EXTRA_LIBS :=
 s6-linux-init-echo: src/misc/s6-linux-init-echo.o -lskarnet
-s6-linux-init-logouthookd: EXTRA_LIBS := ${TAINNOW_LIB} ${SOCKET_LIB}
+s6-linux-init-logouthookd: EXTRA_LIBS := ${SYSCLOCK_LIB} ${SOCKET_LIB}
 s6-linux-init-logouthookd: src/misc/s6-linux-init-logouthookd.o ${LIBUTMPS} -lskarnet
 s6-linux-init-umountall: EXTRA_LIBS :=
 s6-linux-init-umountall: src/misc/s6-linux-init-umountall.o -lskarnet
@@ -41,10 +41,10 @@ libhpr.a.xyzzy: src/shutdown/hpr_shutdown.o src/shutdown/hpr_wall.o
 else
 libhpr.a.xyzzy: src/shutdown/hpr_shutdown.lo src/shutdown/hpr_wall.lo
 endif
-s6-linux-init-hpr: EXTRA_LIBS := ${TAINNOW_LIB} ${SOCKET_LIB}
+s6-linux-init-hpr: EXTRA_LIBS := ${SYSCLOCK_LIB} ${SOCKET_LIB}
 s6-linux-init-hpr: src/shutdown/s6-linux-init-hpr.o libhpr.a.xyzzy ${LIBUTMPS} -lskarnet
-s6-linux-init-shutdown: EXTRA_LIBS := ${TAINNOW_LIB} ${SOCKET_LIB}
+s6-linux-init-shutdown: EXTRA_LIBS := ${SYSCLOCK_LIB} ${SOCKET_LIB}
 s6-linux-init-shutdown: src/shutdown/s6-linux-init-shutdown.o libhpr.a.xyzzy ${LIBUTMPS} -lskarnet
-s6-linux-init-shutdownd: EXTRA_LIBS := ${TAINNOW_LIB} ${SOCKET_LIB}
+s6-linux-init-shutdownd: EXTRA_LIBS := ${SYSCLOCK_LIB} ${SOCKET_LIB}
 s6-linux-init-shutdownd: src/shutdown/s6-linux-init-shutdownd.o -ls6 ${LIBUTMPS} -lskarnet
 INTERNAL_LIBS := libhpr.a.xyzzy

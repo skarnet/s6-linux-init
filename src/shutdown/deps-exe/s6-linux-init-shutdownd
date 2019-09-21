@@ -1,5 +1,5 @@
 -ls6
 ${LIBUTMPS}
 -lskarnet
-${TAINNOW_LIB}
+${SYSCLOCK_LIB}
 ${SOCKET_LIB}

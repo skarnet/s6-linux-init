@@ -89,7 +89,7 @@ static int linewithargs_script (buffer *b, char const *line)
 static int hpr_script (buffer *b, char const *what)
 {
   return put_shebang_options(b, "-S0")
-    && buffer_puts(b, S6_LINUX_INIT_BINPREFIX "s6-linux-init-hpr -") >= 0
+    && buffer_puts(b, S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -") >= 0
     && buffer_puts(b, what) >= 0
     && buffer_puts(b, " $@\n") >= 0 ;
 }
@@ -101,11 +101,11 @@ static int death_script (buffer *b, char const *s)
       EXECLINE_EXTBINPREFIX "redirfd -w 1 /dev/console\n"
       EXECLINE_EXTBINPREFIX "fdmove -c 2 1\n"
       EXECLINE_EXTBINPREFIX "foreground { "
-      S6_LINUX_INIT_BINPREFIX "s6-linux-init-echo -- \"s6-svscan ") >= 0
+      S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-echo -- \"s6-svscan ") >= 0
     && buffer_puts(b, s) >= 0
     && buffer_puts(b,
       ". Rebooting.\" }\n"
-      S6_LINUX_INIT_BINPREFIX "s6-linux-init-hpr -r -f\n") >= 0 ;
+      S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -r -f\n") >= 0 ;
 }
 
 static int s6_svscan_log_script (buffer *b, char const *data)
@@ -142,7 +142,7 @@ static int logouthookd_script (buffer *b, char const *data)
   return put_shebang(b)
    && buffer_puts(b,
     S6_EXTBINPREFIX "s6-ipcserver -1 -a 0700 -c 1000 -C 1000 -- " LOGOUTHOOKD_SOCKET "\n"
-    S6_LINUX_INIT_BINPREFIX "s6-linux-init-logouthookd\n") >= 0 ;
+    S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-logouthookd\n") >= 0 ;
 }
 
 static int shutdownd_script (buffer *b, char const *data)
@@ -150,7 +150,7 @@ static int shutdownd_script (buffer *b, char const *data)
   size_t sabase = satmp.len ;
   char fmt[UINT_FMT] ;
   if (!put_shebang(b)
-   || buffer_puts(b, S6_LINUX_INIT_BINPREFIX "s6-linux-init-shutdownd -c ") < 0
+   || buffer_puts(b, S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-shutdownd -c ") < 0
    || !string_quote(&satmp, robase, strlen(robase))) return 0 ;
   if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
@@ -189,7 +189,7 @@ static int runleveld_script (buffer *b, char const *data)
 static int sig_script (buffer *b, char const *option)
 {
   return put_shebang(b)
-   && buffer_puts(b, S6_LINUX_INIT_BINPREFIX "s6-linux-init-shutdown -a ") >= 0
+   && buffer_puts(b, S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-shutdown -a ") >= 0
    && buffer_puts(b, option) >= 0
    && buffer_puts(b, " -- now\n") >= 0 ;
 }
@@ -198,7 +198,7 @@ static inline int stage1_script (buffer *b, char const *data)
 {
   size_t sabase = satmp.len ;
   if (!put_shebang_options(b, "-S0")
-   || buffer_puts(b, S6_LINUX_INIT_BINPREFIX "s6-linux-init -c ") < 0
+   || buffer_puts(b, S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init -c ") < 0
    || !string_quote(&satmp, robase, strlen(robase))) return 0 ;
   if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
@@ -381,12 +381,12 @@ static void copy_script (char const *base, char const *name)
 
 static void auto_exec (char const *base, char const *name, char const *target)
 {
-  if (S6_LINUX_INIT_BINPREFIX[0] == '/')
+  if (S6_LINUX_INIT_EXTBINPREFIX[0] == '/')
   {
     size_t len = strlen(target) ;
-    char fn[sizeof(S6_LINUX_INIT_BINPREFIX) + len] ;
-    memcpy(fn, S6_LINUX_INIT_BINPREFIX, sizeof(S6_LINUX_INIT_BINPREFIX) - 1) ;
-    memcpy(fn + sizeof(S6_LINUX_INIT_BINPREFIX) - 1, target, len + 1) ;
+    char fn[sizeof(S6_LINUX_INIT_EXTBINPREFIX) + len] ;
+    memcpy(fn, S6_LINUX_INIT_EXTBINPREFIX, sizeof(S6_LINUX_INIT_EXTBINPREFIX) - 1) ;
+    memcpy(fn + sizeof(S6_LINUX_INIT_EXTBINPREFIX) - 1, target, len + 1) ;
     auto_symlink(base, name, fn) ;
   }
   else

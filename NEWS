@@ -3,6 +3,7 @@ Changelog for s6-linux-init.
 In 1.0.3.0
 ----------
 
+ - Compatibility with skalibs-2.9.0.0.
  - s6-linux-init now activates ctrl-alt-del management by
 default (no need to manually configure it via sysctl in stage 2
 anymore.)

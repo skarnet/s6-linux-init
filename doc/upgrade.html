@@ -21,12 +21,22 @@
 <h2> in 1.0.3.0 </h2>
 
 <ul>
+ <li> <a href="//skarnet.org/software/skalibs/">skalibs</a>
+dependency bumped to 2.9.0.0. </li>
+ <li> <a href="//skarnet.org/software/execline/">execline</a>
+dependency bumped to 2.5.2.0. </li>
+ <li> <a href="//skarnet.org/software/s6/">s6</a>
+dependency bumped to 2.9.0.0. </li>
+ <li> <a href="//skarnet.org/software/nsss/">nsss</a>
+optional dependency bumped to 0.0.2.0. </li>
+ <li> <a href="//skarnet.org/software/utmps/">utmps</a>
+optional dependency bumped to 0.0.3.0. </li>
  <li> Ctrl-Alt-Del management is now activated by default, instead
 of requiring a sysctl setting in stage 2. </li>
  <li> <a href="s6-linux-init-umountall.html">s6-linux-init-umountall</a>
 now skips the first instance of <tt>/dev</tt>, <tt>/proc</tt> and <tt>sys</tt>. </li>
  <li> stage 4 (after every process has been killed and the filesystems have
-been unmounted) now calls a new user script, <tt>rc.shutdown.final</tt>.
+been unmounted) now calls a new user script, <tt>rc.shutdown.final</tt>. </li>
 </ul>
 
 <h2> in 1.0.2.1 </h2>

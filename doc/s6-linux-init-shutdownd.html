@@ -27,14 +27,15 @@ directly by the user.
 <h2> Interface </h2>
 
 <pre>
-     s6-linux-init-shutdownd [ -c <em>basedir</em> ] [ -g <em>gracetime</em> ] <em>fifo</em>
+     s6-linux-init-shutdownd [ -c <em>basedir</em> ] [ -g <em>gracetime</em> ]
 </pre>
 
 <ul>
- <li> <tt>s6-linux-init-shutdownd</tt> opens the <em>fifo</em> named pipe
-and listens to it. This is where programs such as
+ <li> <tt>s6-linux-init-shutdownd</tt> opens a named pipe in its current
+directory and listens to it. This fifo has a fixed, internal, name: this is
+a rendezvous point where programs such as
 <a href="s6-linux-init-shutdown.html">s6-linux-init-shutdown</a> send their
-commands when they are told to trigger the shutdown procedure.</li>
+commands when they are told to trigger the shutdown procedure. </li>
  <li> When it receives a command to shut down, <tt>s6-linux-init-shutdownd</tt>
 first spawns the <em>rc.shutdown</em> script defined by the
 <a href="s6-linux-init-maker.html">s6-linux-init-maker</a> invocation that

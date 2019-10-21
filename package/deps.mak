@@ -17,12 +17,12 @@ src/shutdown/s6-linux-init-hpr.o src/shutdown/s6-linux-init-hpr.lo: src/shutdown
 src/shutdown/s6-linux-init-shutdown.o src/shutdown/s6-linux-init-shutdown.lo: src/shutdown/s6-linux-init-shutdown.c src/include-local/defaults.h src/shutdown/hpr.h src/include-local/initctl.h
 src/shutdown/s6-linux-init-shutdownd.o src/shutdown/s6-linux-init-shutdownd.lo: src/shutdown/s6-linux-init-shutdownd.c src/include-local/defaults.h src/shutdown/hpr.h src/include-local/initctl.h src/include/s6-linux-init/config.h
 
-s6-linux-init: EXTRA_LIBS :=
-s6-linux-init: src/init/s6-linux-init.o -lskarnet
-s6-linux-init-maker: EXTRA_LIBS := ${MAYBEPTHREAD_LIB}
-s6-linux-init-maker: src/init/s6-linux-init-maker.o ${LIBNSSS} -lskarnet
-s6-linux-init-telinit: EXTRA_LIBS :=
-s6-linux-init-telinit: src/init/s6-linux-init-telinit.o -lskarnet
+s6-linux-init: EXTRA_LIBS := -lskarnet
+s6-linux-init: src/init/s6-linux-init.o
+s6-linux-init-maker: EXTRA_LIBS := -lskarnet ${MAYBEPTHREAD_LIB}
+s6-linux-init-maker: src/init/s6-linux-init-maker.o ${LIBNSSS}
+s6-linux-init-telinit: EXTRA_LIBS := -lskarnet
+s6-linux-init-telinit: src/init/s6-linux-init-telinit.o
 ifeq ($(strip $(STATIC_LIBS_ARE_PIC)),)
 libs6_linux_init.a.xyzzy: src/lib/s6_linux_init_logouthook.o
 else
@@ -30,21 +30,21 @@ libs6_linux_init.a.xyzzy: src/lib/s6_linux_init_logouthook.lo
 endif
 libs6_linux_init.so.xyzzy: EXTRA_LIBS := -lskarnet ${SOCKET_LIB} ${SYSCLOCK_LIB}
 libs6_linux_init.so.xyzzy: src/lib/s6_linux_init_logouthook.lo
-s6-linux-init-echo: EXTRA_LIBS :=
-s6-linux-init-echo: src/misc/s6-linux-init-echo.o -lskarnet
-s6-linux-init-logouthookd: EXTRA_LIBS := ${SYSCLOCK_LIB} ${SOCKET_LIB}
-s6-linux-init-logouthookd: src/misc/s6-linux-init-logouthookd.o ${LIBUTMPS} -lskarnet
-s6-linux-init-umountall: EXTRA_LIBS :=
-s6-linux-init-umountall: src/misc/s6-linux-init-umountall.o -lskarnet
+s6-linux-init-echo: EXTRA_LIBS := -lskarnet
+s6-linux-init-echo: src/misc/s6-linux-init-echo.o
+s6-linux-init-logouthookd: EXTRA_LIBS := -lskarnet ${SYSCLOCK_LIB} ${SOCKET_LIB}
+s6-linux-init-logouthookd: src/misc/s6-linux-init-logouthookd.o ${LIBUTMPS}
+s6-linux-init-umountall: EXTRA_LIBS := -lskarnet
+s6-linux-init-umountall: src/misc/s6-linux-init-umountall.o
 ifeq ($(strip $(STATIC_LIBS_ARE_PIC)),)
 libhpr.a.xyzzy: src/shutdown/hpr_shutdown.o src/shutdown/hpr_wall.o
 else
 libhpr.a.xyzzy: src/shutdown/hpr_shutdown.lo src/shutdown/hpr_wall.lo
 endif
-s6-linux-init-hpr: EXTRA_LIBS := ${SYSCLOCK_LIB} ${SOCKET_LIB}
-s6-linux-init-hpr: src/shutdown/s6-linux-init-hpr.o libhpr.a.xyzzy ${LIBUTMPS} -lskarnet
-s6-linux-init-shutdown: EXTRA_LIBS := ${SYSCLOCK_LIB} ${SOCKET_LIB}
-s6-linux-init-shutdown: src/shutdown/s6-linux-init-shutdown.o libhpr.a.xyzzy ${LIBUTMPS} -lskarnet
-s6-linux-init-shutdownd: EXTRA_LIBS := ${SYSCLOCK_LIB} ${SOCKET_LIB}
-s6-linux-init-shutdownd: src/shutdown/s6-linux-init-shutdownd.o -ls6 ${LIBUTMPS} -lskarnet
+s6-linux-init-hpr: EXTRA_LIBS := -lskarnet ${SYSCLOCK_LIB} ${SOCKET_LIB}
+s6-linux-init-hpr: src/shutdown/s6-linux-init-hpr.o libhpr.a.xyzzy ${LIBUTMPS}
+s6-linux-init-shutdown: EXTRA_LIBS := -lskarnet ${SYSCLOCK_LIB} ${SOCKET_LIB}
+s6-linux-init-shutdown: src/shutdown/s6-linux-init-shutdown.o libhpr.a.xyzzy ${LIBUTMPS}
+s6-linux-init-shutdownd: EXTRA_LIBS := -ls6 -lskarnet ${SYSCLOCK_LIB} ${SOCKET_LIB}
+s6-linux-init-shutdownd: src/shutdown/s6-linux-init-shutdownd.o ${LIBUTMPS}
 INTERNAL_LIBS := libhpr.a.xyzzy

@@ -359,7 +359,7 @@ static void auto_script (char const *base, char const *file, writetobuf_func_t_r
   fd_close(fd) ;
 }
 
-static void copy_script (char const *base, char const *name)
+static void copy_script (char const *base, char const *name, int mandatory)
 {
   size_t baselen = strlen(base) ;
   size_t namelen = strlen(name) ;
@@ -372,7 +372,7 @@ static void copy_script (char const *base, char const *name)
   memcpy(src, skeldir, skellen) ;
   src[skellen] = '/' ;
   memcpy(src + skellen + 1, name, namelen + 1) ;
-  if (!filecopy_unsafe(src, dst, 0755))
+  if (!filecopy_unsafe(src, dst, 0755) && mandatory)
   {
     cleanup(base) ;
     strerr_diefu4sys(111, "copy ", src, " to ", dst) ;
@@ -551,10 +551,10 @@ static inline void make_image (char const *base)
 static inline void make_scripts (char const *base)
 {
   auto_dir(base, "scripts", 0, 0, 0755) ;
-  copy_script(base, "runlevel") ;
-  copy_script(base, STAGE2) ;
-  copy_script(base, STAGE3) ;
-  copy_script(base, STAGE4) ;
+  copy_script(base, "runlevel", 1) ;
+  copy_script(base, STAGE2, 1) ;
+  copy_script(base, STAGE3, 1) ;
+  copy_script(base, STAGE4, 0) ;
 }
 
 static inline void make_bins (char const *base)

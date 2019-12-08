@@ -275,7 +275,7 @@ static void auto_dir_internal (char const *base, char const *dir, uid_t uid, gid
   }
   else
   {
-    if ((uid || gid) && chown(fn, uid, gid) < 0) goto err ;
+    if (chown(fn, uid, gid) < 0) goto err ;
     if (mode & 07000 && chmod(fn, mode) < 0) goto err ;
   }
   return ;

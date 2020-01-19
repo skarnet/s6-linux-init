@@ -36,3 +36,14 @@ shift
 ### override the default.
 
 # exec /etc/s6-linux-init/current/scripts/runlevel "$rl"
+
+
+### If this script is run in a container, then 1. and 2. above do not
+### apply and you should just call your CMD, if any, or let your
+### services run.
+### Something like this:
+
+# if test -z "$*" ; then return 0 ; fi
+# $@
+# echo $? > /run/s6-linux-init-container-results/exitcode
+# halt

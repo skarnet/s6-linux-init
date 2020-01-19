@@ -90,10 +90,12 @@ static int linewithargs_script (buffer *b, char const *line)
 
 static int hpr_script (buffer *b, char const *what)
 {
-  return put_shebang_options(b, "-S0")
-   && buffer_puts(b, S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -") >= 0
-   && buffer_puts(b, what) >= 0
-   && buffer_puts(b, " $@\n") >= 0 ;
+  if (!put_shebang_options(b, "-S0")
+   || buffer_puts(b, S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -") < 0
+   || (inns && buffer_puts(b, "n") < 0)
+   || buffer_puts(b, what) < 0
+   || buffer_puts(b, " $@\n") < 0) return 0 ;
+  return 1 ;
 }
 
 static int death_script (buffer *b, char const *s)
@@ -141,18 +143,26 @@ static int container_exit_script (buffer *b, char const *results)
 
 static int s6_svscan_log_script (buffer *b, char const *data)
 {
-  size_t sabase = satmp.len ;
   if (!put_shebang(b)
    || buffer_puts(b, console || inns ?
        EXECLINE_EXTBINPREFIX "fdmove -c 1 2" :
        EXECLINE_EXTBINPREFIX "redirfd -w 1 /dev/null") < 0
    || buffer_puts(b, "\n"
-       EXECLINE_EXTBINPREFIX "redirfd -rnb 0 " LOGGER_FIFO "\n"
-       S6_EXTBINPREFIX "s6-setuidgid ") < 0
-   || !string_quote(&satmp, log_user, strlen(log_user))) return 0 ;
-  if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
-  satmp.len = sabase ;
-  if (buffer_puts(b, "\ns6-log -bpd3 -- ") < 0) return 0 ;
+       EXECLINE_EXTBINPREFIX "redirfd -rnb 0 " LOGGER_FIFO "\n") < 0) return 0 ;
+  if (strcmp(log_user, "root"))
+  {
+    size_t sabase = satmp.len ;
+    if (buffer_puts(b, S6_EXTBINPREFIX "s6-setuidgid ") < 0
+     || !string_quote(&satmp, log_user, strlen(log_user))) return 0 ;
+    if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0)
+    {
+      satmp.len = sabase ;
+      return 0 ;
+    }
+    satmp.len = sabase ;
+    if (buffer_puts(b, "\n") < 0) return 0 ;
+  }
+  if (buffer_puts(b, "s6-log -bpd3 -- ") < 0) return 0 ;
   if (console && buffer_puts(b, "1 ") < 0) return 0 ;
   if (timestamp_style & 1 && buffer_puts(b, "t ") < 0
    || timestamp_style & 2 && buffer_puts(b, "T ") < 0
@@ -160,10 +170,6 @@ static int s6_svscan_log_script (buffer *b, char const *data)
     return 0 ;
   (void)data ;
   return 1 ;
-
- err:
-  satmp.len = sabase ;
-  return 0 ;
 }
 
 static int logouthookd_script (buffer *b, char const *data)

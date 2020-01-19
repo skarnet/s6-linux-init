@@ -27,6 +27,7 @@
 
 #include <execline/config.h>
 
+#include <s6/config.h>
 #include <s6/s6-supervise.h>
 
 #include <s6-linux-init/config.h>
@@ -35,17 +36,20 @@
 #include "hpr.h"
 
 #define STAGE4_FILE "stage 4"
-#define SCANPREFIX S6_LINUX_INIT_TMPFS "/" SCANDIR "/"
+#define SCANDIRFULL S6_LINUX_INIT_TMPFS "/" SCANDIR
+#define SCANPREFIX SCANDIRFULL "/"
 #define SCANPREFIXLEN (sizeof(SCANPREFIX) - 1)
 #define DOTPREFIX ".s6-linux-init-shutdownd:"
 #define DOTPREFIXLEN (sizeof(DOTPREFIX) - 1)
 #define DOTSUFFIX ":XXXXXX"
 #define DOTSUFFIXLEN (sizeof(DOTSUFFIX) - 1)
 
-#define USAGE "s6-linux-init-shutdownd [ -c basedir ] [ -g gracetime ]"
+#define USAGE "s6-linux-init-shutdownd [ -c basedir ] [ -g gracetime ] [ -C ] [ -B ]"
 #define dieusage() strerr_dieusage(100, USAGE)
 
 static char const *basedir = BASEDIR ;
+static int inns = 0 ;
+static int nologger = 0 ;
 
 struct at_s
 {
@@ -139,6 +143,17 @@ static inline void handle_fifo (buffer *b, char *what, tain_t *deadline, unsigne
   }
 }
 
+static void restore_console (void)
+{
+  if (!inns && !nologger)
+  {
+    fd_close(1) ;
+    if (open("/dev/console", O_WRONLY) != 1)
+      strerr_diefu1sys(111, "open /dev/console for writing") ;
+    if (fd_copy(2, 1) < 0) strerr_warnwu1sys("fd_copy") ;
+  }
+}
+
 static inline void prepare_stage4 (char const *basedir, char what)
 {
   buffer b ;
@@ -149,20 +164,37 @@ static inline void prepare_stage4 (char const *basedir, char what)
   fd = open_excl(STAGE4_FILE ".new") ;
   if (fd == -1) strerr_diefu3sys(111, "open ", STAGE4_FILE ".new", " for writing") ;
   buffer_init(&b, &buffer_write, fd, buf, 512) ;
-
-  if (buffer_puts(&b,
-    "#!" EXECLINE_SHEBANGPREFIX "execlineb -P\n\n"
-    EXECLINE_EXTBINPREFIX "foreground { "
-    S6_LINUX_INIT_BINPREFIX "s6-linux-init-umountall }\n"
-    EXECLINE_EXTBINPREFIX "foreground { ") < 0
-   || !string_quote(&satmp, basedir, strlen(basedir))
-   || buffer_put(&b, satmp.s + sabase, satmp.len - sabase) < 0
-   || buffer_puts(&b, "/scripts/" STAGE4 " }\n"
-    S6_LINUX_INIT_BINPREFIX "s6-linux-init-hpr -f -") < 0
-   || buffer_put(&b, &what, 1) < 0
-   || buffer_putsflush(&b, "\n") < 0)
-    strerr_diefu2sys(111, "write to ", STAGE4_FILE ".new") ;
-  satmp.len = sabase ;
+  if (inns)
+  {
+    if (buffer_puts(&b, "#!"
+       EXECLINE_SHEBANGPREFIX "execlineb -P\n\n"
+       EXECLINE_EXTBINPREFIX "foreground { "
+       S6_EXTBINPREFIX "s6-svc -Ox -- . }\n"
+       EXECLINE_EXTBINPREFIX "background\n{\n  ") < 0
+     || (!nologger && buffer_puts(&b,
+       EXECLINE_EXTBINPREFIX "foreground { "
+       S6_EXTBINPREFIX "s6-svc -Xh -- " SCANPREFIX LOGGER_SERVICEDIR " }\n  ") < 0)
+     || buffer_puts(&b, S6_EXTBINPREFIX "s6-svscanctl -") < 0
+     || buffer_put(&b, what == 'h' ? "s" : &what, 1) < 0
+     || buffer_putsflush(&b, "b -- " SCANDIRFULL "\n}\n") < 0)
+      strerr_diefu2sys(111, "write to ", STAGE4_FILE ".new") ;
+  }
+  else
+  {
+    if (buffer_puts(&b, "#!"
+      EXECLINE_SHEBANGPREFIX "execlineb -P\n\n"
+      EXECLINE_EXTBINPREFIX "foreground { "
+      S6_LINUX_INIT_BINPREFIX "s6-linux-init-umountall }\n"
+      EXECLINE_EXTBINPREFIX "foreground { ") < 0
+     || !string_quote(&satmp, basedir, strlen(basedir))
+     || buffer_put(&b, satmp.s + sabase, satmp.len - sabase) < 0
+     || buffer_puts(&b, "/scripts/" STAGE4 " }\n"
+      S6_LINUX_INIT_BINPREFIX "s6-linux-init-hpr -f -") < 0
+     || buffer_put(&b, &what, 1) < 0
+     || buffer_putsflush(&b, "\n") < 0)
+      strerr_diefu2sys(111, "write to ", STAGE4_FILE ".new") ;
+    satmp.len = sabase ;
+  }
   if (fchmod(fd, S_IRWXU) == -1)
     strerr_diefu2sys(111, "fchmod ", STAGE4_FILE ".new") ;
   fd_close(fd) ;
@@ -172,20 +204,18 @@ static inline void prepare_stage4 (char const *basedir, char what)
 
 static inline void unsupervise_tree (void)
 {
-  static char const *except[] =
+  char const *except[3] =
   {
-    LOGGER_SERVICEDIR,
     SHUTDOWND_SERVICEDIR,
- /* EARLYGETTY_SERVICEDIR, */
+    nologger ? 0 : LOGGER_SERVICEDIR,
     0
   } ;
-  DIR *dir = opendir(S6_LINUX_INIT_TMPFS "/" SCANDIR) ;
+  DIR *dir = opendir(SCANDIRFULL) ;
   int fdd ;
-  if (!dir)
-    strerr_diefu1sys(111, "opendir " S6_LINUX_INIT_TMPFS "/" SCANDIR) ;
+  if (!dir) strerr_diefu1sys(111, "opendir " SCANDIRFULL) ;
   fdd = dirfd(dir) ;
   if (fdd == -1)
-    strerr_diefu1sys(111, "dir_fd " S6_LINUX_INIT_TMPFS "/" SCANDIR) ;
+    strerr_diefu1sys(111, "dir_fd " SCANDIRFULL) ;
   for (;;)
   {
     char const *const *p = except ;
@@ -213,17 +243,17 @@ static inline void unsupervise_tree (void)
     }
   }
   if (errno)
-    strerr_diefu1sys(111, "readdir " S6_LINUX_INIT_TMPFS "/" SCANDIR) ;
+    strerr_diefu1sys(111, "readdir " SCANDIRFULL) ;
   dir_close(dir) ;
 }
 
 int main (int argc, char const *const *argv, char const *const *envp)
 {
-  char what = 'S' ;
   unsigned int grace_time = 3000 ;
   tain_t deadline ;
   int fdr, fdw ;
   buffer b ;
+  char what = 'S' ;
   char buf[64] ;
   PROG = "s6-linux-init-shutdownd" ;
 
@@ -231,12 +261,14 @@ int main (int argc, char const *const *argv, char const *const *envp)
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "c:g:", &l) ;
+      int opt = subgetopt_r(argc, argv, "c:g:CB", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
         case 'c' : basedir = l.arg ; break ;
         case 'g' : if (!uint0_scan(l.arg, &grace_time)) dieusage() ; break ;
+        case 'C' : inns = 1 ; break ;
+	case 'B' : nologger = 1 ; break ;
         default : dieusage() ;
       }
     }
@@ -249,6 +281,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
  /* if we're in stage 4, exec it immediately */
   {
     char const *stage4_argv[2] = { "./" STAGE4_FILE, 0 } ;
+    restore_console() ;
     execve(stage4_argv[0], (char **)stage4_argv, (char *const *)envp) ;
     if (errno != ENOENT)
       strerr_warnwu2sys("exec ", stage4_argv[0]) ;
@@ -285,27 +318,30 @@ int main (int argc, char const *const *argv, char const *const *envp)
 
   fd_close(fdw) ;
   fd_close(fdr) ;
-  fd_close(1) ;
-  if (open("/dev/console", O_WRONLY) != 1)
-    strerr_diefu1sys(111, "open /dev/console for writing") ;
-  if (fd_copy(2, 1) == -1) strerr_warnwu1sys("fd_copy") ;
+  restore_console() ;
 
 
  /* The end is coming! */
 
   prepare_stage4(basedir, what) ;
   unsupervise_tree() ;
-  sync() ;
   if (sig_ignore(SIGTERM) == -1) strerr_warnwu1sys("sig_ignore SIGTERM") ;
-  strerr_warni1x("sending all processes the TERM signal...") ;
+  if (!inns)
+  {
+    sync() ;
+    strerr_warni1x("sending all processes the TERM signal...") ;
+  }
   kill(-1, SIGTERM) ;
   kill(-1, SIGCONT) ;
   tain_from_millisecs(&deadline, grace_time) ;
   tain_now_g() ;
   tain_add_g(&deadline, &deadline) ;
   deepsleepuntil_g(&deadline) ;
-  sync() ;
-  strerr_warni1x("sending all processes the KILL signal...") ;
+  if (!inns)
+  {
+    sync() ;
+    strerr_warni1x("sending all processes the KILL signal...") ;
+  }
   kill(-1, SIGKILL) ;
   return 0 ;
 }

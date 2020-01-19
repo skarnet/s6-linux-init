@@ -24,11 +24,13 @@ int main (int argc, char const *const *argv, char const *const *envp)
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "c:p:s:m:d:D:", &l) ;
+      int opt = subgetopt_r(argc, argv, "CBc:p:s:m:d:D:", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
-        case 'c' : /* s6-linux-init may be called with these options, don't choke on them */
+        case 'C' : /* s6-linux-init may be called with these options, don't choke on them */
+        case 'B' :
+        case 'c' :
         case 'p' :
         case 's' :
         case 'm' :

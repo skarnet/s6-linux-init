@@ -26,6 +26,8 @@
 #define EARLYGETTY_SERVICEDIR "s6-linux-init-early-getty"
 #define EARLYGETTY S6_LINUX_INIT_TMPFS "/" SCANDIR "/" EARLYGETTY_SERVICEDIR
 
+#define CONTAINER_RESULTS "s6-linux-init-container-results"
+
 #define RUNIMAGE "run-image"
 #define ENVSTAGE1 "env"
 #define STAGE2 "rc.init"

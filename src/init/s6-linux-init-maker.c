@@ -28,12 +28,12 @@
 
 #ifdef S6_LINUX_INIT_UTMPD_PATH
 # include <utmps/config.h>
-# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] [ -f skeldir ] [ -U utmp_user ] dir"
-# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:U:"
+# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] [ -f skeldir ] [ -U utmp_user ] [ -C ] [ -B ] dir"
+# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:U:CB"
 # define UTMPS_DIR "utmps"
 #else
-# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] [ -f skeldir ] dir"
-# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:"
+# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] [ -f skeldir ] [ -C ] [ -B ] dir"
+# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:CB"
 #endif
 
 #define dieusage() strerr_dieusage(100, USAGE)
@@ -55,6 +55,8 @@ static unsigned int finalsleep = 3000 ;
 static int mounttype = 1 ;
 static int console = 0 ;
 static int logouthookd = 0 ;
+static int inns = 0 ;
+static int nologger = 0 ;
 
 #ifdef S6_LINUX_INIT_UTMPD_PATH
 static char const *utmp_user = "utmp" ;
@@ -89,33 +91,61 @@ static int linewithargs_script (buffer *b, char const *line)
 static int hpr_script (buffer *b, char const *what)
 {
   return put_shebang_options(b, "-S0")
-    && buffer_puts(b, S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -") >= 0
-    && buffer_puts(b, what) >= 0
-    && buffer_puts(b, " $@\n") >= 0 ;
+   && buffer_puts(b, S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -") >= 0
+   && buffer_puts(b, what) >= 0
+   && buffer_puts(b, " $@\n") >= 0 ;
 }
 
 static int death_script (buffer *b, char const *s)
 {
   return put_shebang(b)
-    && buffer_puts(b,
-      EXECLINE_EXTBINPREFIX "redirfd -w 1 /dev/console\n"
-      EXECLINE_EXTBINPREFIX "fdmove -c 2 1\n"
-      EXECLINE_EXTBINPREFIX "foreground { "
-      S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-echo -- \"s6-svscan ") >= 0
-    && buffer_puts(b, s) >= 0
-    && buffer_puts(b,
-      ". Rebooting.\" }\n"
-      S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -r -f\n") >= 0 ;
+   && buffer_puts(b,
+     EXECLINE_EXTBINPREFIX "redirfd -w 2 /dev/console\n"
+     EXECLINE_EXTBINPREFIX "fdmove -c 1 2\n"
+     EXECLINE_EXTBINPREFIX "foreground { "
+     S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-echo -- \"s6-svscan ") >= 0
+   && buffer_puts(b, s) >= 0
+   && buffer_puts(b,
+     ". Rebooting.\" }\n"
+     S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -fr\n") >= 0 ;
+}
+
+static int container_crash_script (buffer *b, char const *data)
+{
+  (void)data ;
+  return put_shebang(b)
+   && buffer_puts(b,
+     EXECLINE_EXTBINPREFIX "foreground\n{\n  "
+     EXECLINE_EXTBINPREFIX "fdmove -c 1 2\n  "
+     S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-echo -- \"s6-svscan crashed. Killing everything and exiting.\"\n}\n"
+     EXECLINE_EXTBINPREFIX "foreground { kill -9 -1 }\n"
+     EXECLINE_EXTBINPREFIX "wait { }\n"
+     S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -fnp\n") >= 0 ;
+}
+
+static int container_exit_script (buffer *b, char const *results)
+{
+  return put_shebang_options(b, "-S0")
+   && buffer_puts(b,
+     EXECLINE_EXTBINPREFIX "ifelse -X { test $1 = halt }\n{\n  "
+     S6_EXTBINPREFIX "s6-envdir -- ") >= 0
+   && buffer_puts(b, results) >= 0
+   && buffer_puts(b, "\n  "
+     EXECLINE_EXTBINPREFIX "importas -D0 -- EXITCODE exitcode\n  "
+     EXECLINE_EXTBINPREFIX "exit $EXITCODE\n}\n"
+     EXECLINE_EXTBINPREFIX "ifte -X\n  { "
+     S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -fnr }\n  { "
+     S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -fnp }\n"
+     "test $1 = reboot\n") >= 0 ;
 }
 
 static int s6_svscan_log_script (buffer *b, char const *data)
 {
   size_t sabase = satmp.len ;
   if (!put_shebang(b)
-   || buffer_puts(b,
-       EXECLINE_EXTBINPREFIX "redirfd -w 2 /dev/console\n"
-       EXECLINE_EXTBINPREFIX "redirfd -w 1 /dev/") < 0
-   || buffer_puts(b, console ? "console" : "null") < 0
+   || buffer_puts(b, console || inns ?
+       EXECLINE_EXTBINPREFIX "fdmove -c 1 2" :
+       EXECLINE_EXTBINPREFIX "redirfd -w 1 /dev/null") < 0
    || buffer_puts(b, "\n"
        EXECLINE_EXTBINPREFIX "redirfd -rnb 0 " LOGGER_FIFO "\n"
        S6_EXTBINPREFIX "s6-setuidgid ") < 0
@@ -156,6 +186,8 @@ static int shutdownd_script (buffer *b, char const *data)
   satmp.len = sabase ;
   if (buffer_puts(b, " -g ") < 0
    || buffer_put(b, fmt, uint_fmt(fmt, finalsleep)) < 0
+   || (inns && buffer_puts(b, " -C") < 0)
+   || (nologger && buffer_puts(b, " -B") < 0)
    || buffer_puts(b, "\n") < 0) return 0 ;
   (void)data ;
   return 1 ;
@@ -243,6 +275,8 @@ static inline int stage1_script (buffer *b, char const *data)
   {
     if (buffer_puts(b, " -N") < 0) return 0 ;
   }
+  if (inns && buffer_puts(b, " -C") < 0) return 0 ;
+  if (nologger && buffer_puts(b, " -B") < 0) return 0 ;
 
   if (buffer_puts(b, "\n") < 0) return 0 ;
   (void)data ;
@@ -500,16 +534,8 @@ static inline void make_utmps (char const *base)
 static inline void make_image (char const *base)
 {
   auto_dir(base, "run-image", 0, 0, 0755) ;
-  {
-    uid_t uid ;
-    gid_t gid ;
-    getug(base, log_user, &uid, &gid) ;
-    auto_dir(base, "run-image/" UNCAUGHT_DIR, uid, gid, 02750) ;
-  }
   auto_dir(base, "run-image/" SCANDIR, 0, 0, 0755) ;
   auto_dir(base, "run-image/" SCANDIR "/.s6-svscan", 0, 0, 0755) ;
-  auto_script(base, "run-image/" SCANDIR "/.s6-svscan/crash", &death_script, "crashed") ;
-  auto_script(base, "run-image/" SCANDIR "/.s6-svscan/finish", &death_script, "exited") ;
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGTERM", &put_shebang_options, 0) ;
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGHUP", &put_shebang_options, 0) ;
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGQUIT", &put_shebang_options, 0) ;
@@ -517,18 +543,37 @@ static inline void make_image (char const *base)
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGUSR1", &sig_script, "-p") ;
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGUSR2", &sig_script, "-h") ;
 
-  auto_dir(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR, 0, 0, 0755) ;
-  auto_fifo(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR "/" LOGGER_FIFO) ;
-  auto_file(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR "/notification-fd", "3\n", 2) ;
-  auto_script(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR "/run", &s6_svscan_log_script, 0) ;
+  if (!nologger)
+  {
+    uid_t uid ;
+    gid_t gid ;
+    getug(base, log_user, &uid, &gid) ;
+    auto_dir(base, "run-image/" UNCAUGHT_DIR, uid, gid, 02750) ;
+    auto_dir(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR, 0, 0, 0755) ;
+    auto_fifo(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR "/" LOGGER_FIFO) ;
+    auto_file(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR "/notification-fd", "3\n", 2) ;
+    auto_script(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR "/run", &s6_svscan_log_script, 0) ;
+  }
 
   auto_dir(base, "run-image/" SCANDIR "/" SHUTDOWND_SERVICEDIR, 0, 0, 0755) ;
   auto_fifo(base, "run-image/" SCANDIR "/" SHUTDOWND_SERVICEDIR "/" SHUTDOWND_FIFO) ;
   auto_script(base, "run-image/" SCANDIR "/" SHUTDOWND_SERVICEDIR "/run", &shutdownd_script, 0) ;
 
-  auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR, 0, 0, 0755) ;
-  auto_file(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/notification-fd", "3\n", 2) ;
-  auto_script(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/run", &runleveld_script, 0) ;
+  if (inns)
+  {
+    auto_script(base, "run-image/" SCANDIR "/.s6-svscan/crash", &container_crash_script, "") ;
+    auto_script(base, "run-image/" SCANDIR "/.s6-svscan/finish", &container_exit_script, S6_LINUX_INIT_TMPFS "/" CONTAINER_RESULTS) ;
+    auto_dir(base, "run-image/" CONTAINER_RESULTS, 0, 0, 0755) ;
+    auto_file(base, "run-image/" CONTAINER_RESULTS "/exitcode", "0\n", 2) ;
+  }
+  else
+  {
+    auto_script(base, "run-image/" SCANDIR "/.s6-svscan/crash", &death_script, "crashed") ;
+    auto_script(base, "run-image/" SCANDIR "/.s6-svscan/finish", &death_script, "exited") ;
+    auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR, 0, 0, 0755) ;
+    auto_file(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/notification-fd", "3\n", 2) ;
+    auto_script(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/run", &runleveld_script, 0) ;
+  }
 
   if (logouthookd)
   {
@@ -551,7 +596,7 @@ static inline void make_image (char const *base)
 static inline void make_scripts (char const *base)
 {
   auto_dir(base, "scripts", 0, 0, 0755) ;
-  copy_script(base, "runlevel", 1) ;
+  if (!inns) copy_script(base, "runlevel", 1) ;
   copy_script(base, STAGE2, 1) ;
   copy_script(base, STAGE3, 1) ;
   copy_script(base, STAGE4, 0) ;
@@ -565,7 +610,7 @@ static inline void make_bins (char const *base)
   auto_script(base, "bin/poweroff", &hpr_script, "p") ;
   auto_script(base, "bin/reboot", &hpr_script, "r") ;
   auto_exec(base, "bin/shutdown", "s6-linux-init-shutdown") ;
-  auto_exec(base, "bin/telinit", "s6-linux-init-telinit") ;
+  if (!inns) auto_exec(base, "bin/telinit", "s6-linux-init-telinit") ;
 }
 
 int main (int argc, char const *const *argv, char const *const *envp)
@@ -598,6 +643,8 @@ int main (int argc, char const *const *argv, char const *const *envp)
 #ifdef S6_LINUX_INIT_UTMPD_PATH
         case 'U' : utmp_user = l.arg ; break ;
 #endif
+        case 'C' : inns = 1 ; break ;
+        case 'B' : nologger = 1 ; break ;
         default : dieusage() ;
       }
     }
@@ -618,6 +665,8 @@ int main (int argc, char const *const *argv, char const *const *envp)
   }
   if (timestamp_style > 3)
     strerr_dief1x(100, "-t timestamp_style must be 0, 1, 2 or 3") ;
+  if (inns && slashdev)
+    strerr_warnw1x("both -C and -d options given; are you sure your container does not come with a pre-mounted /dev?") ;
 
   umask(0) ;
   if (mkdir(argv[0], 0755) < 0)

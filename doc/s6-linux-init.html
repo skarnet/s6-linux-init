@@ -27,7 +27,7 @@ and execs into <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>.
 <h2> Interface </h2>
 
 <pre>
-     s6-linux-init [ -c <em>basedir</em> ] [ -p <em>initial_path</em> ] [ -s <em>env_store</em> ] [ -m <em>umask</em> ] [ -d <em>slashdev</em> ] [ -D <em>initdefault</em> ] [ -n | -N ] [ <em>args...</em> ]
+     s6-linux-init [ -c <em>basedir</em> ] [ -p <em>initial_path</em> ] [ -s <em>env_store</em> ] [ -m <em>umask</em> ] [ -d <em>slashdev</em> ] [ -D <em>initdefault</em> ] [ -n | -N ] [ -C ] [ -B ] [ <em>args...</em> ]
 </pre>
 
 <ul>
@@ -67,6 +67,19 @@ Default is <tt>default</tt>. </li>
  <li> <tt>-n</tt>&nbsp;: instead of unmounting <tt>/run</tt> and mounting
 a tmpfs on it, just remount <tt>/run</tt>. </li>
  <li> <tt>-N</tt>&nbsp;: do not touch <tt>/run</tt> at all. </li>
+ <li> <tt>-C</tt>&nbsp;: run in a container. This option modifies a few
+of the operations described below, to accommodate running in a container
+instead of on real hardware. For instance: it does not scan the command
+line for a specific runlevel, it does not trap ctrl-alt-del, and before
+anything else it waits for its descriptor 3, if present, to close.
+(Docker uses this fd 3 mechanism as synchronization between the Docker
+daemon and the container's <tt>init</tt>.) </li>
+ <li> <tt>-B</tt>&nbsp;: do not run the catch-all logger. This option
+removes the catch-all-logger-related operations from the list below;
+<tt>s6-linux-init</tt> will not redirect output descriptors, and will
+use a different synchronization mechanism to ensure <tt>rc.init</tt>
+only runs when <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
+is ready. </li>
 </ul>
 
 <h2> Early preparation </h2>
@@ -107,6 +120,7 @@ it uses <em>initdefault</em>. </li>
     <li> The child blocks until the catch-all logger runs. </li>
   </ul> </li>
  <li> It also makes the catch-all logger's fifo its stderr. </li>
+ <li> It traps the ctrl-alt-del keyboard combination. </li>
  <li> It execs into <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
 with <tt>/run/service</tt> as its scandir (or <em>tmpfsdir</em>/service). </li>
   <ul>

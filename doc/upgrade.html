@@ -18,6 +18,27 @@
 
 <h1> What has changed in s6-linux-init </h1>
 
+<h2> in 1.0.4.0 </h2>
+
+<ul>
+ <li> <a href="//skarnet.org/software/execline/">execline</a>
+dependency bumped to 2.6.0.0. </li>
+ <li> <a href="//skarnet.org/software/s6/">s6</a>
+dependency bumped to 2.9.1.0. </li>
+ <li> New <tt>-n</tt> option to
+<a href="s6-linux-init-hpr.html">s6-linux-init-hpr</a>, to
+disable the <tt>sync()</tt> call before the hardware reboot or
+power off. </li>
+ <li> New options added to
+<a href="s6-linux-init-maker.html">s6-linux-init-maker</a> and
+impacted binaries (<a href="s6-linux-init.html">s6-linux-init</a>
+and <a href="s6-linux-init-shutdownd.html">s6-linux-init-shutdownd</a>):
+  <ul>
+   <li> <tt>-C</tt>:&nbsp;to boot a s6-based system in a container </li>
+   <li> <tt>-B</tt>:&nbsp;to disable the catch-all logger </li>
+  </ul> </li>
+</ul>
+
 <h2> in 1.0.3.1 </h2>
 
 <ul>

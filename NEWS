@@ -1,5 +1,15 @@
 Changelog for s6-linux-init.
 
+In 1.0.4.0
+----------
+
+ - New -n option to s6-linux-init-hpr: don't sync.
+ - New -C and -B options to s6-linux-init-maker,
+s6-linux-init and s6-linux-init-shutdownd, to handle running
+in a container, and doing without a catch-all logger, respectively.
+ - Various robustness improvements.
+
+
 In 1.0.3.1
 ----------
 

@@ -80,7 +80,8 @@ procedure when the admin runs a <tt>halt</tt>, <tt>poweroff</tt>,
 <tt>reboot</tt> or <tt>shutdown</tt> command. </li>
    <li> <em>runlevel</em>: the script executing a machine state change
 at boot time (normally invoked by <em>rc.init</em>, towards the default
-runlevel) or when the administrator runs a <tt>telinit</tt> command. </li>
+runlevel) or when the administrator runs a <tt>telinit</tt> command.
+This script is unused in a container. </li>
    <li> <em>rc.shutdown.final</em>: a script that will be run at the
 very end of the shutdown procedure, after all processes have been killed
 and all filesystems have been unmounted, <em>just before</em> the system
@@ -110,21 +111,25 @@ via the <tt>-c</tt> option. </li>
  <li> Some early services are defined in <tt>/run/service</tt>, and running.
 They are not seen by the service manager and should remain up all the time,
 until the machine shuts down: they are considered a part of the init system,
-even if they're not process 1. Each of these services uses very few resources.
-The services are:
+even if they're not process 1.
+Apart from <tt>s6-linux-init-shutdownd</tt>, which is necessary for the
+machine (or container) to respond to shutdown requests, they are only present
+depending on the configuration, and different
+<a href="s6-linux-init-maker.html">s6-linux-init-maker</a> invocations will
+yield different sets of services. The services are picked from this list:
   <ul>
-   <li> <tt>s6-svscan-log</tt>: the catch-all logger </li>
    <li> <tt>s6-linux-init-shutdownd</tt>: the shutdown manager, running
 the shutdown sequence in a reproducible environment when a shutdown command
 is executed, then performing the last shutdown steps. </li>
+   <li> <tt>s6-svscan-log</tt>: the catch-all logger </li>
    <li> <tt>s6-linux-init-runleveld</tt>: the runlevel manager, running
 the <em>runlevel</em> script in a reproducible environment when a <tt>telinit</tt>
 command is executed. </li>
-   <li> (optionally) <tt>s6-linux-init-logouthookd</tt>: a local service performing
+   <li> <tt>s6-linux-init-logouthookd</tt>: a local service performing
 utmp record cleanup duty for patched <tt>login</tt> programs. </li>
-   <li> (optionally) <tt>s6-linux-init-early-getty</tt>: the early getty,
+   <li> <tt>s6-linux-init-early-getty</tt>: the early getty,
 allowing the user to login even if <em>rc.init</em> fails early. </li>
-   <li> (optionally) <tt>utmpd</tt> and <tt>wtmpd</tt>: the services performing
+   <li> <tt>utmpd</tt> and <tt>wtmpd</tt>: the services performing
 utmp and wtmp access when <a href="//skarnet.org/software/utmps/">utmps</a> is
 used. </li>
   </ul> </li>

@@ -29,7 +29,7 @@
 #define _PATH_WTMP "/dev/null/wtmp"
 #endif
 
-#define USAGE "s6-linux-init-hpr [ -h | -p | -r ] [ -d | -w ] [ -W ] [ -f ]"
+#define USAGE "s6-linux-init-hpr [ -h | -p | -r ] [ -n ] [ -d | -w ] [ -W ] [ -f ]"
 
 int main (int argc, char const *const *argv)
 {
@@ -37,13 +37,14 @@ int main (int argc, char const *const *argv)
   int force = 0 ;
   int dowtmp = 1 ;
   int dowall = 1 ;
+  int dosync = 1 ;
   PROG = "s6-linux-init-hpr" ;
 
   {
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "hprfdwW", &l) ;
+      int opt = subgetopt_r(argc, argv, "hprfdwWn", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
@@ -54,6 +55,7 @@ int main (int argc, char const *const *argv)
         case 'd' : dowtmp = 0 ; break ;
         case 'w' : dowtmp = 2 ; break ;
         case 'W' : dowall = 0 ; break ;
+        case 'n' : dosync = 0 ; break ;
         default : strerr_dieusage(100, USAGE) ;
       }
     }
@@ -71,7 +73,7 @@ int main (int argc, char const *const *argv)
 
   if (force)
   {
-    sync() ;
+    if (dosync) sync() ;
     reboot(what == 3 ? RB_AUTOBOOT : what == 2 ? RB_POWER_OFF : RB_HALT_SYSTEM) ;
     strerr_diefu1sys(111, "reboot()") ;
   }
@@ -95,7 +97,7 @@ int main (int argc, char const *const *argv)
     }
     else utx.ut_host[UT_HOSTSIZE - 1] = 0 ;
 
-/* glibc multilib can go fuck itself */
+   /* glibc multilib can go fuck itself */
 #ifdef  __WORDSIZE_TIME64_COMPAT32
     {
       struct timeval tv ;

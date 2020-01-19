@@ -62,6 +62,8 @@ machine</em>. If it is not the case, the system will fail to boot.
        [ -n | -N ] \
        [ -f <em>skeldir</em> ] \
        [ -U <em>utmp_user</em> ] \
+       [ -C ] \
+       [ -B ] \
        <em>dir</em>
 </pre>
 
@@ -102,13 +104,20 @@ the machine should be brought to, traditionally <tt>default</tt>
 for OpenRC and <tt>2</tt> or <tt>5</tt> for sysv-rc), and the
 rest of the command line is made of the kernel's command line
 except for the kernel arguments of the <em>key=value</em> form,
-which have been stored into <em>env_store</em>. </li>
+which have been stored into <em>env_store</em>. If the <tt>-C</tt>
+option has been given to <tt>s6-linux-init-maker</tt> and the
+system is indeed running in a container, the rest of the
+command line is just the command line that has been given to
+the container's <tt>init</tt> (e.g. for Docker: the CMD). Note
+that the <tt>runlevel</tt> script should not be invoked in a
+container, which does not have a notion of runlevels. </li>
  <li> <tt>rc.shutdown</tt>: this script will be run as the
 <em>shutdown sequence</em>, when the administrator runs the
 <tt>shutdown</tt>, <tt>halt</tt>, <tt>poweroff</tt> or <tt>reboot</tt>
-command. (As well as <tt>init 0</tt>, <tt>init 6</tt>,
-<tt>telinit 0</tt> and <tt>telinit 6</tt> for compatibility
-reasons.) It should ask the service manager to bring all the
+command. (As well, for non-containerized systems,
+as <tt>init 0</tt>, <tt>init 6</tt>, <tt>telinit 0</tt> and
+<tt>telinit 6</tt> for sysvinit compatibility reasons.)
+It should ask the service manager to bring all the
 services down, and exit when it's done (in other words: it should
 not try to perform a hard halt/poweroff/reboot itself.)
 No arguments are given to this script. </li>
@@ -117,7 +126,8 @@ No arguments are given to this script. </li>
 given one argument: the name of the runlevel to change to.
 Typically, the <em>runlevel</em> script should just invoke the
 service manager, asking it to bring the machine state to the
-wanted runlevel. </li>
+wanted runlevel. In a containerized system, this script should
+not be used at all.</li>
   </ul> </li>
  <li> Copy the <em>dir</em> directory to the place declared as
 <em>basedir</em> (<tt>/etc/s6-linux-init/current</tt> by default).
@@ -312,6 +322,60 @@ available when the s6-linux-init package has been built with the
 <a href="//skarnet.org/software/utmps/">utmps</a> package. The option
 defines the user that the <tt>utmpd</tt> and <tt>wtmpd</tt> services
 will run as. Default is <strong><tt>utmp</tt></strong>. </li> <p />
+
+ <li> <tt>-C</tt>&nbsp;: create a set of scripts that is suitable
+for running <em>in a container</em>. This modifies some behaviours:
+  <ul>
+   <li> No early <tt>runleveld</tt> service is created. Changing
+runlevels via
+<a href="s6-linux-init-telinit.html">s6-linux-init-telinit</a>
+will be unsupported in a container. </li>
+   <li> Consequently, the first argument to the <tt>rc.init</tt> script
+will always be <tt>default</tt> (or <em>initdefault</em> if the <tt>-D</tt>
+option has been given to <tt>s6-linux-init-maker</tt>). The rest of the
+arguments to the <tt>rc.init</tt> script will be the arguments given
+to the <tt>init</tt> program when running the container. </li>
+   <li> If the <tt>-s</tt> option has been given, <em>env_store</em>
+will contain the initial environment given to the container. </li>
+   <li> The ultimate output fallback (i.e. the place where error messages
+go when nothing catches them, e.g. the error messages from the catch-all
+logger and the
+<a href="//skarnet.org/software/s6/s6-supervise.html">s6-supervise</a>
+process managing the catch-all logger) is not <tt>/dev/console</tt>, but
+the descriptor that was <tt>init</tt>'s standard error. </li>
+   <li> Stopping the container with <tt>reboot</tt> will make the
+container's init program report being killed by a SIGHUP. Stopping it
+with <tt>poweroff</tt> will make it report being killed by a SIGINT.
+(This is according to the
+<a href="http://man7.org/linux/man-pages/man2/reboot.2.html">reboot(2)</a>
+specification. </li>
+   <li> Stopping the container with <tt>halt</tt>, however, is different.
+It will make the container's pid 1 read a number in the
+<tt>/run/s6-linux-init-container-results/exitcode</tt> file (the
+<tt>/run</tt> prefix can be changed at build time via the <tt>--tmpfsdir</tt>
+configure option), and exit with the code it has read. (Default is 0.)
+This means that in order to run a command in a container managed by
+s6-linux-init and exit the container when the command dies while reporting
+the exit code to its parent, you should:
+    <ul>
+     <li> Run that command via <tt>rc.init</tt> </li>
+     <li> Store its exit code in the
+<tt>/run/s6-linux-init-container-results/exitcode</tt> file </li>
+     <li> Call <tt>halt</tt> </li>
+    </ul>
+ All the running services will be killed, all the zombies will be
+reaped, and the container will exit with the required exit code. </li>
+  </ul> </li>
+
+ <li> <tt>-B</tt>&nbsp;: run the system without a catch-all logger.
+On a non-containerized system, that means that all the logs from the
+s6 supervision tree will go to <tt>/dev/console</tt>, and that
+<tt>/dev/console</tt> will also be the default stdout and stderr for
+services running under the supervision tree: use of this option is
+discouraged. On a containerized system (when paired with the <tt>-C</tt>
+option), it simply means that these outputs go to the default stdout and
+stderr given to the container's <tt>init</tt> - this should generally
+not be the default, but might be useful in some cases. </li>
 </ul>
 
 <h2> Organization of the created directory </h2>
@@ -349,7 +413,8 @@ subdirectories it contains are the following:
    <li> <tt>uncaught-logs</tt>: this is the directory where the
 catch-all logger will store and rotate the error messages produced
 by the s6 supervision tree and the services that do not redirect
-their own logs. </li>
+their own logs. Not present if the <tt>-B</tt> option has been
+given. </li>
    <li> <tt>service</tt>: <tt>/run/service</tt> will be the scandir.
 It initially contains a <tt>.s6-svscan</tt> subdirectory that
 tells <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
@@ -359,24 +424,26 @@ also contains a list of early services, i.e. s6 services that will
 be run at boot time as soon as <tt>s6-svscan</tt> is executed. These
 services are:
     <ul>
-     <li> <tt>s6-svscan-log</tt>: the catch-all logger. </li>
+     <li> <tt>s6-svscan-log</tt>: the catch-all logger. Not present
+if the <tt>-B</tt> option has been given. </li>
      <li> <tt>s6-linux-init-shutdownd</tt>: a service that listens
 to shutdown commands such as <tt>reboot</tt> and triggers the software
 shutdown procedure. </li>
      <li> <tt>s6-linux-init-runleveld</tt>: a service that listens
 to runlevel change commands such as <tt>telinit</tt> and calls the
 <em>runlevel</em> script in a reproducible environment to bring the
-machine to the wanted state. </li>
-     <li> (If the <tt>-L</tt> option has been given to
-<tt>s6-linux-init-maker</tt>) <tt>s6-linux-init-logouthookd</tt>:
+machine to the wanted state. Not present if the <tt>-C</tt> option
+has been given. </li>
+     <li> <tt>s6-linux-init-logouthookd</tt>:
 the "clean up user utmp records at logout time" service. See the
 <a href="s6-linux-init-logouthookd.html">s6-linux-init-logouthookd</a>
-page for details. </li>
-     <li> (If the <tt>-G</tt> option has been given to
-<tt>s6-linux-init-maker</tt>) <tt>s6-linux-init-early-getty</tt>:
+page for details. Not present if the <tt>-L</tt> option has not been
+given. </li>
+     <li> <tt>s6-linux-init-early-getty</tt>:
 the early getty service, that will allow a user to log in even if
 <em>rc.init</em> fails to bring the machine to a state where logins
-are possible. </li>
+are possible. Not present if the <tt>-G</tt> option has not been
+given. </li>
     </ul> </li>
   </ul> </li>
 </ul>
@@ -400,7 +467,9 @@ providing secure utmp functionality. </li>
 <p>
  A directory created by <tt>s6-linux-init-maker</tt> is only valid on
 the machine it has been created on. Pre-creating init directories for
-other machines is not supported.
+other machines is not supported. Of course, the scripts are editable,
+so advanced users can run <tt>s6-linux-init-maker</tt> to create a
+basic template, and then make their own modifications.
 </p>
 
 <p>
@@ -430,22 +499,19 @@ is difficult: in particular, the mechanisms around the shutdown
 procedure are fundamentally different from about any other init
 system, so even a simple command such as <tt>reboot</tt> needs an
 ad-hoc implementation. </li>
+ <li> Even for simple systems such as containerized ones, making
+sure that the wanted commands only run when s6-svscan is ready
+requires a bit of manipulation. </li>
 </ul>
 
 <p>
  The main benefit of <tt>s6-linux-init-maker</tt> is that it offers
-transparent compatibility while automating the tricky technical part.
-That means that <tt>s6-linux-init-maker</tt> has been designed for
-<em>real hardware</em>, or at least full-fledged Linux systems,
-where the above issues apply. If you are building an init system for a
-container, or anything similar that does not
-have the <tt>/dev/console</tt> issue, the read-only rootfs issue,
-or the need for sysvinit compatibility,
-you will probably not reap much benefit from using <tt>s6-linux-init-maker</tt>:
-you could probably invoke
-<a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
-directly as your process 1, or build a script by hand, which
-would result in a simpler init with less dependencies.
+transparent compatibility while automating the tricky technical parts.
+Whether it is used for real hardware or for containers,
+<tt>s6-linux-init-maker</tt> gives you a turnkey init system that
+frees your mind from the details of getting a
+<a href="//skarnet.org/software/s6/">s6</a> supervision tree running
+prior to everything else.
 </p>
 
 </body>

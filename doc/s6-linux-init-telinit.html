@@ -78,6 +78,11 @@ the <tt>bin/</tt> subdirectory of the target will contain a <tt>telinit</tt>
 symlink to <tt>s6-linux-init-telinit</tt>. The <tt>bin/</tt> subdirectory
 should be copied by the administrator into <tt>/sbin</tt> for full
 interface compatibility with sysvinit. </li>
+ <li> When the system is running inside a container (and the <tt>-C</tt>
+option has been given to
+<a href="s6-linux-init-maker.html">s6-linux-init-maker</a>), the runleveld
+service is not running, so <tt>s6-linux-init-telinit</tt> is not
+functional and the <tt>runlevel</tt> script is never invoked. </li>
 </ul>
 
 </body>

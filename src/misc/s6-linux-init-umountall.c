@@ -10,6 +10,8 @@
 #include <skalibs/stralloc.h>
 #include <skalibs/skamisc.h>
 
+#include <s6-linux-init/config.h>
+
 #define MAXLINES 99
 
 #define EXCLUDEN 3
@@ -39,7 +41,9 @@ int main (int argc, char const *const *argv)
         got[i]++ ;
         break ;
       }
-    if (i < EXCLUDEN && got[i] == 1) continue ;
+    if ((i < EXCLUDEN && got[i] == 1)
+     || !strcmp(p->mnt_dir, S6_LINUX_INIT_TMPFS))
+      continue ;
     if (line >= MAXLINES)
       strerr_dief1x(100, "too many mount points") ;
     mountpoints[line++] = sa.len ;

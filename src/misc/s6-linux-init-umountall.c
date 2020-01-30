@@ -35,15 +35,14 @@ int main (int argc, char const *const *argv)
     errno = 0 ;
     p = getmntent(fp) ;
     if (!p) break ;
+    if (!strcmp(p->mnt_dir, S6_LINUX_INIT_TMPFS)) continue ;
     for (; i < EXCLUDEN ; i++)
       if (!strcmp(p->mnt_type, exclude_type[i]))
       {
         got[i]++ ;
         break ;
       }
-    if ((i < EXCLUDEN && got[i] == 1)
-     || !strcmp(p->mnt_dir, S6_LINUX_INIT_TMPFS))
-      continue ;
+    if (i < EXCLUDEN && got[i] == 1) continue ;
     if (line >= MAXLINES)
       strerr_dief1x(100, "too many mount points") ;
     mountpoints[line++] = sa.len ;

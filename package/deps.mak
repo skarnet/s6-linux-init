@@ -10,7 +10,7 @@ src/init/s6-linux-init.o src/init/s6-linux-init.lo: src/init/s6-linux-init.c src
 src/lib/s6_linux_init_logouthook.o src/lib/s6_linux_init_logouthook.lo: src/lib/s6_linux_init_logouthook.c src/include-local/initctl.h src/include/s6-linux-init/s6-linux-init.h
 src/misc/s6-linux-init-echo.o src/misc/s6-linux-init-echo.lo: src/misc/s6-linux-init-echo.c
 src/misc/s6-linux-init-logouthookd.o src/misc/s6-linux-init-logouthookd.lo: src/misc/s6-linux-init-logouthookd.c
-src/misc/s6-linux-init-umountall.o src/misc/s6-linux-init-umountall.lo: src/misc/s6-linux-init-umountall.c
+src/misc/s6-linux-init-umountall.o src/misc/s6-linux-init-umountall.lo: src/misc/s6-linux-init-umountall.c src/include/s6-linux-init/config.h
 src/shutdown/hpr_shutdown.o src/shutdown/hpr_shutdown.lo: src/shutdown/hpr_shutdown.c src/shutdown/hpr.h
 src/shutdown/hpr_wall.o src/shutdown/hpr_wall.lo: src/shutdown/hpr_wall.c src/shutdown/hpr.h
 src/shutdown/s6-linux-init-hpr.o src/shutdown/s6-linux-init-hpr.lo: src/shutdown/s6-linux-init-hpr.c src/include-local/defaults.h src/shutdown/hpr.h

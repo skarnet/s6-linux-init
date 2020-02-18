@@ -548,6 +548,7 @@ static inline void make_image (char const *base)
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGINT", &sig_script, "-r") ;
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGUSR1", &sig_script, "-p") ;
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGUSR2", &sig_script, "-h") ;
+  auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGPWR", &sig_script, "-p") ;
 
   if (!nologger)
   {

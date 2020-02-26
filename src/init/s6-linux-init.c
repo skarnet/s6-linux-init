@@ -13,7 +13,6 @@
 
 #include <linux/kd.h>
 
-#include <skalibs/sysdeps.h>
 #include <skalibs/types.h>
 #include <skalibs/allreadwrite.h>
 #include <skalibs/sgetopt.h>
@@ -67,27 +66,21 @@ static inline void wait_for_notif (int fd)
   close(fd) ;
 }
 
-static void kbspecials (int dokbr)
+static void kbspecials (void)
 {
+  int fd ;
   if (inns) return ;
-
- /* second attempt to handle kbr: after we have our /dev for certain */
-  if (dokbr)
+  fd = open("/dev/tty0", O_RDONLY | O_NOCTTY) ;
+  if (fd < 0)
+    strerr_warnwu2sys("open /dev/", "tty0 (kbrequest will not be handled)") ;
+  else
   {
-    int fd = open("/dev/tty0", O_RDONLY | O_NOCTTY) ;
-    if (fd < 0)
-      strerr_warnwu2sys("open /dev/", "tty0 (kbrequest will not be handled)") ;
-    else
-    {
-      if (ioctl(fd, KDSIGACCEPT, SIGWINCH) < 0)
-        strerr_warnwu2sys("ioctl KDSIGACCEPT on ", "tty0 (kbrequest will not be handled)") ;
-      close(fd) ;
-    }
+    if (ioctl(fd, KDSIGACCEPT, SIGWINCH) < 0)
+      strerr_warnwu2sys("ioctl KDSIGACCEPT on ", "tty0 (kbrequest will not be handled)") ;
+    close(fd) ;
   }
 
-#ifdef SKALIBS_HASSIGNALFD
-  sig_block(SIGINT) ; /* eliminate the tiny race */
-#endif
+  sig_block(SIGINT) ; /* don't panic on early cad before s6-svscan catches it */
   if (reboot(RB_DISABLE_CAD) == -1)
     strerr_warnwu1sys("trap ctrl-alt-del") ;
 }
@@ -132,7 +125,6 @@ int main (int argc, char const **argv, char const *const *envp)
   char const *envdumpdir = 0 ;
   char const *initdefault = "default" ;
   int mounttype = 1 ;
-  int dokbr = 1 ;
   stralloc envmodifs = STRALLOC_ZERO ;
   PROG = "s6-linux-init" ;
 
@@ -180,12 +172,7 @@ int main (int argc, char const **argv, char const *const *envp)
       close(3) ;
     }
   }
-  else
-  {
-    allwrite(1, BANNER, sizeof(BANNER) - 1) ;
-   /* first attempt to handle kbr: before closing stdin */
-    if (ioctl(0, KDSIGACCEPT, SIGWINCH) == 0) dokbr = 0 ;
-  }
+  else allwrite(1, BANNER, sizeof(BANNER) - 1) ;
   if (chdir("/") == -1) strerr_diefu1sys(111, "chdir to /") ;
   umask(mask) ;
   setpgid(0, 0) ;
@@ -285,7 +272,7 @@ int main (int argc, char const **argv, char const *const *envp)
       close(notifpipe[0]) ;
       fmtfd[1] = 'd' ;
       fmtfd[2 + uint_fmt(fmtfd + 2, notifpipe[1])] = 0 ;
-      kbspecials(dokbr) ;
+      kbspecials() ;
     }
     else
     {
@@ -293,7 +280,7 @@ int main (int argc, char const **argv, char const *const *envp)
       if (fd < 0) strerr_diefu1sys(111, "dup stderr") ;
       fmtfd[1] = 'X' ;
       fmtfd[2 + uint_fmt(fmtfd + 2, (unsigned int)fd)] = 0 ;
-      kbspecials(dokbr) ;
+      kbspecials() ;
       if (fd_copy(2, 1) == -1)
         strerr_diefu1sys(111, "redirect output file descriptor") ;
     }

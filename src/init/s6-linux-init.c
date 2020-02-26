@@ -5,15 +5,21 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/reboot.h>
+#include <sys/ioctl.h>
 
+#include <linux/kd.h>
+
+#include <skalibs/sysdeps.h>
 #include <skalibs/types.h>
 #include <skalibs/allreadwrite.h>
 #include <skalibs/sgetopt.h>
 #include <skalibs/strerr2.h>
 #include <skalibs/stralloc.h>
+#include <skalibs/sig.h>
 #include <skalibs/env.h>
 #include <skalibs/djbunix.h>
 
@@ -61,13 +67,29 @@ static inline void wait_for_notif (int fd)
   close(fd) ;
 }
 
-static void disablecad (void)
+static void kbspecials (int dokbr)
 {
-  if (!inns)
+  if (inns) return ;
+
+ /* second attempt to handle kbr: after we have our /dev for certain */
+  if (dokbr)
   {
-    if (reboot(RB_DISABLE_CAD) == -1)
-      strerr_warnwu1sys("trap ctrl-alt-del") ;
+    int fd = open("/dev/tty0", O_RDONLY | O_NOCTTY) ;
+    if (fd < 0)
+      strerr_warnwu2sys("open /dev/", "tty0 (kbrequest will not be handled)") ;
+    else
+    {
+      if (ioctl(fd, KDSIGACCEPT, SIGWINCH) < 0)
+        strerr_warnwu2sys("ioctl KDSIGACCEPT on ", "tty0 (kbrequest will not be handled)") ;
+      close(fd) ;
+    }
   }
+
+#ifdef SKALIBS_HASSIGNALFD
+  sig_block(SIGINT) ; /* eliminate the tiny race */
+#endif
+  if (reboot(RB_DISABLE_CAD) == -1)
+    strerr_warnwu1sys("trap ctrl-alt-del") ;
 }
 
 static inline void run_stage2 (char const *basedir, char const **argv, unsigned int argc, char const *const *envp, size_t envlen, char const *modifs, size_t modiflen, char const *initdefault)
@@ -110,6 +132,7 @@ int main (int argc, char const **argv, char const *const *envp)
   char const *envdumpdir = 0 ;
   char const *initdefault = "default" ;
   int mounttype = 1 ;
+  int dokbr = 1 ;
   stralloc envmodifs = STRALLOC_ZERO ;
   PROG = "s6-linux-init" ;
 
@@ -157,7 +180,12 @@ int main (int argc, char const **argv, char const *const *envp)
       close(3) ;
     }
   }
-  else allwrite(1, BANNER, sizeof(BANNER) - 1) ;
+  else
+  {
+    allwrite(1, BANNER, sizeof(BANNER) - 1) ;
+   /* first attempt to handle kbr: before closing stdin */
+    if (ioctl(0, KDSIGACCEPT, SIGWINCH) == 0) dokbr = 0 ;
+  }
   if (chdir("/") == -1) strerr_diefu1sys(111, "chdir to /") ;
   umask(mask) ;
   setpgid(0, 0) ;
@@ -257,7 +285,7 @@ int main (int argc, char const **argv, char const *const *envp)
       close(notifpipe[0]) ;
       fmtfd[1] = 'd' ;
       fmtfd[2 + uint_fmt(fmtfd + 2, notifpipe[1])] = 0 ;
-      disablecad() ;
+      kbspecials(dokbr) ;
     }
     else
     {
@@ -265,7 +293,7 @@ int main (int argc, char const **argv, char const *const *envp)
       if (fd < 0) strerr_diefu1sys(111, "dup stderr") ;
       fmtfd[1] = 'X' ;
       fmtfd[2 + uint_fmt(fmtfd + 2, (unsigned int)fd)] = 0 ;
-      disablecad() ;
+      kbspecials(dokbr) ;
       if (fd_copy(2, 1) == -1)
         strerr_diefu1sys(111, "redirect output file descriptor") ;
     }

@@ -65,7 +65,7 @@ static char const *utmp_user = "utmp" ;
 typedef int writetobuf_func_t (buffer *, char const *) ;
 typedef writetobuf_func_t *writetobuf_func_t_ref ;
 
-#define put_shebang(b) put_shebang_options((b), "-P")
+#define put_shebang(b) put_shebang_options((b), 0)
 
 static int put_shebang_options (buffer *b, char const *options)
 {
@@ -549,6 +549,7 @@ static inline void make_image (char const *base)
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGUSR1", &sig_script, "-p") ;
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGUSR2", &sig_script, "-h") ;
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGPWR", &sig_script, "-p") ;
+  auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGWINCH", &put_shebang_options, 0) ;
 
   if (!nologger)
   {

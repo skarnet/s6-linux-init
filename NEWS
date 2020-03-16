@@ -1,5 +1,12 @@
 Changelog for s6-linux-init.
 
+In 1.0.4.1
+----------
+
+ - telinit now completes even when its terminal is killed by the
+state change.
+
+
 In 1.0.4.0
 ----------
 

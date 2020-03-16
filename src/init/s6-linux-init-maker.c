@@ -211,7 +211,7 @@ static int runleveld_script (buffer *b, char const *data)
     EXECLINE_EXTBINPREFIX "fdmove -c 2 1\n"
     EXECLINE_EXTBINPREFIX "fdmove 1 3\n"
     S6_EXTBINPREFIX "s6-ipcserver -1 -a 0700 -c 1 -- " RUNLEVELD_SOCKET "\n"
-    S6_EXTBINPREFIX "s6-sudod -0 -1 -2 -t 30000 --\n") < 0
+    S6_EXTBINPREFIX "s6-sudod -dt30000 --\n") < 0
    || !string_quote(&satmp, robase, strlen(robase))) return 0 ;
   if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;

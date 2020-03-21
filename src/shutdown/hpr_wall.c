@@ -3,10 +3,10 @@
 #include <string.h>
 #include <utmpx.h>
 
-#include <skalibs/posixishard.h>
 #include <skalibs/allreadwrite.h>
 #include <skalibs/strerr2.h>
 #include <skalibs/djbunix.h>
+#include <skalibs/posixishard.h>
 
 #include "hpr.h"
 

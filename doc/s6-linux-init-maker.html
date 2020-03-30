@@ -164,11 +164,11 @@ will read its read-only data from <em>basedir</em>. After running
 <tt>s6-linux-init-maker</tt>, you should make sure to copy the
 created directory <em>dir</em> to <em>basedir</em>. <em>basedir</em>
 must be absolute. Default is
-<strong><tt>/etc/s6-linux-init/current</tt></strong>. </li> <p />
+<strong><tt>/etc/s6-linux-init/current</tt></strong>. </li> <br />
 
  <li> <tt>-u</tt>&nbsp;<em>log_user</em>&nbsp;: the catch-all
 logger will run as the <em>log_user</em> user. Default is
-<strong><tt>root</tt></strong>. </li> <p />
+<strong><tt>root</tt></strong>. </li> <br />
 
  <li> <tt>-G</tt>&nbsp;<em>early_getty</em>&nbsp;: if this option
 is set, <tt>s6-linux-init-maker</tt> will define an additional s6 service
@@ -177,7 +177,7 @@ at the same time <em>rc.init</em> is executed. This early service
 should be a getty, or equivalent, to allow logins even if <em>stage2</em> fails.
 <em>early_getty</em> should be a simple command line: for instance,
 <tt>"/sbin/getty 38400 tty1"</tt>. By default, no early service
-is defined. </li> <p />
+is defined. </li> <br />
 
  <li> <tt>-1</tt>&nbsp;: make it so that all the messages that are
 sent to the catch-all logger (i.e. all the error messages that are not
@@ -188,12 +188,12 @@ copied to <tt>/dev/console</tt>.) This is generally useful to
 debug a system at a glance, but if a failing program keeps sending
 error messages, it may interfere with comfortable usage of an early
 getty. A common workaround is to make the early getty start on
-<tt>tty2</tt> and leave tty1 for <tt>/dev/console</tt> to print on. </li> <p />
+<tt>tty2</tt> and leave tty1 for <tt>/dev/console</tt> to print on. </li> <br />
 
  <li> <tt>-L</tt>&nbsp;: add an early <tt>s6-linux-init-logouthookd</tt>
 service to clean up utmp records at user logout time. Check the
 <a href="s6-linux-init-logouthookd.html">s6-linux-init-logouthookd</a> page
-for details. </li> <p />
+for details. </li> <br />
 
  <li> <tt>-p</tt>&nbsp;<em>initial_path</em>&nbsp;: the initial value
 for the PATH environment variable, that will be transmitted to all the
@@ -204,11 +204,11 @@ It is absolutely necessary for
 <a href="//skarnet.org/software/s6/">s6</a>
 binaries to be accessible via <em>initial_path</em>, else the machine
 will not boot. Default is
-<strong><tt>/usr/bin:/bin</tt></strong>. </li> <p />
+<strong><tt>/usr/bin:/bin</tt></strong>. </li> <br />
 
  <li> <tt>-m</tt>&nbsp;<em>initial_umask</em>&nbsp;: the value of
 the initial file umask for all the starting processes, in octal.
-Default is <strong><tt>022</tt></strong>. </li> <p />
+Default is <strong><tt>022</tt></strong>. </li> <br />
 
  <li> <tt>-t</tt>&nbsp;<em>timestamp_style</em>&nbsp;: how
 logs are timestamped by the catch-all logger. 0 means no
@@ -217,7 +217,7 @@ timestamp, 1 means
 2 means
 <a href="http://www.iso.org/iso/home/standards/iso8601.htm">ISO 8601 format</a>,
 and 3 means both. Default is
-<strong><tt>1</tt></strong>. </li> <p />
+<strong><tt>1</tt></strong>. </li> <br />
 
  <li> <tt>-d</tt>&nbsp;<em>slashdev</em>&nbsp;: mount a devtmpfs.
 If this option is given, <a href="s6-linux-init.html">s6-linux-init</a>
@@ -225,7 +225,7 @@ will mount a devtmpfs pseudo-filesystem on <em>slashdev</em>. This
 is useful if the kernel has not been configured to mount
 the devtmpfs at boot time and there is no static <tt>/dev</tt>.
 By default, it is assumed that there is a suitable <tt>/dev</tt>
-at boot time, and no additional devtmpfs is mounted. </li> <p />
+at boot time, and no additional devtmpfs is mounted. </li> <br />
 
  <li> <tt>-s</tt>&nbsp;<em>env_store</em>&nbsp;: stage 1 init sometimes
 inherits a few environment variables from the kernel. (These variables
@@ -243,7 +243,7 @@ before erasing them. <em>env_store</em> should obviously be
 a writable directory, so it should be located under <tt>/run</tt>
 (or your chosen tmpfsdir)!
 If this option is not given, the environment inherited from the kernel
-isn't saved anywhere - which is the default. </li> <p />
+isn't saved anywhere - which is the default. </li> <br />
 
  <li> <tt>-e</tt>&nbsp;<em>initial_envvar</em>&nbsp;: this option
 can be repeated. For every <em>initial_envvar</em>, <tt>s6-linux-init-maker</tt>
@@ -257,7 +257,7 @@ process (as well as the <em>rc.init</em> script) will run with,
 so it will be inherited by default by every process running on
 the system.
 The TZ variable, for instance, is a good candidate to be set in
-the global environment. </li> <p />
+the global environment. </li> <br />
 
  <li> <tt>-q</tt>&nbsp;<em>finalsleeptime</em>&nbsp;: when the machine
 shuts down, all processes that have not already been killed during
@@ -266,7 +266,7 @@ them to exit gracefully; then, after <em>finalsleeptime</em>
 milliseconds, they will receive a SIGKILL and the shutdown sequence
 will go on. This option configures the amount of time that will
 elapse between the SIGTERM/SIGHUP and the SIGKILL.
-Default is <strong>3000</strong>, meaning a grace period of 3 seconds. </li> <p />
+Default is <strong>3000</strong>, meaning a grace period of 3 seconds. </li> <br />
 
  <li> <tt>-D</tt>&nbsp;<em>initdefault</em>&nbsp;: boot the system with
 a runlevel set to <em>initdefault</em>, which can be an arbitrary
@@ -275,7 +275,7 @@ sysvinit behaviour) or <tt>default</tt> (OpenRC behaviour). Default is
 <strong><tt>default</tt></strong>. Note that if a <tt>2</tt>, <tt>3</tt>,
 <tt>4</tt>, <tt>5</tt>, or <tt>default</tt> argument is encountered in
 the kernel command line, it will be interpreted as the runlevel to boot
-the system on, and will override the default given here. </li> <p />
+the system on, and will override the default given here. </li> <br />
 
  <li> <tt>-n</tt>&nbsp;: at boot time, assume that a tmpfs is already
 present on <tt>/run</tt> (or the argument that was given to the
@@ -292,7 +292,7 @@ unfortunately, a lot of distributions do not care.) By default,
 then a tmpfs will be mounted on it. <strong>Do not</strong> use
 this option if you are not sure: failure to remount <tt>/run</tt>
 will cause init to die and the kernel to panic. This option is
-incompatible with the <tt>-N</tt> option. </li> <p />
+incompatible with the <tt>-N</tt> option. </li> <br />
 
  <li> <tt>-N</tt>&nbsp;: at boot time, do not perform
 mounting/unmounting/remounting on <tt>/run</tt> (or the <em>tmpfsdir</em>
@@ -305,7 +305,7 @@ which case the rootfs is already read-write and in RAM and mounting
 an additional tmpfs is unnecessary. <strong>Do not</strong> use this
 option if your rootfs is read-only: failure to write to <tt>/run</tt>
 will cause init to die and the kernel to panic. This option is
-incompatible with the <tt>-n</tt> option. </li> <p />
+incompatible with the <tt>-n</tt> option. </li> <br />
 
  <li> <tt>-f</tt>&nbsp;<em>skeldir</em>&nbsp;: copy the skeleton
 scripts from directory <em>skeldir</em>. By default, <em>skeldir</em>
@@ -314,14 +314,14 @@ that has been
 given as an argument to the <tt>--skeldir</tt> configure option at
 build time. This option is typically useful when distributions run
 <tt>s6-linux-init-maker</tt> in packaging scripts, when preparing
-files in a staging directory. </li> <p />
+files in a staging directory. </li> <br />
 
  <li> <tt>-U</tt>&nbsp;<em>utmp_user</em>&nbsp;: this option is only
 available when the s6-linux-init package has been built with the
 <tt>--enable-utmps</tt> configure option, that enables support for the
 <a href="//skarnet.org/software/utmps/">utmps</a> package. The option
 defines the user that the <tt>utmpd</tt> and <tt>wtmpd</tt> services
-will run as. Default is <strong><tt>utmp</tt></strong>. </li> <p />
+will run as. Default is <strong><tt>utmp</tt></strong>. </li> <br />
 
  <li> <tt>-C</tt>&nbsp;: create a set of scripts that is suitable
 for running <em>in a container</em>. This modifies some behaviours:

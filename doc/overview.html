@@ -51,14 +51,14 @@ directly by the user. They are called internally, in scripts
 created by a
 <a href="s6-linux-init-maker.html">s6-linux-init-maker</a> invocation -
 typically in run scripts for early services. </li>
-  </ul> </li> <p />
+  </ul> </li> <br />
 
  <li> A <em>small library</em>, that for now contains a single symbol,
 <tt>s6_linux_init_logouthook()</tt>, intended for distributions using
 <tt>login</tt> programs that add utmp entries for users logging in and
 expect <tt>init</tt> to clean up after them when users log out. See
 the <a href="s6-linux-init-logouthookd.html">s6-linux-init-logouthookd</a>
-page for details. </li> <p />
+page for details. </li> <br />
 
  <li> <em>Skeleton scripts</em>, installed by default in
 <tt>/etc/s6-linux-init/skel</tt>; that location can be changed at build

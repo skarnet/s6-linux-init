@@ -34,10 +34,9 @@ and execs into <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>.
  <li> If <tt>s6-linux-init</tt> isn't pid 1, it execs into
 <a href="s6-linux-init-telinit.html">s6-linux-init-telinit</a> with the
 same arguments. </li>
- </li>
  <li> Else, it performs some early preparation, spawns a process that
 will run the <em>rc.init</em> script, then execs into
-<a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>.
+<a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>.  </li>
 </ul>
 
 <h2> Options </h2>
@@ -137,7 +136,7 @@ command line, as given by the kernel to <tt>s6-linux-init</tt> (i.e. without
 the <tt>key=value</tt> arguments, which were passed into <tt>s6-linux-init</tt>'s
 environment and were stored into <em>env_store</em>), makes for the rest of
 the arguments given to <em>rc.init</em>. </li>
-  </ul> </li>
+  </ul>
 </ul>
 
 <p>

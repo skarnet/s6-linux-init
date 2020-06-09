@@ -162,7 +162,7 @@ static int s6_svscan_log_script (buffer *b, char const *data)
     satmp.len = sabase ;
     if (buffer_puts(b, "\n") < 0) return 0 ;
   }
-  if (buffer_puts(b, "s6-log -bpd3 -- ") < 0) return 0 ;
+  if (buffer_puts(b, S6_EXTBINPREFIX "s6-log -bpd3 -- ") < 0) return 0 ;
   if (console && buffer_puts(b, "1 ") < 0) return 0 ;
   if (timestamp_style & 1 && buffer_puts(b, "t ") < 0
    || timestamp_style & 2 && buffer_puts(b, "T ") < 0

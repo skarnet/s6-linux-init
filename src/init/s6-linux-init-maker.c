@@ -226,10 +226,14 @@ static int runleveld_script (buffer *b, char const *data)
 
 static int sig_script (buffer *b, char const *option)
 {
-  return put_shebang(b)
-   && buffer_puts(b, S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-shutdown -a ") >= 0
-   && buffer_puts(b, option) >= 0
-   && buffer_puts(b, " -- now\n") >= 0 ;
+  if (!put_shebang(b)
+   || buffer_puts(b, S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-shutdown ") < 0)
+    return 0 ;
+  if (!inns && buffer_puts(b, "-a ") < 0) return 0 ;
+  if (buffer_puts(b, option) < 0
+   || buffer_puts(b, " -- now\n") < 0)
+    return 0 ;
+  return 1 ;
 }
 
 static inline int stage1_script (buffer *b, char const *data)

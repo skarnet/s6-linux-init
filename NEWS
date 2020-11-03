@@ -1,5 +1,12 @@
 Changelog for s6-linux-init.
 
+In 1.0.5.0
+----------
+
+ - New -i option to s6-l-i-shutdown and s6-l-i-hpr, that requires
+manual confirmation before shutting down a machine.
+
+
 In 1.0.4.2
 ----------
 

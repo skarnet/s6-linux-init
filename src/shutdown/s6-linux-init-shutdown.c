@@ -27,7 +27,7 @@
 #define UT_NAMESIZE 32
 #endif
 
-#define USAGE "s6-linux-init-shutdown [ -h [ -H | -P ] | -p | -r | -k ] [ -f | -F ] [ -a ] [ -t sec ] time [ message ]  or  s6-linux-init-shutdown -c [ message ]"
+#define USAGE "s6-linux-init-shutdown [ -h [ -H | -P ] | -p | -r | -k ] [ -f | -F ] [ -a ] [ -i ] [ -t sec ] time [ message ]  or  s6-linux-init-shutdown -c [ message ]"
 #define dieusage() strerr_dieusage(100, USAGE)
 
 #define AC_FILE "/etc/shutdown.allow"
@@ -198,6 +198,7 @@ int main (int argc, char const *const *argv)
   int subwhat = 0 ;
   int doactl = 0 ;
   int docancel = 0 ;
+  int doconfirm = 0 ;
   tain_t when ;
   PROG = "s6-linux-init-shutdown" ;
 
@@ -205,7 +206,7 @@ int main (int argc, char const *const *argv)
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "HPhprkafFct:", &l) ;
+      int opt = subgetopt_r(argc, argv, "HPhprkafFcit:", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
@@ -219,6 +220,7 @@ int main (int argc, char const *const *argv)
         case 'f' : /* talk to the hand */ break ;
         case 'F' : /* no, the other hand */ break ;
         case 'c' : docancel = 1 ; break ;
+        case 'i' : doconfirm = 1 ; break ;
         case 't' : if (!uint0_scan(l.arg, &gracetime)) dieusage() ; break ;
         default : strerr_dieusage(100, USAGE) ;
       }
@@ -237,6 +239,7 @@ int main (int argc, char const *const *argv)
     strerr_diefu1sys(111, "shutdown") ;
   }
   if (doactl) access_control() ;
+  if (doconfirm) hpr_confirm_hostname() ;
   if (!tain_now_g()) strerr_warnw1sys("get current time") ;
   if (docancel)
   {

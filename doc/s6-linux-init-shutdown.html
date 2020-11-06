@@ -26,7 +26,7 @@ It is normally invoked as <tt>/sbin/shutdown</tt>.
 <h2> Interface </h2>
 
 <pre>
-     s6-linux-init-shutdown [ -h [ -H | -P ] | -p | -r | -k ] [ -a ] [ -t <em>sec</em> ] [ -f | -F ] <em>time</em> [ <em>message</em> ]
+     s6-linux-init-shutdown [ -h [ -H | -P ] | -p | -r | -k ] [ -a ] [ -t <em>sec</em> ] [ -i ] [ -f | -F ] <em>time</em> [ <em>message</em> ]
      s6-linux-init-shutdown -c [ <em>message</em> ]
 </pre>
 
@@ -87,6 +87,10 @@ Ensures the system is halted, not powered off, at the end of the shutdown sequen
  <li> <tt>-P</tt>&nbsp;: this option can only be used in conjunction with <tt>-h</tt>.
 Ensures the system is powered off at the end of the shutdown sequence.
 <tt>-Ph</tt> is equivalent to <tt>-p</tt>. </li>
+ <li> <tt>-i</tt>&nbsp;: interactive confirmation request. The command needs to be
+launched in a terminal, and will prompt the user to type the (short) hostname of
+the machine to be shut down. On mismatch, the command will abort. The point is to
+avoid inadvertently rebooting a remote machine in an ssh session. </li>
 </ul>
 
 <h2> Notes </h2>

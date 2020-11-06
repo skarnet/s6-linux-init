@@ -29,7 +29,7 @@ It is normally invoked through <tt>halt</tt>, <tt>poweroff</tt> or
 <h2> Interface </h2>
 
 <pre>
-     s6-linux-init-hpr [ -f ] [ -h | -p | -r ] [ -d | -w ] [ -W ]
+     s6-linux-init-hpr [ -f ] [ -h | -p | -r ] [ -d | -w ] [ -W ] [ -i ]
 </pre>
 
 <ul>
@@ -61,6 +61,10 @@ the system. </li>
  <li> <tt>-W</tt>&nbsp;: Do not send a <tt>wall</tt> message to users before shutting
 down the system. Some other implementations of the <tt>halt</tt>, <tt>poweroff</tt>
 and <tt>reboot</tt> commands use the <tt>--no-wall</tt> long option to achieve this. </li>
+ <li> <tt>-i</tt>&nbsp;: interactive confirmation request. The command needs to be
+launched in a terminal, and will prompt the user to type the (short) hostname of
+the machine to be shut down. On mismatch, the command will abort. The point is to
+avoid inadvertently rebooting a remote machine in an ssh session. </li>
 </ul>
 
 <h2> Notes </h2>

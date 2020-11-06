@@ -29,7 +29,7 @@
 #define _PATH_WTMP "/dev/null/wtmp"
 #endif
 
-#define USAGE "s6-linux-init-hpr [ -h | -p | -r ] [ -n ] [ -d | -w ] [ -W ] [ -f ]"
+#define USAGE "s6-linux-init-hpr [ -h | -p | -r ] [ -n ] [ -d | -w ] [ -W ] [ -f ] [ -i ]"
 
 int main (int argc, char const *const *argv)
 {
@@ -38,13 +38,14 @@ int main (int argc, char const *const *argv)
   int dowtmp = 1 ;
   int dowall = 1 ;
   int dosync = 1 ;
+  int doconfirm = 0 ;
   PROG = "s6-linux-init-hpr" ;
 
   {
     subgetopt_t l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "hprfdwWn", &l) ;
+      int opt = subgetopt_r(argc, argv, "hprfdwWni", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
@@ -56,6 +57,7 @@ int main (int argc, char const *const *argv)
         case 'w' : dowtmp = 2 ; break ;
         case 'W' : dowall = 0 ; break ;
         case 'n' : dosync = 0 ; break ;
+        case 'i' : doconfirm = 0 ; break ;
         default : strerr_dieusage(100, USAGE) ;
       }
     }
@@ -70,6 +72,8 @@ int main (int argc, char const *const *argv)
     errno = EPERM ;
     strerr_dief1sys(100, "nice try, peon") ;
   }
+
+  if (doconfirm) hpr_confirm_hostname() ;
 
   if (force)
   {

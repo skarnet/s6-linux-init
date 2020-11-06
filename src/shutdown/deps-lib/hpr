@@ -1,2 +1,3 @@
 hpr_shutdown.o
 hpr_wall.o
+hpr_confirm_hostname.o

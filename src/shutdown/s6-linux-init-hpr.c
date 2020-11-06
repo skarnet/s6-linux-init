@@ -57,7 +57,7 @@ int main (int argc, char const *const *argv)
         case 'w' : dowtmp = 2 ; break ;
         case 'W' : dowall = 0 ; break ;
         case 'n' : dosync = 0 ; break ;
-        case 'i' : doconfirm = 0 ; break ;
+        case 'i' : doconfirm = 1 ; break ;
         default : strerr_dieusage(100, USAGE) ;
       }
     }

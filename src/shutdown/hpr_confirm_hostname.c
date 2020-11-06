@@ -22,7 +22,7 @@ void hpr_confirm_hostname (void)
   char *p ;
   ssize_t r ;
   if (!isatty(0) || !isatty(1))
-    strerr_diefu1sys(100, "ask hostname confirmation") ;
+    strerr_diefu1x(100, "ask hostname confirmation: stdin or stdout is not a tty") ;
   if (gethostname(name, HOST_NAME_MAX) < 0)
     strerr_diefu1sys(111, "get host name") ;
   name[HOST_NAME_MAX] = 0 ;

@@ -288,7 +288,7 @@ static inline int stage1_script (buffer *b, char const *data)
   if (inns && buffer_puts(b, " -C") < 0) return 0 ;
   if (nologger && buffer_puts(b, " -B") < 0) return 0 ;
 
-  if (buffer_puts(b, "\n") < 0) return 0 ;
+  if (buffer_puts(b, " -- \"$@\"\n") < 0) return 0 ;
   (void)data ;
   return 1 ;
 

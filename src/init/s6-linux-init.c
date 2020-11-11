@@ -41,7 +41,7 @@ static inline char const *scan_cmdline (char const *initdefault, char const *con
 {
   if (!inns)
   {
-    static char const *valid[] = { "default", "2", "3", "4", "5", 0 } ;
+    static char const *valid[] = { "default", "1", "2", "3", "4", "5", 0 } ;
     for (unsigned int i = 0 ; i < argc ; i++)
       for (char const *const *p = valid ; *p ; p++)
         if (!strcmp(argv[i], *p)) return argv[i] ;

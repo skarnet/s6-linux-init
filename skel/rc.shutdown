@@ -27,4 +27,4 @@
 # exec /sbin/openrc shutdown
 
 ### If your services are managed by s6-rc:
-# exec s6-rc -v2 -bda change
+# exec s6-rc -v2 -bDa change

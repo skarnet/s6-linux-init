@@ -43,6 +43,7 @@
 #define DOTPREFIXLEN (sizeof(DOTPREFIX) - 1)
 #define DOTSUFFIX ":XXXXXX"
 #define DOTSUFFIXLEN (sizeof(DOTSUFFIX) - 1)
+#define CONTAINERDIR S6_LINUX_INIT_TMPFS "/" CONTAINER_RESULTS
 
 #define USAGE "s6-linux-init-shutdownd [ -c basedir ] [ -g gracetime ] [ -C ] [ -B ]"
 #define dieusage() strerr_dieusage(100, USAGE)
@@ -160,6 +161,14 @@ static inline void prepare_stage4 (char const *basedir, char what)
   int fd ;
   char buf[512] ;
   size_t sabase = satmp.len ;
+  if (inns)
+  {
+    char s[2] = { what, '\n' } ;
+    if (mkdir(CONTAINERDIR, 0755) < 0 && errno != EEXIST)
+      strerr_diefu1sys(111, "mkdir " CONTAINERDIR) ;
+    if (!openwritenclose_unsafe(CONTAINERDIR "/haltcode", s, 2))
+      strerr_diefu1sys(111, "write to " CONTAINERDIR "/haltcode") ;
+  }
   unlink_void(STAGE4_FILE ".new") ;
   fd = open_excl(STAGE4_FILE ".new") ;
   if (fd == -1) strerr_diefu3sys(111, "open ", STAGE4_FILE ".new", " for writing") ;
@@ -174,9 +183,8 @@ static inline void prepare_stage4 (char const *basedir, char what)
      || (!nologger && buffer_puts(&b,
        EXECLINE_EXTBINPREFIX "foreground { "
        S6_EXTBINPREFIX "s6-svc -Xh -- " SCANPREFIX LOGGER_SERVICEDIR " }\n  ") < 0)
-     || buffer_puts(&b, S6_EXTBINPREFIX "s6-svscanctl -") < 0
-     || buffer_put(&b, what == 'h' ? "s" : &what, 1) < 0
-     || buffer_putsflush(&b, "b -- " SCANDIRFULL "\n}\n") < 0)
+     || buffer_puts(&b,
+       S6_EXTBINPREFIX "s6-svscanctl -b -- " SCANDIRFULL "\n}\n") < 0)
       strerr_diefu2sys(111, "write to ", STAGE4_FILE ".new") ;
   }
   else

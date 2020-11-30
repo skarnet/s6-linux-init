@@ -7,6 +7,7 @@
 #include <skalibs/sgetopt.h>
 #include <skalibs/strerr2.h>
 #include <skalibs/djbunix.h>
+#include <skalibs/exec.h>
 
 #include <s6/config.h>
 
@@ -72,5 +73,5 @@ int main (int argc, char const *const *argv, char const *const *envp)
     newargv[2] = 0 ;
   }
 
-  xpathexec_run(newargv[0], newargv, envp) ;
+  xexec_e(newargv, envp) ;
 }

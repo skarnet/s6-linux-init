@@ -21,6 +21,7 @@
 #include <skalibs/sig.h>
 #include <skalibs/env.h>
 #include <skalibs/djbunix.h>
+#include <skalibs/exec.h>
 
 #include <s6/config.h>
 
@@ -113,7 +114,7 @@ static inline void run_stage2 (char const *basedir, char const **argv, unsigned 
     if (fd_copy(2, 1) == -1)
       strerr_diefu1sys(111, "fd_copy stdout to stderr") ;
   }
-  xpathexec_r(childargv, envp, envlen, modifs, modiflen) ;
+  xmexec_fm(childargv, envp, envlen, modifs, modiflen) ;
 }
 
 int main (int argc, char const **argv, char const *const *envp)
@@ -131,7 +132,7 @@ int main (int argc, char const **argv, char const *const *envp)
   if (getpid() != 1)
   {
     argv[0] = S6_LINUX_INIT_BINPREFIX "s6-linux-init-telinit" ;
-    xpathexec_run(argv[0], argv, envp) ;
+    xexec_e(argv, envp) ;
   }
 
   {
@@ -253,7 +254,7 @@ int main (int argc, char const **argv, char const *const *envp)
     size_t pathlen = path ? strlen(path) : 0 ;
     pid_t pid ;
     char fmtfd[2 + UINT_FMT] = "-" ;
-    char const *newargv[6] = { S6_EXTBINPREFIX "s6-svscan", "-st0", fmtfd, "--", S6_LINUX_INIT_TMPFS "/" SCANDIR, 0 } ;
+    char const *newargv[5] = { S6_EXTBINPREFIX "s6-svscan", fmtfd, "--", S6_LINUX_INIT_TMPFS "/" SCANDIR, 0 } ;
     char pathvar[6 + pathlen] ;
     if (path)
     {
@@ -284,6 +285,6 @@ int main (int argc, char const **argv, char const *const *envp)
       if (fd_copy(2, 1) == -1)
         strerr_diefu1sys(111, "redirect output file descriptor") ;
     }
-    xpathexec_r(newargv, newenvp, !!path, envmodifs.s, envmodifs.len) ;
+    xmexec_fm(newargv, newenvp, !!path, envmodifs.s, envmodifs.len) ;
   }
 }

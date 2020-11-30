@@ -125,20 +125,20 @@ static int container_crash_script (buffer *b, char const *data)
      S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -fnp\n") >= 0 ;
 }
 
-static int container_exit_script (buffer *b, char const *results)
+static int container_exit_script (buffer *b, char const *data)
 {
-  return put_shebang_options(b, "-S0")
+  (void)data ;
+  return put_shebang(b)
    && buffer_puts(b,
-     EXECLINE_EXTBINPREFIX "ifelse -X { test $1 = halt }\n{\n  "
-     S6_EXTBINPREFIX "s6-envdir -- ") >= 0
-   && buffer_puts(b, results) >= 0
-   && buffer_puts(b, "\n  "
-     EXECLINE_EXTBINPREFIX "importas -D0 -- EXITCODE exitcode\n  "
-     EXECLINE_EXTBINPREFIX "exit $EXITCODE\n}\n"
-     EXECLINE_EXTBINPREFIX "ifte -X\n  { "
-     S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -fnr }\n  { "
+     S6_EXTBINPREFIX "s6-envdir -- " S6_LINUX_INIT_TMPFS "/" CONTAINER_RESULTS "\n"
+     EXECLINE_EXTBINPREFIX "multisubstitute\n{\n"
+     "  importas -uD0 -- EXITCODE exitcode\n  "
+     "  importas -uDh -- HALTCODE haltcode\n}\n"
+     EXECLINE_EXTBINPREFIX "ifelse -X { test $HALTCODE = r } { "
+     S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -fnr }\n"
+     EXECLINE_EXTBINPREFIX "ifelse -X { test $HALTCODE = p } { "
      S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -fnp }\n"
-     "test $1 = reboot\n") >= 0 ;
+     EXECLINE_EXTBINPREFIX "exit $EXITCODE\n") >= 0 ;
 }
 
 static int s6_svscan_log_script (buffer *b, char const *data)
@@ -573,8 +573,8 @@ static inline void make_image (char const *base)
 
   if (inns)
   {
-    auto_script(base, "run-image/" SCANDIR "/.s6-svscan/crash", &container_crash_script, "") ;
-    auto_script(base, "run-image/" SCANDIR "/.s6-svscan/finish", &container_exit_script, S6_LINUX_INIT_TMPFS "/" CONTAINER_RESULTS) ;
+    auto_script(base, "run-image/" SCANDIR "/.s6-svscan/crash", &container_crash_script, 0) ;
+    auto_script(base, "run-image/" SCANDIR "/.s6-svscan/finish", &container_exit_script, 0) ;
     auto_dir(base, "run-image/" CONTAINER_RESULTS, 0, 0, 0755) ;
     auto_file(base, "run-image/" CONTAINER_RESULTS "/exitcode", "0\n", 2) ;
   }

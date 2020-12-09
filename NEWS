@@ -1,9 +1,10 @@
 Changelog for s6-linux-init.
 
-In 1.0.5.2
+In 1.0.6.0
 ----------
 
  - Bugfixes.
+ - New internal binary: s6-linux-init-nuke, to remove dependency on kill
 
 
 In 1.0.5.1

@@ -1,7 +1,7 @@
 /* ISC license. */
 
 #include <skalibs/djbunix.h>
-#include <skalibs/webipc.h>
+#include <skalibs/socket.h>
 
 #include <s6-linux-init/s6-linux-init.h>
 #include "initctl.h"

@@ -6,6 +6,7 @@ s6-linux-init-shutdownd \
 s6-linux-init-telinit \
 s6-linux-init-logouthookd \
 s6-linux-init-echo \
+s6-linux-init-nuke \
 s6-linux-init-umountall \
 s6-linux-init-maker
 

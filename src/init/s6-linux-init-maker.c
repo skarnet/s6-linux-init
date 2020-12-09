@@ -120,7 +120,8 @@ static int container_crash_script (buffer *b, char const *data)
      EXECLINE_EXTBINPREFIX "foreground\n{\n  "
      EXECLINE_EXTBINPREFIX "fdmove -c 1 2\n  "
      S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-echo -- \"s6-svscan crashed. Killing everything and exiting.\"\n}\n"
-     EXECLINE_EXTBINPREFIX "foreground { kill -9 -1 }\n"
+     EXECLINE_EXTBINPREFIX "foreground { "
+     S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-nuke }\n"
      EXECLINE_EXTBINPREFIX "wait { }\n"
      S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -fnp\n") >= 0 ;
 }
@@ -134,6 +135,9 @@ static int container_exit_script (buffer *b, char const *data)
      EXECLINE_EXTBINPREFIX "multisubstitute\n{\n"
      "  importas -uD0 -- EXITCODE exitcode\n  "
      "  importas -uDh -- HALTCODE haltcode\n}\n"
+     EXECLINE_EXTBINPREFIX "fdclose 1\n"
+     EXECLINE_EXTBINPREFIX "fdclose 2\n"
+     EXECLINE_EXTBINPREFIX "wait { }\n"
      EXECLINE_EXTBINPREFIX "ifelse -X { test $HALTCODE = r } { "
      S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -fnr }\n"
      EXECLINE_EXTBINPREFIX "ifelse -X { test $HALTCODE = p } { "
@@ -547,7 +551,6 @@ static inline void make_image (char const *base)
   auto_dir(base, "run-image/" SCANDIR, 0, 0, 0755) ;
   auto_dir(base, "run-image/" SCANDIR "/.s6-svscan", 0, 0, 0755) ;
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGTERM", &put_shebang_options, 0) ;
-  auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGHUP", &put_shebang_options, 0) ;
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGQUIT", &put_shebang_options, 0) ;
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGINT", &sig_script, "-r") ;
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGUSR1", &sig_script, "-p") ;

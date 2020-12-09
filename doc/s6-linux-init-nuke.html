@@ -1,0 +1,51 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Language" content="en" />
+    <title>s6-linux-init: the s6-linux-init-nuke program</title>
+    <meta name="Description" content="s6-linux-init: the s6-linux-init-nuke program" />
+    <meta name="Keywords" content="s6-linux-init command s6-linux-init-nuke nuke kill killall process shutdown" />
+    <!-- <link rel="stylesheet" type="text/css" href="//skarnet.org/default.css" /> -->
+  </head>
+<body>
+
+<p>
+<a href="index.html">s6-linux-init</a><br />
+<a href="//skarnet.org/software/">Software</a><br />
+<a href="//skarnet.org/">skarnet.org</a>
+</p>
+
+<h1> The <tt>s6-linux-init-nuke</tt> program </h1>
+
+<p>
+ s6-linux-init-nuke kills alls processes immediately.
+</p>
+
+<h2> Interface </h2>
+
+<pre>
+     s6-linux-init-nuke
+</pre>
+
+<p>
+ s6-linux-init-nuke sends a SIGKILL to every process on the system.
+(Process 1 will be unaffected.)
+</p>
+
+<p>
+ Do not try this at home.
+</p>
+
+<h2> Notes </h2>
+
+<ul>
+ <li> This program only exists so the s6-linux-init package can be
+self-contained and avoid relying on the existence of an external
+<tt>kill</tt> program. It is only run in the very improbable case
+that <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
+crashes, in a container situation. </li>
+</ul>
+
+</body>
+</html>

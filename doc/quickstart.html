@@ -16,7 +16,7 @@
 <a href="//skarnet.org/">skarnet.org</a>
 </p>
 
-<h1> Quickstart for s6-linux-init </h1>
+<h1> Quickstart and FAQ for s6-linux-init </h1>
 
 <h2> Quickstart </h2>
 
@@ -48,6 +48,103 @@ your old init system and need to use a reboot command that matches it. </li>
  <li> To shut the machine down, use <tt>/sbin/shutdown</tt>, <tt>/sbin/halt</tt>,
 <tt>/sbin/poweroff</tt> or <tt>/sbin/reboot</tt> as usual. </li>
 </ol>
+
+<h2> FAQ </h2>
+
+<h3> How do I convert a runit setup to a s6 one ? </h3>
+
+<p>
+ A runit and a s6 setup are very similar. There are just three things you
+need to pay attention to:
+</p>
+
+<ul>
+ <li> <a href="http://smarden.org/runit/runsv.8.html">runsv</a> supports
+customized controls, whereas 
+<a href="//skarnet.org/software/s6/s6-supervise.html">s6-supervise</a> does
+not. Fortunately, very few services use the customized control feature of
+runit; and s6 supports customizing the termination signal to a process via the
+<a href="//skarnet.org/software/s6/servicedir.html">down-signal</a> file,
+which can replace 99% of the legit uses of customized control. So, you should
+check your service directories for <tt>control/</tt> subdirectories, and
+adapt them depending on how your service handles controls. If a service does
+not use customized controls, you don't need to make any change and the service
+will run under s6-supervise as is. </li>
+ <li> The interface of <a href="http://smarden.org/runit/svlogd.8.html">svlogd</a>,
+runit's logger, is different from the interface of
+<a href="//skarnet.org/software/s6/s6-log.html">s6-log</a>, s6's logger.
+Namely, svlogd reads a config file in its log directory, while s6-log reads its
+configuration on its command line. If you have logging services that use svlogd,
+you should read their configuration in their logdir, and translate it to the
+proper s6-log invocation. </li>
+ <li> And, finally, the init process. Understanding how s6-linux-init works may
+seem daunting, but using it really is a lot simpler than it looks. </li>
+</ul>
+
+<p>
+ In a <a href="http://smarden.org/runit/index.html">runit</a> setup, you have
+the <a href="http://smarden.org/runit/runit.8.html">runit</a> program running as
+pid 1, and sequentially spawning <tt>/etc/runit/1</tt>, then <tt>/etc/runit/2</tt>
+which contains the invocation of
+<a href="http://smarden.org/runit/runsvdir.8.html">runsvdir</a>, and finally
+<tt>/etc/runit/3</tt> at shutdown time when runsvdir is dead.
+</p>
+
+<p>
+ In a <a href="//skarnet.org/software/s6/">s6</a> setup that you have booted via
+<a href="index.html">s6-linux-init</a>, the scanner,
+<a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a> (the equivalent
+of <a href="http://smarden.org/runit/runsvdir.8.html">runsvdir</a>), runs as
+pid 1, very early, and remains there for the whole lifetime of the machine. At
+boot time, the <tt>/etc/s6-linux-init/current/scripts/rc.init</tt> script is run, with
+the supervision tree already in place; when it exits, the system is supposed to
+be in a fully-booted, stable state. At shutdown time (on receipt of a shutdown
+command), the <tt>/etc/s6-linux-init/current/scripts/rc.shutdown</tt> script is run,
+with the supervision tree <em>still</em> in place; when it exits, the
+filesystems will be unmounted and the machine will be rebooted and/or stopped.
+</p>
+
+<p>
+ So, the quickest way to port a runit setup to a s6-linux-init one is to:
+</p>
+
+<ul>
+ <li> Copy your <tt>/etc/runit/1</tt> to <tt>/etc/s6-linux-init/current/scripts/rc.init</tt>.
+The only thing you should remove here is the creation of <tt>/run</tt>, because s6-linux-init
+has already mounted a tmpfs on <tt>/run</tt>. But basically all the rest should stay. </li>
+ <li> Also copy the parts of <tt>/etc/runit/2</tt>, if any, that come before the
+<a href="http://smarden.org/runit/runsvdir.8.html">runsvdir</a> invocation, to
+<tt>/etc/s6-linux-init/current/scripts/rc.init</tt>. </li>
+ <li> At the end of <tt>/etc/s6-linux-init/current/scripts/rc.init</tt>, symlink all
+your runit service directories to <tt>/run/service</tt>, and call
+<tt>s6-svscanctl -a /run/service</tt>. This will start and supervise all the services
+that you have symlinked, the way the original runsvdir invocation would have. </li>
+ <li> Copy your <tt>/etc/runit/3</tt> to <tt>/etc/s6-linux-init/current/scripts/rc.shutdown</tt>,
+removing the parts that unmount the filesystems and reboot the machine. </li>
+</ul>
+
+<p>
+ Once you have done that, you have a literal translation of your runit system into a
+s6 system, and it should boot, and work, albeit in a non-idiomatic, unoptimized way.
+Further work to make it prettier can include:
+</p>
+
+<ul>
+ <li> Identifying daemons you run in <tt>/etc/s6-linux-init/current/scripts/rc.init</tt>
+and making them early services instead. </li>
+ <li> Or, more idiomatically, analyze your whole boot sequence in
+<tt>/etc/s6-linux-init/current/scripts/rc.init</tt> and the daemons in your runit
+service directories, and convert the boot sequence so it can be handled by a service manager,
+for instance <a href="//skarnet.org/software/s6-rc/">s6-rc</a>. </li>
+</ul>
+
+<p>
+ Colin Booth has a
+<a href="https://www.reddit.com/r/voidlinux/comments/khn1jy/adventures_in_booting_void_on_s6/">series
+of posts on Reddit</a> that go into more detail on how to use a Void Linux distribution,
+which natively uses runit, with the s6 ecosystem instead; there are step-by-step tutorials
+as well as turnkey solutions, and it is recommended reading even if you do not use Void.
+</p>
 
 </body>
 </html>

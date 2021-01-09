@@ -126,7 +126,13 @@ removing the parts that unmount the filesystems and reboot the machine. </li>
 <p>
  Once you have done that, you have a literal translation of your runit system into a
 s6 system, and it should boot, and work, albeit in a non-idiomatic, unoptimized way.
-Further work to make it prettier can include:
+If you don't want to overwrite your <tt>/sbin/init</tt> binary, you can boot with
+<tt>init=/etc/s6-linux-init/current/bin/init</tt> as a kernel command line argument
+to reach the s6-linux-init entry point.
+</p>
+
+<p>
+ Further work to make the setup prettier can include:
 </p>
 
 <ul>

@@ -29,7 +29,7 @@ It is normally invoked through <tt>halt</tt>, <tt>poweroff</tt> or
 <h2> Interface </h2>
 
 <pre>
-     s6-linux-init-hpr [ -f ] [ -h | -p | -r ] [ -d | -w ] [ -W ] [ -i ]
+     s6-linux-init-hpr [ -f ] [ -h | -p | -r ] [ -n ] [ -d | -w ] [ -W ] [ -i ]
 </pre>
 
 <ul>
@@ -55,6 +55,10 @@ machine. </li>
  <li> <tt>-h</tt>&nbsp;: halt. The system will be shut down, but the power will remain up. </li>
  <li> <tt>-p</tt>&nbsp;: poweroff. The system will be shut down and the power turned off. </li>
  <li> <tt>-r</tt>&nbsp;: reboot. The system will reboot. </li>
+ <li> <tt>-n</tt>&nbsp;: Do not call
+<a href="https://pubs.opengroup.org/onlinepubs/9699919799/functions/sync.html">sync()</a>
+before the hardware shutdown. The default is to sync, just in case. This option is only
+relevant when combined with <tt>-f</tt>; without it, it has no effect. </li>
  <li> <tt>-d</tt>&nbsp;: Do not write a wtmp shutdown entry. </li>
  <li> <tt>-w</tt>&nbsp;: Only write a wtmp shutdown entry; do not actually shut down
 the system. </li>

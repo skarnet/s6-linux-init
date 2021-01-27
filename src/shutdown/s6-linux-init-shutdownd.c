@@ -146,13 +146,11 @@ static inline void handle_fifo (buffer *b, char *what, tain_t *deadline, unsigne
 
 static void restore_console (void)
 {
-  if (!inns && !nologger)
-  {
-    fd_close(1) ;
-    if (open("/dev/console", O_WRONLY) != 1)
-      strerr_diefu1sys(111, "open /dev/console for writing") ;
-    if (fd_copy(2, 1) < 0) strerr_warnwu1sys("fd_copy") ;
-  }
+  fd_close(1) ;
+  if (open("/dev/console", O_WRONLY) != 1)
+    strerr_warnwu1sys("open /dev/console for writing") ;
+  else if (fd_copy(2, 1) < 0)
+    strerr_warnwu1sys("fd_copy") ;
 }
 
 static inline void prepare_stage4 (char const *basedir, char what)
@@ -289,8 +287,22 @@ int main (int argc, char const *const *argv, char const *const *envp)
  /* if we're in stage 4, exec it immediately */
   {
     char const *stage4_argv[2] = { "./" STAGE4_FILE, 0 } ;
-    restore_console() ;
-    execve(stage4_argv[0], (char **)stage4_argv, (char *const *)envp) ;
+    if (!inns && !nologger)
+    {
+      int fd[2] ;
+      int e ;
+      fd[0] = fcntl(1, F_DUPFD_CLOEXEC, 0) ;
+      if (fd[0] < 0) strerr_diefu2sys(111, "dup std", "out") ;
+      fd[1] = fcntl(2, F_DUPFD_CLOEXEC, 0) ;
+      if (fd[1] < 0) strerr_diefu2sys(111, "dup std", "err") ;
+      restore_console() ;
+      execve(stage4_argv[0], (char **)stage4_argv, (char *const *)envp) ;
+      e = errno ;
+      if (fd_move2(1, fd[0], 2, fd[1]) < 0) strerr_warnwu1sys("restore fds") ;
+      errno = e ;
+    }
+    else
+      execve(stage4_argv[0], (char **)stage4_argv, (char *const *)envp) ;
     if (errno != ENOENT)
       strerr_warnwu2sys("exec ", stage4_argv[0]) ;
   }
@@ -326,7 +338,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
 
   fd_close(fdw) ;
   fd_close(fdr) ;
-  restore_console() ;
+  if (!inns && !nologger) restore_console() ;
 
 
  /* The end is coming! */

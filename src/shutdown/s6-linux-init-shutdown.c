@@ -4,12 +4,14 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sys/uio.h>
 #include <sys/stat.h>
 #include <errno.h>
 #include <time.h>
 #include <utmpx.h>
 
 #include <skalibs/uint32.h>
+#include <skalibs/uint64.h>
 #include <skalibs/types.h>
 #include <skalibs/allreadwrite.h>
 #include <skalibs/strerr2.h>
@@ -188,6 +190,55 @@ static inline void access_control (void)
     strerr_dief1x(1, "no authorized users logged in") ;
 }
 
+static void wallit (uint64_t t, char const *msg)
+{
+  struct iovec v[11] ;
+  unsigned int m = 11 ;
+  char fmtd[UINT64_FMT] ;
+  char fmth[UINT64_FMT] ;
+  char fmtm[UINT64_FMT] ;
+  char fmts[UINT64_FMT] ;
+  v[--m].iov_base = "\n" ; v[m].iov_len = 1 ;
+  v[--m].iov_base = HPR_WALL_POST ; v[m].iov_len = sizeof(HPR_WALL_POST) - 1 ;
+  if (!t)
+  {
+    v[--m].iov_base = "NOW" ; v[m].iov_len = 3 ;
+  }
+  else
+  {
+    if (t % 60)
+    {
+      v[--m].iov_base = " seconds" ; v[m].iov_len = 8 ;
+      v[--m].iov_base = fmts ; v[m].iov_len = uint64_fmt(fmts, t % 60) ;
+    }
+    t /= 60 ;
+    if (t)
+    {
+      if (t % 60)
+      {
+        v[--m].iov_base = " minutes " ; v[m].iov_len = 9 ;
+        v[--m].iov_base = fmtm ; v[m].iov_len = uint64_fmt(fmtm, t % 60) ;
+      }
+      t /= 60 ;
+      if (t)
+      {
+        if (t % 24)
+        {
+          v[--m].iov_base = " hours " ; v[m].iov_len = 7 ;
+          v[--m].iov_base = fmth ; v[m].iov_len = uint64_fmt(fmth, t % 24) ;
+        }
+        t /= 24 ;
+        if (t)
+        {
+          v[--m].iov_base = " days " ; v[m].iov_len = 6 ;
+          v[--m].iov_base = fmtd ; v[m].iov_len = uint64_fmt(fmtd, t) ;
+        }
+      }
+    }
+  }
+  v[--m].iov_base = HPR_WALL_PRE ; v[m].iov_len = sizeof(HPR_WALL_PRE) - 1 ;
+  hpr_wallv(v + m, 9 - m) ;
+}
 
  /* main */
 
@@ -250,15 +301,7 @@ int main (int argc, char const *const *argv)
   if (!argc) dieusage() ;
   parse_time(&when, argv[0]) ;
   tain_sub(&when, &when, &STAMP) ;
-  if (argv[1])
-  {
-    size_t len = strlen(argv[1]) ;
-    char msg[sizeof(HPR_WALL_BANNER) + 1 + len] ;
-    memcpy(msg, HPR_WALL_BANNER, sizeof(HPR_WALL_BANNER) - 1) ;
-    msg[sizeof(HPR_WALL_BANNER) - 1] = '\n' ;
-    memcpy(msg + sizeof(HPR_WALL_BANNER), argv[1], len + 1) ;
-    hpr_wall(msg) ;
-  }
+  if (argv[1]) wallit(tai_sec(tain_secp(&when)), argv[1]) ;
   if (what < 4)
   {
     if (gracetime > 300)

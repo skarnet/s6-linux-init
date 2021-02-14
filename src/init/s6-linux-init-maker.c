@@ -59,7 +59,7 @@ static int inns = 0 ;
 static int nologger = 0 ;
 
 #ifdef S6_LINUX_INIT_UTMPD_PATH
-static char const *utmp_user = "utmp" ;
+static char const *utmp_user = "" ;
 #endif
 
 typedef int writetobuf_func_t (buffer *, char const *) ;

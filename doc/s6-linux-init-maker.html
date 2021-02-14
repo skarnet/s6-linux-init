@@ -321,7 +321,8 @@ available when the s6-linux-init package has been built with the
 <tt>--enable-utmps</tt> configure option, that enables support for the
 <a href="//skarnet.org/software/utmps/">utmps</a> package. The option
 defines the user that the <tt>utmpd</tt> and <tt>wtmpd</tt> services
-will run as. Default is <strong><tt>utmp</tt></strong>. </li> <br />
+will run as, and activates these services. Default is <strong>no
+utmpd or wtmpd services</strong>. </li> <br />
 
  <li> <tt>-C</tt>&nbsp;: create a set of scripts that is suitable
 for running <em>in a container</em>. This modifies some behaviours:

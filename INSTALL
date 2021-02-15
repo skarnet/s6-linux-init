@@ -6,11 +6,11 @@ Build Instructions
 
   - A Linux-based system with a standard C development environment
   - GNU make version 3.81 or later
-  - skalibs version 2.10.0.1 or later: https://skarnet.org/software/skalibs/
+  - skalibs version 2.10.0.2 or later: https://skarnet.org/software/skalibs/
   - Optional: nsss version 0.1.0.0 or later: https://skarnet.org/software/nsss/
   - Optional: utmps version 0.1.0.0 or later: https://skarnet.org/software/utmps/
   - execline version 2.7.0.1 or later: https://skarnet.org/software/execline/
-  - s6 version 2.10.0.1 or later: https://skarnet.org/software/s6/
+  - s6 version 2.10.0.2 or later: https://skarnet.org/software/s6/
 
  This software is Linux-specific. It will run on a Linux kernel,
 version 2.6.32 or later. However, it should not be too hard to port to
@@ -96,7 +96,7 @@ linking against the static libc with --enable-static-libc.
  (If you are using a GNU/Linux system, be aware that the GNU libc
 behaves badly with static linking and produces huge executables,
 which is why it is not the default. Other libcs are better suited
-to static linking, for instance musl: http://musl-libc.org/)
+to static linking, for instance musl: https://musl-libc.org/)
 
 
 * Cross-compilation

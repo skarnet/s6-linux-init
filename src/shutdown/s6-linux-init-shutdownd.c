@@ -71,7 +71,7 @@ static int mkrenametemp (int fd, char const *src, char *dst)
   return mkfiletemp(dst, &renametemp, 0700, &at) ;
 }
 
-static inline void run_stage3 (char const *basedir, char const *const *envp)
+static inline void run_stage3 (char const *basedir)
 {
   pid_t pid ;
   size_t basedirlen = strlen(basedir) ;
@@ -79,7 +79,7 @@ static inline void run_stage3 (char const *basedir, char const *const *envp)
   char const *stage3_argv[2] = { stage3, 0 } ;
   memcpy(stage3, basedir, basedirlen) ;
   memcpy(stage3 + basedirlen, "/scripts/" STAGE3, sizeof("/scripts/" STAGE3)) ;
-  pid = child_spawn0(stage3_argv[0], stage3_argv, envp) ;
+  pid = child_spawn0(stage3_argv[0], stage3_argv, (char const *const *)environ) ;
   if (pid)
   {
     int wstat ;
@@ -244,8 +244,7 @@ static inline void unsupervise_tree (void)
         unlinkat(fdd, d->d_name, 0) ;
         /* if it still fails, too bad, it will restart in stage 4 and race */
       }
-      else
-        s6_svc_writectl(fn, S6_SUPERVISE_CTLDIR, "dx", 2) ;
+      s6_svc_writectl(fn, S6_SUPERVISE_CTLDIR, "dx", 2) ;
     }
   }
   if (errno)
@@ -253,7 +252,7 @@ static inline void unsupervise_tree (void)
   dir_close(dir) ;
 }
 
-int main (int argc, char const *const *argv, char const *const *envp)
+int main (int argc, char const *const *argv)
 {
   unsigned int grace_time = 3000 ;
   tain_t deadline ;
@@ -296,13 +295,13 @@ int main (int argc, char const *const *argv, char const *const *envp)
       fd[1] = fcntl(2, F_DUPFD_CLOEXEC, 0) ;
       if (fd[1] < 0) strerr_diefu2sys(111, "dup std", "err") ;
       restore_console() ;
-      execve(stage4_argv[0], (char **)stage4_argv, (char *const *)envp) ;
+      execv(stage4_argv[0], (char **)stage4_argv) ;
       e = errno ;
       if (fd_move2(1, fd[0], 2, fd[1]) < 0) strerr_warnwu1sys("restore fds") ;
       errno = e ;
     }
     else
-      execve(stage4_argv[0], (char **)stage4_argv, (char *const *)envp) ;
+      execv(stage4_argv[0], (char **)stage4_argv) ;
     if (errno != ENOENT)
       strerr_warnwu2sys("exec ", stage4_argv[0]) ;
   }
@@ -326,7 +325,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
     if (r == -1) strerr_diefu1sys(111, "iopause") ;
     if (!r)
     {
-      run_stage3(basedir, envp) ;
+      run_stage3(basedir) ;
       tain_now_g() ;
       if (what != 'S') break ;
       tain_add_g(&deadline, &tain_infinite_relative) ;

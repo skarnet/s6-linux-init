@@ -14,3 +14,4 @@
 /s6-linux-init-echo
 /s6-linux-init-umountall
 /s6-linux-init-maker
+/s6-linux-init-nuke

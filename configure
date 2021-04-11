@@ -138,7 +138,7 @@ getmacrostring () {
 # Actual script
 
 CC_AUTO=
-CPPFLAGS_AUTO="-D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700 -iquote src/include-local -Isrc/include"
+CPPFLAGS_AUTO="-D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700 -iquote src/include-local -Isrc/include"
 CPPFLAGS_POST="$CPPFLAGS"
 CPPFLAGS=
 CFLAGS_AUTO="-pipe -Wall"

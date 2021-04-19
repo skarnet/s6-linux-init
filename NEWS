@@ -1,5 +1,11 @@
 Changelog for s6-linux-init.
 
+In 1.0.6.3
+----------
+
+ - Fixed management of wtmp (i.e. don't manage it at all)
+
+
 In 1.0.6.2
 ----------
 

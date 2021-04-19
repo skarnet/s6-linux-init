@@ -26,7 +26,11 @@
 #endif
 
 #ifndef _PATH_WTMP
-#define _PATH_WTMP "/dev/null/wtmp"
+# ifdef WTMPX_FILE
+#  define _PATH_WTMP WTMPX_FILE
+# else
+#  define _PATH_WTMP "/var/log/wtmp"
+# endif
 #endif
 
 #define USAGE "s6-linux-init-hpr [ -h | -p | -r ] [ -n ] [ -d | -w ] [ -W ] [ -f ] [ -i ]"

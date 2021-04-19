@@ -499,7 +499,7 @@ static inline void auto_basedir (char const *base, char const *dir, uid_t uid, g
   }
 }
 
-static int utmpd_script (buffer *b, char const *uw)
+static int utmpd_script (buffer *b, char const *aux)
 {
   size_t sabase = satmp.len ;
   if (!put_shebang(b)
@@ -512,12 +512,9 @@ static int utmpd_script (buffer *b, char const *uw)
   if (buffer_puts(b, "\n"
     EXECLINE_EXTBINPREFIX "cd " S6_LINUX_INIT_TMPFS "/" UTMPS_DIR "\n"
     EXECLINE_EXTBINPREFIX "fdmove 1 3\n"
-    S6_EXTBINPREFIX "s6-ipcserver -1 -c 1000 -- ") < 0) return 0 ;
-  if (buffer_puts(b, uw[0] == 'u' ? UTMPS_UTMPD_PATH : UTMPS_WTMPD_PATH) < 0
-   || buffer_puts(b, "\n"
-    UTMPS_EXTBINPREFIX "utmps-") < 0
-   || buffer_puts(b, uw) < 0
-   || buffer_puts(b, "tmpd\n") < 0) return 0 ;
+    S6_EXTBINPREFIX "s6-ipcserver -1 -c 1000 -- " UTMPS_UTMPD_PATH "\n"
+    UTMPS_EXTBINPREFIX "utmps-utmpd") < 0) return 0 ;
+  (void)aux ;
   return 1 ;
 
  err:
@@ -529,17 +526,13 @@ static inline void make_utmps (char const *base)
 {
   auto_dir(base, "run-image/" SCANDIR "/utmpd", 0, 0, 0755) ;
   auto_file(base, "run-image/" SCANDIR "/utmpd/notification-fd", "3\n", 2) ;
-  auto_script(base, "run-image/" SCANDIR "/utmpd/run", &utmpd_script, "u") ;
-  auto_dir(base, "run-image/" SCANDIR "/wtmpd", 0, 0, 0755) ;
-  auto_file(base, "run-image/" SCANDIR "/wtmpd/notification-fd", "3\n", 2) ;
-  auto_script(base, "run-image/" SCANDIR "/wtmpd/run", &utmpd_script, "w") ;
+  auto_script(base, "run-image/" SCANDIR "/utmpd/run", &utmpd_script, 0) ;
   {
     uid_t uid ;
     gid_t gid ;
     getug(base, utmp_user, &uid, &gid) ;
     auto_dir(base, "run-image/" UTMPS_DIR, uid, gid, 0755) ;
     auto_basedir(base, "run-image/" S6_LINUX_INIT_UTMPD_PATH, uid, gid, 0755) ;
-    auto_basedir(base, "run-image/" S6_LINUX_INIT_WTMPD_PATH, uid, gid, 0755) ;
   }
 }
 

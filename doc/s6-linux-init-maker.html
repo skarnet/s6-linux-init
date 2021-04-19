@@ -320,9 +320,15 @@ files in a staging directory. </li> <br />
 available when the s6-linux-init package has been built with the
 <tt>--enable-utmps</tt> configure option, that enables support for the
 <a href="//skarnet.org/software/utmps/">utmps</a> package. The option
-defines the user that the <tt>utmpd</tt> and <tt>wtmpd</tt> services
-will run as, and activates these services. Default is <strong>no
-utmpd or wtmpd services</strong>. </li> <br />
+defines the user that the <tt>utmpd</tt> service
+will run as, and activates this service. (Note that you will still
+have to create a <tt>wtmpd</tt> service yourself and activate it
+later in the boot sequence, after a writable filesystem is mounted,
+because the wtmp database is supposed to be persistent and should live
+on a real filesystem.
+s6-linux-init cannot do that for you, because it only handles the
+early part of the boot sequence, before filesystems are mounted.)
+Default is <strong>no utmpd service</strong>. </li> <br />
 
  <li> <tt>-C</tt>&nbsp;: create a set of scripts that is suitable
 for running <em>in a container</em>. This modifies some behaviours:
@@ -457,11 +463,14 @@ directories may exist:
 
 <ul>
  <li> A directory somewhere under <tt>run-image</tt>, by default <tt>utmps</tt>,
-that is the location where the utmp and wtmp files will be created. </li>
- <li> Two additional early services named <tt>utmpd</tt> and <tt>wtmpd</tt>,
-that are the <a href="//skarnet.org/software/utmps/">utmps</a> way of
-providing secure utmp functionality. </li>
-</ul>
+that is the location where the utmp files will be created. </li>
+ <li> An additional early service named <tt>utmpd</tt>, which is
+a part of the <a href="//skarnet.org/software/utmps/">utmps</a> way of
+providing secure utmp functionality. A similar <tt>wtmpd</tt> service
+should also be created and run later in the boot sequence by the
+service manager; it is not s6-linux-init's job to do it because
+<tt>wtmp</tt> requires a real, writable filesystem. </li>
+</ul>1
 
 <h2> Notes </h2>
 

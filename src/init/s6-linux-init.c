@@ -7,11 +7,6 @@
 #include <errno.h>
 #include <signal.h>
 #include <sys/stat.h>
-#include <sys/mount.h>
-#include <sys/reboot.h>
-#include <sys/ioctl.h>
-
-#include <linux/kd.h>
 
 #include <skalibs/types.h>
 #include <skalibs/allreadwrite.h>
@@ -26,6 +21,7 @@
 #include <s6/config.h>
 
 #include <s6-linux-init/config.h>
+#include "os.h"
 #include "defaults.h"
 #include "initctl.h"
 
@@ -65,25 +61,6 @@ static inline void wait_for_notif (int fd)
     if (memchr(buf, '\n', r)) break ;
   }
   close(fd) ;
-}
-
-static void kbspecials (void)
-{
-  int fd ;
-  if (inns) return ;
-  fd = open("/dev/tty0", O_RDONLY | O_NOCTTY) ;
-  if (fd < 0)
-    strerr_warnwu2sys("open /dev/", "tty0 (kbrequest will not be handled)") ;
-  else
-  {
-    if (ioctl(fd, KDSIGACCEPT, SIGWINCH) < 0)
-      strerr_warnwu2sys("ioctl KDSIGACCEPT on ", "tty0 (kbrequest will not be handled)") ;
-    close(fd) ;
-  }
-
-  sig_block(SIGINT) ; /* don't panic on early cad before s6-svscan catches it */
-  if (reboot(RB_DISABLE_CAD) == -1)
-    strerr_warnwu1sys("trap ctrl-alt-del") ;
 }
 
 static inline void run_stage2 (char const *basedir, char const **argv, unsigned int argc, char const *const *envp, size_t envlen, char const *modifs, size_t modiflen, char const *initdefault)
@@ -185,7 +162,7 @@ int main (int argc, char const **argv, char const *const *envp)
     close(1) ;
     close(2) ;
    /* at this point we're totally in the dark, hoping /dev/console will work */
-    nope = mount("dev", slashdev, "devtmpfs", MS_NOSUID | MS_NOEXEC, "") < 0 ;
+    nope = os_mount_devtmpfs(slashdev) < 0 ;
     e = errno ;
     if (open("/dev/console", O_WRONLY)
      || fd_move(2, 0) < 0
@@ -206,24 +183,7 @@ int main (int argc, char const **argv, char const *const *envp)
     if (fd_move(0, p[0]) < 0) strerr_diefu1sys(111, "fd_move to stdin") ;
   }
 
-  if (mounttype)
-  {
-    if (mounttype == 2)
-    {
-      if (mount("tmpfs", S6_LINUX_INIT_TMPFS, "tmpfs", MS_REMOUNT | MS_NODEV | MS_NOSUID, "mode=0755") == -1)
-        strerr_diefu1sys(111, "remount " S6_LINUX_INIT_TMPFS) ;
-    }
-    else
-    {
-      if (umount(S6_LINUX_INIT_TMPFS) == -1)
-      {
-        if (errno != EINVAL)
-          strerr_warnwu1sys("umount " S6_LINUX_INIT_TMPFS) ;
-      }
-      if (mount("tmpfs", S6_LINUX_INIT_TMPFS, "tmpfs", MS_NODEV | MS_NOSUID, "mode=0755") == -1)
-        strerr_diefu1sys(111, "mount tmpfs on " S6_LINUX_INIT_TMPFS) ;
-    }
-  }
+  os_mount_tmpfs(S6_LINUX_INIT_TMPFS, mounttype) ;
 
   {
     size_t dirlen = strlen(basedir) ;
@@ -273,7 +233,7 @@ int main (int argc, char const **argv, char const *const *envp)
       close(notifpipe[0]) ;
       fmtfd[1] = 'd' ;
       fmtfd[2 + uint_fmt(fmtfd + 2, notifpipe[1])] = 0 ;
-      kbspecials() ;
+      os_kbspecials(inns) ;
     }
     else
     {
@@ -281,7 +241,7 @@ int main (int argc, char const **argv, char const *const *envp)
       if (fd < 0) strerr_diefu1sys(111, "dup stderr") ;
       fmtfd[1] = 'X' ;
       fmtfd[2 + uint_fmt(fmtfd + 2, (unsigned int)fd)] = 0 ;
-      kbspecials() ;
+      os_kbspecials(inns) ;
       if (fd_copy(2, 1) == -1)
         strerr_diefu1sys(111, "redirect output file descriptor") ;
     }

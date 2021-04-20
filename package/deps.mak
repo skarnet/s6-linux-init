@@ -6,22 +6,26 @@ src/include-local/initctl.h: src/include/s6-linux-init/config.h
 src/shutdown/hpr.h: src/include-local/initctl.h
 src/init/s6-linux-init-maker.o src/init/s6-linux-init-maker.lo: src/init/s6-linux-init-maker.c src/include-local/defaults.h src/include-local/initctl.h src/include/s6-linux-init/config.h
 src/init/s6-linux-init-telinit.o src/init/s6-linux-init-telinit.lo: src/init/s6-linux-init-telinit.c src/include-local/initctl.h src/include/s6-linux-init/config.h
-src/init/s6-linux-init.o src/init/s6-linux-init.lo: src/init/s6-linux-init.c src/include-local/defaults.h src/include-local/initctl.h src/include/s6-linux-init/config.h
+src/init/s6-linux-init.o src/init/s6-linux-init.lo: src/init/s6-linux-init.c src/include-local/defaults.h src/include-local/initctl.h src/include-local/os.h src/include/s6-linux-init/config.h
 src/lib/s6_linux_init_logouthook.o src/lib/s6_linux_init_logouthook.lo: src/lib/s6_linux_init_logouthook.c src/include-local/initctl.h src/include/s6-linux-init/s6-linux-init.h
 src/misc/s6-linux-init-echo.o src/misc/s6-linux-init-echo.lo: src/misc/s6-linux-init-echo.c
 src/misc/s6-linux-init-logouthookd.o src/misc/s6-linux-init-logouthookd.lo: src/misc/s6-linux-init-logouthookd.c
 src/misc/s6-linux-init-nuke.o src/misc/s6-linux-init-nuke.lo: src/misc/s6-linux-init-nuke.c
 src/misc/s6-linux-init-umountall.o src/misc/s6-linux-init-umountall.lo: src/misc/s6-linux-init-umountall.c src/include/s6-linux-init/config.h
+src/os/linux-os_kbspecials.o src/os/linux-os_kbspecials.lo: src/os/linux-os_kbspecials.c src/include-local/os.h
+src/os/linux-os_mount_devtmpfs.o src/os/linux-os_mount_devtmpfs.lo: src/os/linux-os_mount_devtmpfs.c src/include-local/os.h
+src/os/linux-os_mount_tmpfs.o src/os/linux-os_mount_tmpfs.lo: src/os/linux-os_mount_tmpfs.c src/include-local/os.h
+src/os/linux-os_reboot.o src/os/linux-os_reboot.lo: src/os/linux-os_reboot.c src/include-local/os.h
 src/shutdown/hpr_confirm_hostname.o src/shutdown/hpr_confirm_hostname.lo: src/shutdown/hpr_confirm_hostname.c src/shutdown/hpr.h
 src/shutdown/hpr_shutdown.o src/shutdown/hpr_shutdown.lo: src/shutdown/hpr_shutdown.c src/shutdown/hpr.h
 src/shutdown/hpr_wall.o src/shutdown/hpr_wall.lo: src/shutdown/hpr_wall.c src/shutdown/hpr.h
 src/shutdown/hpr_wallv.o src/shutdown/hpr_wallv.lo: src/shutdown/hpr_wallv.c src/shutdown/hpr.h
-src/shutdown/s6-linux-init-hpr.o src/shutdown/s6-linux-init-hpr.lo: src/shutdown/s6-linux-init-hpr.c src/include-local/defaults.h src/shutdown/hpr.h
+src/shutdown/s6-linux-init-hpr.o src/shutdown/s6-linux-init-hpr.lo: src/shutdown/s6-linux-init-hpr.c src/include-local/defaults.h src/shutdown/hpr.h src/include-local/os.h
 src/shutdown/s6-linux-init-shutdown.o src/shutdown/s6-linux-init-shutdown.lo: src/shutdown/s6-linux-init-shutdown.c src/include-local/defaults.h src/shutdown/hpr.h src/include-local/initctl.h
 src/shutdown/s6-linux-init-shutdownd.o src/shutdown/s6-linux-init-shutdownd.lo: src/shutdown/s6-linux-init-shutdownd.c src/include-local/defaults.h src/shutdown/hpr.h src/include-local/initctl.h src/include/s6-linux-init/config.h
 
 s6-linux-init: EXTRA_LIBS := -lskarnet
-s6-linux-init: src/init/s6-linux-init.o
+s6-linux-init: src/init/s6-linux-init.o libos-${OS}.a.xyzzy
 s6-linux-init-maker: EXTRA_LIBS := -lskarnet ${MAYBEPTHREAD_LIB}
 s6-linux-init-maker: src/init/s6-linux-init-maker.o ${LIBNSSS}
 s6-linux-init-telinit: EXTRA_LIBS := -lskarnet
@@ -42,14 +46,23 @@ s6-linux-init-nuke: src/misc/s6-linux-init-nuke.o
 s6-linux-init-umountall: EXTRA_LIBS := -lskarnet
 s6-linux-init-umountall: src/misc/s6-linux-init-umountall.o
 ifeq ($(strip $(STATIC_LIBS_ARE_PIC)),)
+libos-freebsd.a.xyzzy: src/os/freebsd-os_reboot.o src/os/freebsd-os_kbspecials.o src/os/freebsd-os_mount_tmpfs.o
+else
+libos-freebsd.a.xyzzy: src/os/freebsd-os_reboot.lo src/os/freebsd-os_kbspecials.lo src/os/freebsd-os_mount_tmpfs.lo
+endif
+ifeq ($(strip $(STATIC_LIBS_ARE_PIC)),)
+libos-linux.a.xyzzy: src/os/linux-os_reboot.o src/os/linux-os_kbspecials.o src/os/linux-os_mount_devtmpfs.o src/os/linux-os_mount_tmpfs.o
+else
+libos-linux.a.xyzzy: src/os/linux-os_reboot.lo src/os/linux-os_kbspecials.lo src/os/linux-os_mount_devtmpfs.lo src/os/linux-os_mount_tmpfs.lo
+endif
+ifeq ($(strip $(STATIC_LIBS_ARE_PIC)),)
 libhpr.a.xyzzy: src/shutdown/hpr_shutdown.o src/shutdown/hpr_wall.o src/shutdown/hpr_wallv.o src/shutdown/hpr_confirm_hostname.o
 else
 libhpr.a.xyzzy: src/shutdown/hpr_shutdown.lo src/shutdown/hpr_wall.lo src/shutdown/hpr_wallv.lo src/shutdown/hpr_confirm_hostname.lo
 endif
 s6-linux-init-hpr: EXTRA_LIBS := -lskarnet ${SYSCLOCK_LIB} ${SOCKET_LIB}
-s6-linux-init-hpr: src/shutdown/s6-linux-init-hpr.o libhpr.a.xyzzy ${LIBUTMPS}
+s6-linux-init-hpr: src/shutdown/s6-linux-init-hpr.o libhpr.a.xyzzy libos-${OS}.a.xyzzy ${LIBUTMPS}
 s6-linux-init-shutdown: EXTRA_LIBS := -lskarnet ${SYSCLOCK_LIB} ${SOCKET_LIB}
 s6-linux-init-shutdown: src/shutdown/s6-linux-init-shutdown.o libhpr.a.xyzzy ${LIBUTMPS}
 s6-linux-init-shutdownd: EXTRA_LIBS := -ls6 -lskarnet ${SYSCLOCK_LIB} ${SOCKET_LIB}
 s6-linux-init-shutdownd: src/shutdown/s6-linux-init-shutdownd.o ${LIBUTMPS}
-INTERNAL_LIBS := libhpr.a.xyzzy

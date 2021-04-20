@@ -16,7 +16,6 @@ CC = $(error Please use ./configure first)
 
 STATIC_LIBS :=
 SHARED_LIBS :=
-INTERNAL_LIBS :=
 EXTRA_TARGETS :=
 LIB_DEFS :=
 
@@ -54,7 +53,7 @@ STRIP := $(CROSS_COMPILE)strip
 INSTALL := ./tools/install.sh
 
 ALL_BINS := $(LIBEXEC_TARGETS) $(BIN_TARGETS)
-ALL_LIBS := $(SHARED_LIBS) $(STATIC_LIBS) $(INTERNAL_LIBS)
+ALL_LIBS := $(SHARED_LIBS) $(STATIC_LIBS)
 ALL_INCLUDES := $(wildcard src/include/$(package)/*.h)
 
 all: $(ALL_LIBS) $(ALL_BINS) $(ALL_INCLUDES)

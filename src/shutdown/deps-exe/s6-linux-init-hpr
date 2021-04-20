@@ -1,4 +1,5 @@
 libhpr.a.xyzzy
+libos-${OS}.a.xyzzy
 ${LIBUTMPS}
 -lskarnet
 ${SYSCLOCK_LIB}

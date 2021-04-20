@@ -10,6 +10,9 @@ s6-linux-init-nuke \
 s6-linux-init-umountall \
 s6-linux-init-maker
 
+OS := $(shell uname | tr A-Z a-z)
+EXTRA_TARGETS := libhpr.a.xyzzy libos-$(OS).a.xyzzy
+
 LIB_DEFS := S6_LINUX_INIT=s6_linux_init
 
 SKELFILES := $(wildcard skel/*)

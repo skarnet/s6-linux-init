@@ -1,0 +1,3 @@
+freebsd-os_reboot.o
+freebsd-os_kbspecials.o
+freebsd-os_mount_tmpfs.o

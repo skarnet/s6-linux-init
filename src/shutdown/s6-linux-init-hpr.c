@@ -6,7 +6,6 @@
 #include <signal.h>
 #include <errno.h>
 #include <utmpx.h>
-#include <sys/reboot.h>
 
 #include <skalibs/strerr2.h>
 #include <skalibs/sgetopt.h>
@@ -14,6 +13,7 @@
 #include <skalibs/tai.h>
 #include <skalibs/djbunix.h>
 
+#include "os.h"
 #include "defaults.h"
 #include "hpr.h"
 
@@ -82,8 +82,8 @@ int main (int argc, char const *const *argv)
   if (force)
   {
     if (dosync) sync() ;
-    reboot(what == 3 ? RB_AUTOBOOT : what == 2 ? RB_POWER_OFF : RB_HALT_SYSTEM) ;
-    strerr_diefu1sys(111, "reboot()") ;
+    os_reboot(what) ;
+    strerr_diefu1sys(111, "os_reboot") ;
   }
 
   if (!tain_now_g()) strerr_warnw1sys("get current time") ;

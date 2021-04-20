@@ -1,5 +1,7 @@
 /* ISC license. */
 
+#include <skalibs/nonposix.h>
+
 #include <errno.h>
 
 #include <sys/param.h>
@@ -15,7 +17,7 @@ void os_mount_tmpfs (char const *point, unsigned int mounttype)
   {
     if (mounttype == 2)
     {
-      if (mount("tmpfs", point, "tmpfs", MNT_UPDATE | MNT_NOSUID, "mode=0755") == -1)
+      if (mount("tmpfs", point, MNT_UPDATE | MNT_NOSUID, "mode=0755") == -1)
         strerr_diefu2sys(111, "remount ", point) ;
     }
     else
@@ -25,7 +27,7 @@ void os_mount_tmpfs (char const *point, unsigned int mounttype)
         if (errno != EINVAL)
           strerr_warnwu2sys("umount ", point) ;
       }
-      if (mount("tmpfs", point, "tmpfs", MNT_NOSUID, "mode=0755") == -1)
+      if (mount("tmpfs", point, MNT_NOSUID, "mode=0755") == -1)
         strerr_diefu2sys(111, "mount tmpfs on ", point) ;
     }
   }

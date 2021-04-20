@@ -1,5 +1,7 @@
 /* ISC license. */
 
+#include <skalibs/nonposix.h>
+
 #include <sys/param.h>
 #include <sys/mount.h>
 
@@ -7,5 +9,5 @@
 
 int os_mount_devtmpfs (char const *point)
 {
-  return mount("devfs", point, "devfs", MNT_NOEXEC | MNT_NOSUID, "") ;
+  return mount("devfs", point, MNT_NOEXEC | MNT_NOSUID, "") ;
 }

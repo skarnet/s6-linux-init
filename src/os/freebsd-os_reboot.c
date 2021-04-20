@@ -1,5 +1,7 @@
 /* ISC license. */
 
+#include <skalibs/nonposix.h>
+
 #include <unistd.h>
 #include <sys/reboot.h>
 

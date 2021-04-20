@@ -17,15 +17,17 @@
 
 void hpr_confirm_hostname (void)
 {
-  char name[HOST_NAME_MAX + 1] ;
-  char buf[HOST_NAME_MAX + 1] ;
   char *p ;
   ssize_t r ;
+  long hostnamemax = sysconf(_SC_HOST_NAME_MAX) ;
+  if (hostnamemax < 0) hostnamemax = _POSIX_HOST_NAME_MAX ;
+  char name[hostnamemax + 1] ;
+  char buf[hostnamemax + 1] ;
   if (!isatty(0) || !isatty(1))
     strerr_diefu1x(100, "ask hostname confirmation: stdin or stdout is not a tty") ;
-  if (gethostname(name, HOST_NAME_MAX) < 0)
+  if (gethostname(name, hostnamemax) < 0)
     strerr_diefu1sys(111, "get host name") ;
-  name[HOST_NAME_MAX] = 0 ;
+  name[hostnamemax] = 0 ;
   p = strchr(name, '.') ;
   if (p) *p = 0 ;
   if (allwrite(1, PROMPT, sizeof(PROMPT)-1) < 0)
@@ -34,7 +36,7 @@ void hpr_confirm_hostname (void)
     strerr_diefu1sys(111, "tcdrain stdout") ;
   if (tcflush(0, TCIFLUSH) < 0)
     strerr_diefu1sys(111, "empty stdin buffer") ;
-  r = fd_read(0, buf, HOST_NAME_MAX) ;
+  r = fd_read(0, buf, hostnamemax) ;
   if (!r) errno = EPIPE ;
   if (r <= 0) strerr_diefu1sys(111, "read from stdin") ;
   buf[byte_chr(buf, r, '\n')] = 0 ;

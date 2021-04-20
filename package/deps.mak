@@ -12,6 +12,10 @@ src/misc/s6-linux-init-echo.o src/misc/s6-linux-init-echo.lo: src/misc/s6-linux-
 src/misc/s6-linux-init-logouthookd.o src/misc/s6-linux-init-logouthookd.lo: src/misc/s6-linux-init-logouthookd.c
 src/misc/s6-linux-init-nuke.o src/misc/s6-linux-init-nuke.lo: src/misc/s6-linux-init-nuke.c
 src/misc/s6-linux-init-umountall.o src/misc/s6-linux-init-umountall.lo: src/misc/s6-linux-init-umountall.c src/include/s6-linux-init/config.h
+src/os/freebsd-os_kbspecials.o src/os/freebsd-os_kbspecials.lo: src/os/freebsd-os_kbspecials.c src/include-local/os.h
+src/os/freebsd-os_mount_devtmpfs.o src/os/freebsd-os_mount_devtmpfs.lo: src/os/freebsd-os_mount_devtmpfs.c src/include-local/os.h
+src/os/freebsd-os_mount_tmpfs.o src/os/freebsd-os_mount_tmpfs.lo: src/os/freebsd-os_mount_tmpfs.c src/include-local/os.h
+src/os/freebsd-os_reboot.o src/os/freebsd-os_reboot.lo: src/os/freebsd-os_reboot.c src/include-local/os.h
 src/os/linux-os_kbspecials.o src/os/linux-os_kbspecials.lo: src/os/linux-os_kbspecials.c src/include-local/os.h
 src/os/linux-os_mount_devtmpfs.o src/os/linux-os_mount_devtmpfs.lo: src/os/linux-os_mount_devtmpfs.c src/include-local/os.h
 src/os/linux-os_mount_tmpfs.o src/os/linux-os_mount_tmpfs.lo: src/os/linux-os_mount_tmpfs.c src/include-local/os.h
@@ -46,14 +50,14 @@ s6-linux-init-nuke: src/misc/s6-linux-init-nuke.o
 s6-linux-init-umountall: EXTRA_LIBS := -lskarnet
 s6-linux-init-umountall: src/misc/s6-linux-init-umountall.o
 ifeq ($(strip $(STATIC_LIBS_ARE_PIC)),)
-libos-freebsd.a.xyzzy: src/os/freebsd-os_reboot.o src/os/freebsd-os_kbspecials.o src/os/freebsd-os_mount_tmpfs.o
+libos-freebsd.a.xyzzy: src/os/freebsd-os_kbspecials.o src/os/freebsd-os_mount_devtmpfs.o src/os/freebsd-os_mount_tmpfs.o src/os/freebsd-os_reboot.o
 else
-libos-freebsd.a.xyzzy: src/os/freebsd-os_reboot.lo src/os/freebsd-os_kbspecials.lo src/os/freebsd-os_mount_tmpfs.lo
+libos-freebsd.a.xyzzy: src/os/freebsd-os_kbspecials.lo src/os/freebsd-os_mount_devtmpfs.lo src/os/freebsd-os_mount_tmpfs.lo src/os/freebsd-os_reboot.lo
 endif
 ifeq ($(strip $(STATIC_LIBS_ARE_PIC)),)
-libos-linux.a.xyzzy: src/os/linux-os_reboot.o src/os/linux-os_kbspecials.o src/os/linux-os_mount_devtmpfs.o src/os/linux-os_mount_tmpfs.o
+libos-linux.a.xyzzy: src/os/linux-os_kbspecials.o src/os/linux-os_mount_devtmpfs.o src/os/linux-os_mount_tmpfs.o src/os/linux-os_reboot.o
 else
-libos-linux.a.xyzzy: src/os/linux-os_reboot.lo src/os/linux-os_kbspecials.lo src/os/linux-os_mount_devtmpfs.lo src/os/linux-os_mount_tmpfs.lo
+libos-linux.a.xyzzy: src/os/linux-os_kbspecials.lo src/os/linux-os_mount_devtmpfs.lo src/os/linux-os_mount_tmpfs.lo src/os/linux-os_reboot.lo
 endif
 ifeq ($(strip $(STATIC_LIBS_ARE_PIC)),)
 libhpr.a.xyzzy: src/shutdown/hpr_shutdown.o src/shutdown/hpr_wall.o src/shutdown/hpr_wallv.o src/shutdown/hpr_confirm_hostname.o

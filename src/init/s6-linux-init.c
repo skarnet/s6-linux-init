@@ -96,7 +96,7 @@ static inline void run_stage2 (char const *basedir, char const **argv, unsigned 
 
 int main (int argc, char const **argv, char const *const *envp)
 {
-  mode_t mask = 0022 ;
+  unsigned int mask = 0022 ;
   char const *basedir = BASEDIR ;
   char const *path = INITPATH ;
   char const *slashdev = 0 ;

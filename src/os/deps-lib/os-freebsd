@@ -1,3 +1,4 @@
+freebsd-os_final_wtmp.o
 freebsd-os_kbspecials.o
 freebsd-os_mount_devtmpfs.o
 freebsd-os_mount_tmpfs.o

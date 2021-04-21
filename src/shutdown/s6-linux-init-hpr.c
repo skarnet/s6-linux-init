@@ -1,37 +1,14 @@
 /* ISC license. */
 
-#include <skalibs/nonposix.h>
-
 #include <unistd.h>
-#include <signal.h>
 #include <errno.h>
-#include <utmpx.h>
 
 #include <skalibs/strerr2.h>
 #include <skalibs/sgetopt.h>
-#include <skalibs/sig.h>
 #include <skalibs/tai.h>
-#include <skalibs/djbunix.h>
 
-#include "os.h"
-#include "defaults.h"
 #include "hpr.h"
-
-#ifndef UT_NAMESIZE
-#define UT_NAMESIZE 32
-#endif
-
-#ifndef UT_HOSTSIZE
-#define UT_HOSTSIZE 256
-#endif
-
-#ifndef _PATH_WTMP
-# ifdef WTMPX_FILE
-#  define _PATH_WTMP WTMPX_FILE
-# else
-#  define _PATH_WTMP "/var/log/wtmp"
-# endif
-#endif
+#include "os.h"
 
 #define USAGE "s6-linux-init-hpr [ -h | -p | -r ] [ -n ] [ -d | -w ] [ -W ] [ -f ] [ -i ]"
 
@@ -87,40 +64,7 @@ int main (int argc, char const *const *argv)
   }
 
   if (!tain_now_g()) strerr_warnw1sys("get current time") ;
-  if (dowtmp)
-  {
-    struct utmpx utx =
-    {
-      .ut_type = RUN_LVL,
-      .ut_pid = getpid(),
-      .ut_line = "~",
-      .ut_id = "",
-      .ut_session = getsid(0)
-    } ;
-    strncpy(utx.ut_user, what == 3 ? "reboot" : "shutdown", UT_NAMESIZE) ;
-    if (gethostname(utx.ut_host, UT_HOSTSIZE) < 0)
-    {
-      utx.ut_host[0] = 0 ;
-      strerr_warnwu1sys("gethostname") ;
-    }
-    else utx.ut_host[UT_HOSTSIZE - 1] = 0 ;
-
-   /* glibc multilib can go fuck itself */
-#ifdef  __WORDSIZE_TIME64_COMPAT32
-    {
-      struct timeval tv ;
-      if (!timeval_from_tain(&tv, &STAMP))
-        strerr_warnwu1sys("timeval_from_tain") ;
-      utx.ut_tv.tv_sec = tv.tv_sec ;
-      utx.ut_tv.tv_usec = tv.tv_usec ;
-    }
-#else
-    if (!timeval_from_tain(&utx.ut_tv, &STAMP))
-      strerr_warnwu1sys("timeval_from_tain") ;
-#endif
-
-    updwtmpx(_PATH_WTMP, &utx) ;
-  }
+  if (dowtmp) os_final_wtmp(what) ;
   if (dowall) hpr_wall(HPR_WALL_BANNER) ;
   if (dowtmp < 2)
   {

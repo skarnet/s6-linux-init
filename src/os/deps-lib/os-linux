@@ -1,3 +1,4 @@
+linux-os_final_wtmp.o
 linux-os_kbspecials.o
 linux-os_mount_devtmpfs.o
 linux-os_mount_tmpfs.o

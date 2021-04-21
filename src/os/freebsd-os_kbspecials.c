@@ -2,8 +2,9 @@
 
 #include "os.h"
 
+ /* FreeBSD hardcodes cad and doesn't have kbrequest */
+
 void os_kbspecials (int inns)
 {
-  if (inns) return ;
-  return ;
+  (void)inns ;
 }

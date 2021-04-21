@@ -2,9 +2,7 @@
 
 #include <skalibs/sysdeps.h>
 
-#ifndef SKALIBS_HASSOPEERCRED
-#error "The SO_PEERCRED option to getsockopt() is required."
-#endif
+#ifdef SKALIBS_HASSOPEERCRED
 
 #include <skalibs/nonposix.h>
 
@@ -67,3 +65,13 @@ int main (void)
   if (!pututxline(utx)) strerr_diefu1sys(111, "pututxline") ;
   return 0 ;
 }
+
+#else
+
+ /* Only Linux needs a real implementation */
+
+int main (void)
+{
+}
+
+#endif

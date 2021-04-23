@@ -7,4 +7,4 @@ s6-linux-init-logouthookd	0744
 s6-linux-init-echo		0755
 s6-linux-init-nuke		0744
 s6-linux-init-umountall		0744
-s6-linux-init-maker		0744
+s6-linux-init-maker		0755

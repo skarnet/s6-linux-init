@@ -68,8 +68,11 @@ machine</em>. If it is not the case, the system will fail to boot.
 </pre>
 
 <ul>
- <li> s6-linux-init-maker must be run as root, on the machine
+ <li> s6-linux-init-maker must be run on the machine
 that will boot an s6-based system. </li>
+ <li> It normally should be <em>run as root</em>. It supports
+not running as root for a small amount of very specific cases; but
+you should run it as root unless you know exactly what you are doing. </li>
  <li> s6-linux-init-maker parses options on its command line. </li>
  <li> It writes data into a directory <em>dir</em>, which must not
 exist beforehand. </li>

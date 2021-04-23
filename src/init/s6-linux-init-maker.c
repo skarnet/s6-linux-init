@@ -46,7 +46,7 @@ static char const *initial_path = INITPATH ;
 static char const *env_store = 0 ;
 static char const *early_getty = 0 ;
 static char const *slashdev = 0 ;
-static char const *log_user = "root" ;
+static char const *log_user = 0 ;
 static char const *initdefault = 0 ;
 static char const *skeldir = S6_LINUX_INIT_SKELDIR ;
 static unsigned int initial_umask = 0022 ;
@@ -57,9 +57,11 @@ static int console = 0 ;
 static int logouthookd = 0 ;
 static int inns = 0 ;
 static int nologger = 0 ;
+static uid_t myuid = -1 ;
+static gid_t mygid = -1 ;
 
 #ifdef S6_LINUX_INIT_UTMPD_PATH
-static char const *utmp_user = "" ;
+static char const *utmp_user = 0 ;
 #endif
 
 typedef int writetobuf_func_t (buffer *, char const *) ;
@@ -153,7 +155,7 @@ static int s6_svscan_log_script (buffer *b, char const *data)
        EXECLINE_EXTBINPREFIX "redirfd -w 1 /dev/null") < 0
    || buffer_puts(b, "\n"
        EXECLINE_EXTBINPREFIX "redirfd -rnb 0 " LOGGER_FIFO "\n") < 0) return 0 ;
-  if (strcmp(log_user, "root"))
+  if (log_user && strcmp(log_user, "root"))
   {
     size_t sabase = satmp.len ;
     if (buffer_puts(b, S6_EXTBINPREFIX "s6-setuidgid ") < 0
@@ -323,7 +325,7 @@ static void auto_dir_internal (char const *base, char const *dir, uid_t uid, gid
   }
   else
   {
-    if (chown(fn, uid, gid) < 0) goto err ;
+    if (!myuid && !mygid && chown(fn, uid, gid) < 0) goto err ;
     if (mode & 07000 && chmod(fn, mode) < 0) goto err ;
   }
   return ;
@@ -469,17 +471,25 @@ static void make_env (char const *base, char const *envname, char *modif, size_t
 
 static void getug (char const *base, char const *s, uid_t *uid, gid_t *gid)
 {
-  struct passwd *pw ;
-  errno = 0 ;
-  pw = getpwnam(s) ;
-  if (!pw)
+  if (!s || myuid || mygid)
   {
-    cleanup(base) ;
-    if (!errno) strerr_diefu3x(100, "find user ", s, " in passwd database") ;
-    else strerr_diefu2sys(111, "getpwnam for ", s) ;
+    *uid = myuid ;
+    *gid = mygid ;
   }
-  *uid = pw->pw_uid ;
-  *gid = pw->pw_gid ;
+  else
+  {
+    struct passwd *pw ;
+    errno = 0 ;
+    pw = getpwnam(s) ;
+    if (!pw)
+    {
+      cleanup(base) ;
+      if (!errno) strerr_diefu3x(100, "find user ", s, " in passwd database") ;
+      else strerr_diefu2sys(111, "getpwnam for ", s) ;
+    }
+    *uid = pw->pw_uid ;
+    *gid = pw->pw_gid ;
+  }
 }
 
 #ifdef S6_LINUX_INIT_UTMPD_PATH
@@ -504,12 +514,16 @@ static int utmpd_script (buffer *b, char const *aux)
   size_t sabase = satmp.len ;
   if (!put_shebang(b)
    || buffer_puts(b,
-    EXECLINE_EXTBINPREFIX "fdmove -c 2 1\n"
-    S6_EXTBINPREFIX "s6-setuidgid ") < 0
-   || !string_quote(&satmp, utmp_user, strlen(utmp_user))) return 0 ;
-  if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
-  satmp.len = sabase ;
-  if (buffer_puts(b, "\n"
+    EXECLINE_EXTBINPREFIX "fdmove -c 2 1\n") < 0) return 0 ;
+  if (utmp_user)
+  {
+    if (!buffer_puts(b, S6_EXTBINPREFIX "s6-setuidgid ") < 0
+     || !string_quote(&satmp, utmp_user, strlen(utmp_user))) return 0 ;
+    if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
+    satmp.len = sabase ;
+    if (buffer_put(b, "\n", 1) < 0) return 0 ;
+  }
+  if (buffer_puts(b,
     EXECLINE_EXTBINPREFIX "cd " S6_LINUX_INIT_TMPFS "/" UTMPS_DIR "\n"
     EXECLINE_EXTBINPREFIX "fdmove 1 3\n"
     S6_EXTBINPREFIX "s6-ipcserver -1 -c 1000 -- " UTMPS_UTMPD_PATH "\n"
@@ -597,7 +611,7 @@ static inline void make_image (char const *base)
   }
 
 #ifdef S6_LINUX_INIT_UTMPD_PATH
-  if (utmp_user[0]) make_utmps(base) ;
+  if (utmp_user) make_utmps(base) ;
 #endif
 }
 
@@ -676,6 +690,8 @@ int main (int argc, char const *const *argv, char const *const *envp)
   if (inns && slashdev)
     strerr_warnw1x("both -C and -d options given; are you sure your container does not come with a pre-mounted /dev?") ;
 
+  myuid = getuid() ;
+  mygid = getgid() ;
   umask(0) ;
   if (mkdir(argv[0], 0755) < 0)
     strerr_diefu2sys(111, "mkdir ", argv[0]) ;

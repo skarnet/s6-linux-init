@@ -527,7 +527,7 @@ static int utmpd_script (buffer *b, char const *aux)
     EXECLINE_EXTBINPREFIX "cd " S6_LINUX_INIT_TMPFS "/" UTMPS_DIR "\n"
     EXECLINE_EXTBINPREFIX "fdmove 1 3\n"
     S6_EXTBINPREFIX "s6-ipcserver -1 -c 1000 -- " UTMPS_UTMPD_PATH "\n"
-    UTMPS_EXTBINPREFIX "utmps-utmpd") < 0) return 0 ;
+    UTMPS_EXTBINPREFIX "utmps-utmpd\n") < 0) return 0 ;
   (void)aux ;
   return 1 ;
 

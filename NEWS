@@ -1,5 +1,11 @@
 Changelog for s6-linux-init.
 
+In 1.0.6.4
+----------
+
+ - Adapt to skalibs-2.11.0.0.
+
+
 In 1.0.6.3
 ----------
 

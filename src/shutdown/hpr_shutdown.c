@@ -7,7 +7,7 @@
 
 #include "hpr.h"
 
-int hpr_shutdown (unsigned int what, tain_t const *when, unsigned int grace)
+int hpr_shutdown (unsigned int what, tain const *when, unsigned int grace)
 {
   char pack[5 + TAIN_PACK] = { "Shpr"[what] } ;
   tain_pack(pack+1, when) ;

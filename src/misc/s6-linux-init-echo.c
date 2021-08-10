@@ -12,7 +12,7 @@ int main (int argc, char const *const *argv)
   char donl = 1 ;
   PROG = "s6-linux-init-echo" ;
   {
-    subgetopt_t l = SUBGETOPT_ZERO ;
+    subgetopt l = SUBGETOPT_ZERO ;
     for (;;)
     {
       int opt = subgetopt_r(argc, argv, "ns:", &l) ;

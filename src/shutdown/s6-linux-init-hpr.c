@@ -46,7 +46,7 @@ int main (int argc, char const *const *argv)
   PROG = "s6-linux-init-hpr" ;
 
   {
-    subgetopt_t l = SUBGETOPT_ZERO ;
+    subgetopt l = SUBGETOPT_ZERO ;
     for (;;)
     {
       int opt = subgetopt_r(argc, argv, "hprfdwWni", &l) ;

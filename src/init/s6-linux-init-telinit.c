@@ -22,7 +22,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
   char const *newargv[8] = { S6_EXTBINPREFIX "s6-sudo", "-e", "-T", "3600000", "--", RUNLEVELD_PATH, 0, 0 } ;
   PROG = "s6-linux-init-telinit" ;
   {
-    subgetopt_t l = SUBGETOPT_ZERO ;
+    subgetopt l = SUBGETOPT_ZERO ;
     for (;;)
     {
       int opt = subgetopt_r(argc, argv, "c:p:s:m:d:D:nNCB", &l) ;

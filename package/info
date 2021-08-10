@@ -1,4 +1,4 @@
 package=s6-linux-init
-version=1.0.6.3
+version=1.0.6.4
 category=admin
 package_macro_name=S6_LINUX_INIT

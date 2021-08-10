@@ -100,7 +100,7 @@ static inline void run_stage3 (char const *basedir)
   else strerr_warnwu2sys("spawn ", stage3) ;
 }
 
-static inline void prepare_shutdown (buffer *b, tain_t *deadline, unsigned int *grace_time)
+static inline void prepare_shutdown (buffer *b, tain *deadline, unsigned int *grace_time)
 {
   uint32_t u ;
   char pack[TAIN_PACK + 4] ;
@@ -113,7 +113,7 @@ static inline void prepare_shutdown (buffer *b, tain_t *deadline, unsigned int *
   if (u && u <= 300000) *grace_time = u ;
 }
 
-static inline void handle_fifo (buffer *b, char *what, tain_t *deadline, unsigned int *grace_time)
+static inline void handle_fifo (buffer *b, char *what, tain *deadline, unsigned int *grace_time)
 {
   for (;;)
   {
@@ -255,7 +255,7 @@ static inline void unsupervise_tree (void)
 int main (int argc, char const *const *argv)
 {
   unsigned int grace_time = 3000 ;
-  tain_t deadline ;
+  tain deadline ;
   int fdr, fdw ;
   buffer b ;
   char what = 'S' ;
@@ -263,7 +263,7 @@ int main (int argc, char const *const *argv)
   PROG = "s6-linux-init-shutdownd" ;
 
   {
-    subgetopt_t l = SUBGETOPT_ZERO ;
+    subgetopt l = SUBGETOPT_ZERO ;
     for (;;)
     {
       int opt = subgetopt_r(argc, argv, "c:g:CB", &l) ;
@@ -312,8 +312,8 @@ int main (int argc, char const *const *argv)
   fdw = open_write(SHUTDOWND_FIFO) ;
   if (fdw == -1 || coe(fdw) == -1)
     strerr_diefu3sys(111, "open ", SHUTDOWND_FIFO, " for writing") ;
-  if (sig_ignore(SIGPIPE) == -1)
-    strerr_diefu1sys(111, "sig_ignore SIGPIPE") ;
+  if (!sig_altignore(SIGPIPE))
+    strerr_diefu1sys(111, "ignore SIGPIPE") ;
   buffer_init(&b, &buffer_read, fdr, buf, 64) ;
   tain_now_set_stopwatch_g() ;
   tain_add_g(&deadline, &tain_infinite_relative) ;
@@ -344,7 +344,7 @@ int main (int argc, char const *const *argv)
 
   prepare_stage4(basedir, what) ;
   unsupervise_tree() ;
-  if (sig_ignore(SIGTERM) == -1) strerr_warnwu1sys("sig_ignore SIGTERM") ;
+  if (!sig_ignore(SIGTERM)) strerr_warnwu1sys("ignore SIGTERM") ;
   if (!inns)
   {
     sync() ;

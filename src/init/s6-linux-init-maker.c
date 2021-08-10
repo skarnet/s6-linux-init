@@ -64,8 +64,8 @@ static gid_t mygid = -1 ;
 static char const *utmp_user = 0 ;
 #endif
 
-typedef int writetobuf_func_t (buffer *, char const *) ;
-typedef writetobuf_func_t *writetobuf_func_t_ref ;
+typedef int writetobuf_func (buffer *, char const *) ;
+typedef writetobuf_func *writetobuf_func_ref ;
 
 #define put_shebang(b) put_shebang_options((b), 0)
 
@@ -383,7 +383,7 @@ static void auto_fifo (char const *base, char const *fifo)
   }
 }
 
-static void auto_script (char const *base, char const *file, writetobuf_func_t_ref scriptf, char const *data)
+static void auto_script (char const *base, char const *file, writetobuf_func_ref scriptf, char const *data)
 {
   char buf[4096] ;
   buffer b ;
@@ -639,7 +639,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
 {
   PROG = "s6-linux-init-maker" ;
   {
-    subgetopt_t l = SUBGETOPT_ZERO ;
+    subgetopt l = SUBGETOPT_ZERO ;
     for (;;)
     {
       int opt = subgetopt_r(argc, argv, OPTION_STRING, &l) ;

@@ -126,6 +126,7 @@ int main (int argc, char const **argv, char const *const *envp)
   char const *envdumpdir = 0 ;
   char const *initdefault = "default" ;
   int mounttype = 1 ;
+  int hasconsole = 1 ;
   stralloc envmodifs = STRALLOC_ZERO ;
   PROG = "s6-linux-init" ;
 
@@ -159,6 +160,7 @@ int main (int argc, char const **argv, char const *const *envp)
     argc -= l.ind ; argv += l.ind ;
   }
 
+  if (fcntl(1, F_GETFD) < 0) hasconsole = 0 ;
   if (inns)
   { /* If there's a Docker synchronization pipe, wait on it */
     char c ;
@@ -173,7 +175,7 @@ int main (int argc, char const **argv, char const *const *envp)
       close(3) ;
     }
   }
-  else allwrite(1, BANNER, sizeof(BANNER) - 1) ;
+  else if (hasconsole) allwrite(1, BANNER, sizeof(BANNER) - 1) ;
   if (chdir("/") == -1) strerr_diefu1sys(111, "chdir to /") ;
   umask(mask) ;
   setpgid(0, 0) ;
@@ -187,9 +189,8 @@ int main (int argc, char const **argv, char const *const *envp)
    /* at this point we're totally in the dark, hoping /dev/console will work */
     nope = mount("dev", slashdev, "devtmpfs", MS_NOSUID | MS_NOEXEC, "") < 0 ;
     e = errno ;
-    if (open("/dev/console", O_WRONLY)
-     || fd_move(2, 0) < 0
-     || fd_copy(1, 2) < 0) return 111 ;
+    if (open("/dev/console", O_WRONLY) && open("/dev/null", O_WRONLY)) return 111 ;
+    if (fd_move(2, 0) < 0 || fd_copy(1, 2) < 0) return 111 ;
     if (nope)
     {
       errno = e ;
@@ -205,6 +206,10 @@ int main (int argc, char const **argv, char const *const *envp)
     close(p[1]) ;
     if (fd_move(0, p[0]) < 0) strerr_diefu1sys(111, "fd_move to stdin") ;
   }
+
+  if (!hasconsole)
+    if (open("/dev/null", O_WRONLY) != 1 || fd_copy(2, 1) == -1)
+      return 111 ;
 
   if (mounttype)
   {

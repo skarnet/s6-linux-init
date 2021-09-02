@@ -28,7 +28,7 @@
 #include <execline/config.h>
 
 #include <s6/config.h>
-#include <s6/s6-supervise.h>
+#include <s6/supervise.h>
 
 #include <s6-linux-init/config.h>
 #include "defaults.h"

@@ -517,7 +517,7 @@ static int utmpd_script (buffer *b, char const *aux)
     EXECLINE_EXTBINPREFIX "fdmove -c 2 1\n") < 0) return 0 ;
   if (utmp_user)
   {
-    if (!buffer_puts(b, S6_EXTBINPREFIX "s6-setuidgid ") < 0
+    if (buffer_puts(b, S6_EXTBINPREFIX "s6-setuidgid ") < 0
      || !string_quote(&satmp, utmp_user, strlen(utmp_user))) return 0 ;
     if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
     satmp.len = sabase ;

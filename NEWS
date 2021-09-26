@@ -4,6 +4,7 @@ In 1.0.6.4
 ----------
 
  - Adapt to skalibs-2.11.0.0.
+ - Make s6-l-i work even in a CONFIG_TTY=n situation.
 
 
 In 1.0.6.3

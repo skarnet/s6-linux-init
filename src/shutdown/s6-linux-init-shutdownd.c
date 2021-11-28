@@ -181,7 +181,7 @@ static inline void prepare_stage4 (char const *basedir, char what)
      || (!nologger && buffer_puts(&b,
        EXECLINE_EXTBINPREFIX "foreground { "
        S6_EXTBINPREFIX "s6-svc -xc -- " SCANPREFIX LOGGER_SERVICEDIR " }\n  ") < 0)
-     || buffer_puts(&b,
+     || buffer_putsflush(&b,
        S6_EXTBINPREFIX "s6-svscanctl -b -- " SCANDIRFULL "\n}\n") < 0)
       strerr_diefu2sys(111, "write to ", STAGE4_FILE ".new") ;
   }

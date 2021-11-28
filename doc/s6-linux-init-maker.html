@@ -64,6 +64,7 @@ machine</em>. If it is not the case, the system will fail to boot.
        [ -U <em>utmp_user</em> ] \
        [ -C ] \
        [ -B ] \
+       [ -S ] \
        <em>dir</em>
 </pre>
 
@@ -386,6 +387,12 @@ discouraged. On a containerized system (when paired with the <tt>-C</tt>
 option), it simply means that these outputs go to the default stdout and
 stderr given to the container's <tt>init</tt> - this should generally
 not be the default, but might be useful in some cases. </li>
+
+ <li> <tt>-S</tt>&nbsp;: when used with the <tt>-C</tt> option, set up
+the container so the disks are <tt>sync</tt>ed on container halt. By
+default, no sync is performed. This option has no effect when the <tt>-C</tt>
+option is not present: on real machines, a <tt>sync</tt> is <em>always</em>
+performed just before a system halt. </li>
 </ul>
 
 <h2> Organization of the created directory </h2>

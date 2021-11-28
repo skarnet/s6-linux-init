@@ -29,11 +29,11 @@
 #ifdef S6_LINUX_INIT_UTMPD_PATH
 # include <utmps/config.h>
 # define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] [ -f skeldir ] [ -U utmp_user ] [ -C ] [ -B ] dir"
-# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:U:CB"
+# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:U:CBS"
 # define UTMPS_DIR "utmps"
 #else
 # define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] [ -f skeldir ] [ -C ] [ -B ] dir"
-# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:CB"
+# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:CBS"
 #endif
 
 #define dieusage() strerr_dieusage(100, USAGE)
@@ -56,6 +56,7 @@ static int mounttype = 1 ;
 static int console = 0 ;
 static int logouthookd = 0 ;
 static int inns = 0 ;
+static int innssync = 0 ;
 static int nologger = 0 ;
 static uid_t myuid = -1 ;
 static gid_t mygid = -1 ;
@@ -131,20 +132,25 @@ static int container_crash_script (buffer *b, char const *data)
 static int container_exit_script (buffer *b, char const *data)
 {
   (void)data ;
-  return put_shebang(b)
-   && buffer_puts(b,
-     S6_EXTBINPREFIX "s6-envdir -- " S6_LINUX_INIT_TMPFS "/" CONTAINER_RESULTS "\n"
-     EXECLINE_EXTBINPREFIX "multisubstitute\n{\n"
-     "  importas -uD0 -- EXITCODE exitcode\n  "
-     "  importas -uDh -- HALTCODE haltcode\n}\n"
-     EXECLINE_EXTBINPREFIX "fdclose 1\n"
-     EXECLINE_EXTBINPREFIX "fdclose 2\n"
-     EXECLINE_EXTBINPREFIX "wait { }\n"
-     EXECLINE_EXTBINPREFIX "ifelse -X { test $HALTCODE = r } { "
-     S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -fnr }\n"
-     EXECLINE_EXTBINPREFIX "ifelse -X { test $HALTCODE = p } { "
-     S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -fnp }\n"
-     EXECLINE_EXTBINPREFIX "exit $EXITCODE\n") >= 0 ;
+  if (!put_shebang(b)
+   || buffer_puts(b,
+      S6_EXTBINPREFIX "s6-envdir -- " S6_LINUX_INIT_TMPFS "/" CONTAINER_RESULTS "\n"
+      EXECLINE_EXTBINPREFIX "multisubstitute\n{\n"
+      "  importas -uD0 -- EXITCODE exitcode\n  "
+      "  importas -uDh -- HALTCODE haltcode\n}\n"
+      EXECLINE_EXTBINPREFIX "fdclose 1\n"
+      EXECLINE_EXTBINPREFIX "fdclose 2\n"
+      EXECLINE_EXTBINPREFIX "wait { }\n"
+      EXECLINE_EXTBINPREFIX "ifelse -X { test $HALTCODE = r } { "
+      S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -fr") < 0
+   || (!innssync && buffer_puts(b, "n") < 0)
+   || buffer_puts(b, " }\n"
+      EXECLINE_EXTBINPREFIX "ifelse -X { test $HALTCODE = p } { "
+      S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -fp") < 0
+   || (!innssync && buffer_puts(b, "n") < 0)
+   || buffer_puts(b, " }\n"
+      EXECLINE_EXTBINPREFIX "exit $EXITCODE\n") < 0) return 0 ;
+  return 1 ;
 }
 
 static int s6_svscan_log_script (buffer *b, char const *data)
@@ -667,6 +673,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
 #endif
         case 'C' : inns = 1 ; break ;
         case 'B' : nologger = 1 ; break ;
+        case 'S' : innssync = 1 ; break ;
         default : dieusage() ;
       }
     }

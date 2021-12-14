@@ -136,7 +136,7 @@ static int container_exit_script (buffer *b, char const *data)
    || buffer_puts(b,
       S6_EXTBINPREFIX "s6-envdir -- " S6_LINUX_INIT_TMPFS "/" CONTAINER_RESULTS "\n"
       EXECLINE_EXTBINPREFIX "multisubstitute\n{\n"
-      "  importas -uD0 -- EXITCODE exitcode\n  "
+      "  importas -uD0 -- EXITCODE exitcode\n"
       "  importas -uDh -- HALTCODE haltcode\n}\n"
       EXECLINE_EXTBINPREFIX "fdclose 1\n"
       EXECLINE_EXTBINPREFIX "fdclose 2\n"

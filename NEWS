@@ -1,5 +1,12 @@
 Changelog for s6-linux-init.
 
+In 1.0.7.0
+----------
+
+ - Bugfixes.
+ - Add -S option to s6-linux-init-maker for sync in containers.
+
+
 In 1.0.6.4
 ----------
 

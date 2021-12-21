@@ -20,3 +20,4 @@ s6-linux-init - tools to create an s6-based Linux init system
 
  Please use the <skaware at list.skarnet.org> mailing-list for
 questions about s6-linux-init.
+

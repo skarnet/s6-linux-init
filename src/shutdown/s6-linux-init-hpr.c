@@ -71,14 +71,7 @@ int main (int argc, char const *const *argv)
   if (!what)
     strerr_dief1x(100, "one of the -h, -p or -r options must be given") ;
 
-  if (geteuid())
-  {
-    errno = EPERM ;
-    strerr_dief1sys(100, "nice try, peon") ;
-  }
-
   if (doconfirm) hpr_confirm_hostname() ;
-
   if (force)
   {
     if (dosync) sync() ;
@@ -87,6 +80,11 @@ int main (int argc, char const *const *argv)
   }
 
   if (!tain_now_g()) strerr_warnw1sys("get current time") ;
+  if (!hpr_send("", 0))
+  {
+    errno = EPERM ;
+    strerr_diefu1sys(100, "talk to shutdownd") ;
+  }
   if (dowtmp)
   {
     struct utmpx utx =

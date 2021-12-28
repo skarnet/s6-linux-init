@@ -291,10 +291,10 @@ int main (int argc, char const *const *argv)
     if (what == 1) what = subwhat ;
     else strerr_dieusage(100, USAGE) ;
   }
-  if (geteuid())
+  if (!hpr_send("", 0))
   {
     errno = EPERM ;
-    strerr_diefu1sys(111, "shutdown") ;
+    strerr_diefu1sys(111, "talk to shutdownd") ;
   }
   if (doactl) access_control() ;
   if (doconfirm) hpr_confirm_hostname() ;

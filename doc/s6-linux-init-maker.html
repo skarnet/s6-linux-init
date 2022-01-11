@@ -337,6 +337,8 @@ Default is <strong>no utmpd service</strong>. </li> <br />
  <li> <tt>-C</tt>&nbsp;: create a set of scripts that is suitable
 for running <em>in a container</em>. This modifies some behaviours:
   <ul>
+   <li> SIGTERM will be caught by s6-svscan, and cause an orderly
+shutdown of the container, as if the "poweroff" script had been invoked. </li>
    <li> No early <tt>runleveld</tt> service is created. Changing
 runlevels via
 <a href="s6-linux-init-telinit.html">s6-linux-init-telinit</a>

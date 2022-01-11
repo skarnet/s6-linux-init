@@ -563,7 +563,6 @@ static inline void make_image (char const *base)
   auto_dir(base, "run-image", 0, 0, 0755) ;
   auto_dir(base, "run-image/" SCANDIR, 0, 0, 0755) ;
   auto_dir(base, "run-image/" SCANDIR "/.s6-svscan", 0, 0, 0755) ;
-  auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGTERM", &put_shebang_options, 0) ;
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGQUIT", &put_shebang_options, 0) ;
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGINT", &sig_script, "-r") ;
   auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGUSR1", &sig_script, "-p") ;
@@ -589,6 +588,7 @@ static inline void make_image (char const *base)
 
   if (inns)
   {
+    auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGTERM", &sig_script, "-p") ;
     auto_script(base, "run-image/" SCANDIR "/.s6-svscan/crash", &container_crash_script, 0) ;
     auto_script(base, "run-image/" SCANDIR "/.s6-svscan/finish", &container_exit_script, 0) ;
     auto_dir(base, "run-image/" CONTAINER_RESULTS, 0, 0, 0755) ;
@@ -596,6 +596,7 @@ static inline void make_image (char const *base)
   }
   else
   {
+    auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGTERM", &put_shebang_options, 0) ;
     auto_script(base, "run-image/" SCANDIR "/.s6-svscan/crash", &death_script, "crashed") ;
     auto_script(base, "run-image/" SCANDIR "/.s6-svscan/finish", &death_script, "exited") ;
     auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR, 0, 0, 0755) ;

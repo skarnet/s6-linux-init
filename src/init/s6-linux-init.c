@@ -119,11 +119,12 @@ static inline void run_stage2 (char const *basedir, char const **argv, unsigned 
 
 /*
    This is ugly voodoo, keep away from innocent eyes.
-   If stdin is a terminal, it means we're in a "docker run -it" container
-(or equivalent) and stdin is a ctty. We don't want the supervision tree to
-have this ctty (else ^C kills everything) but we want stage 2 to keep it,
-so that if we have a CMD run by stage 2 (as is the case with s6-overlay),
-it remains interactive (control sequences can be sent to it).
+   If ttyfd exists, it means we're in a "docker run -it" container or
+equivalent, and ttyfd (a copy of the original stdin) is a ctty. We don't
+want the supervision tree to have this ctty (else ^C kills everything)
+but we want stage 2 to keep it if possible, so that if we have a CMD run
+by stage 2 (as is the case with s6-overlay), it remains interactive, i.e.
+control sequences can be sent to it.
    In order to achieve that, we have the child (future stage 2) steal the
 ctty from the parent (future s6-svscan). But that may not work, for instance
 in a USER container, where we don't have the appropriate permissions; in

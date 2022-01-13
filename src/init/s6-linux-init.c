@@ -99,7 +99,7 @@ static inline void run_stage2 (char const *basedir, char const **argv, unsigned 
   for (unsigned int i = 0 ; i < argc ; i++)
     childargv[i+2] = argv[i] ;
   childargv[argc + 2] = 0 ;
-  setsid() ;
+  if (!inns) setsid() ;
   if (nologger)
   {
     close(notifpipe[1]) ;
@@ -178,7 +178,6 @@ int main (int argc, char const **argv, char const *const *envp)
   else if (hasconsole) allwrite(1, BANNER, sizeof(BANNER) - 1) ;
   if (chdir("/") == -1) strerr_diefu1sys(111, "chdir to /") ;
   umask(mask) ;
-  setpgid(0, 0) ;
   close(0) ;
 
   if (slashdev)
@@ -273,6 +272,7 @@ int main (int argc, char const **argv, char const *const *envp)
     pid = fork() ;
     if (pid == -1) strerr_diefu1sys(111, "fork") ;
     if (!pid) run_stage2(basedir, argv, argc, newenvp, !!path, envmodifs.s, envmodifs.len, initdefault) ;
+    setsid() ;
     if (nologger)
     {
       close(notifpipe[0]) ;

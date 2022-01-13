@@ -306,11 +306,11 @@ int main (int argc, char const *const *argv)
       strerr_warnwu2sys("exec ", stage4_argv[0]) ;
   }
 
-  fdr = open_read(SHUTDOWND_FIFO) ;
-  if (fdr == -1 || coe(fdr) == -1)
+  fdr = openc_read(SHUTDOWND_FIFO) ;
+  if (fdr == -1)
     strerr_diefu3sys(111, "open ", SHUTDOWND_FIFO, " for reading") ;
-  fdw = open_write(SHUTDOWND_FIFO) ;
-  if (fdw == -1 || coe(fdw) == -1)
+  fdw = openc_write(SHUTDOWND_FIFO) ;
+  if (fdw == -1)
     strerr_diefu3sys(111, "open ", SHUTDOWND_FIFO, " for writing") ;
   if (!sig_altignore(SIGPIPE))
     strerr_diefu1sys(111, "ignore SIGPIPE") ;

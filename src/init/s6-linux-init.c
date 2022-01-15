@@ -120,75 +120,71 @@ static inline void run_stage2 (char const *basedir, char const **argv, unsigned 
 /*
    This is ugly voodoo, keep away from innocent eyes.
    If ttyfd exists, it means we're in a "docker run -it" container or
-equivalent, and ttyfd (a copy of the original stdin) is a ctty. We don't
+equivalent, and tty (name of the original stdin) is a ctty. We don't
 want the supervision tree to have this ctty (else ^C kills everything)
 but we want stage 2 to keep it if possible, so that if we have a CMD run
 by stage 2 (as is the case with s6-overlay), it remains interactive, i.e.
 control sequences can be sent to it.
-   In order to achieve that, we have the child (future stage 2) steal the
-ctty from the parent (future s6-svscan). But that may not work, for instance
-in a USER container, where we don't have the appropriate permissions; in
-which case the parent must be informed that the operation failed, so it can
-relinquish the ctty itself - the child won't get the ctty but at least the
-parent won't keep it.
-   Transmission of the information is done via a pipe, it's the simplest
-way to properly order operations.
-   If the parent abandons its ctty itself, the child needs to protect against
-the SIGHUP it receives when it happens.
+   We cannot have the child (future stage 2) steal the ctty from the parent
+(future s6-svscan) via TIOCSCTTY because we may not have the permissions for
+it: Docker containers don't give CAP_SYS_ADMIN to pid 1, and user containers
+are a thing.
+   So instead, we have the parent relinquish the ctty, then the child reopen 
+it - which makes it a ctty for the child. This requires /dev/pts to be
+pre-mounted, but that's usually the case. Even if it's not, the child doesn't
+get its ctty, but at least the parent doesn't have it anymore.
+   Pipes are used for synchronization.
 */
 
-static inline pid_t fork_and_setup_session (int ttyfd)  /* closes ttyfd */
+static inline pid_t fork_and_setup_session (char const *tty)
 {
   pid_t pid ;
-  if (ttyfd < 0)  /* the common case is simple */
+  if (!tty)
   {
     pid = fork() ;
     if (pid == -1) strerr_diefu1sys(111, "fork") ;
     setsid() ;
   }
-  else  /* let the insanity begin */
+  else
   {
-    int p[2] ;
-    if (pipe(p) == -1) strerr_diefu1sys(111, "pipe") ;
+    int p[2][2] ;
+    int r ;
+    char c ;
+    if (pipe(p[0]) == -1 || pipe(p[1])) strerr_diefu1sys(111, "pipe") ;
     pid = fork() ;
     if (pid == -1) strerr_diefu1sys(111, "fork") ;
-    if (!pid)
-    { /* child */
-      PROG = "s6-linux-init (child)" ;
-      close(p[0]) ;
-      if (setsid() == -1) strerr_diefu1sys(111, "setsid") ;
-      if (fd_move(0, ttyfd) == -1) strerr_diefu1sys(111, "move stdin fd") ;
-      if (ioctl(0, TIOCSCTTY, 1) == -1)
-      {
-        strerr_warnwu1sys("grab controlling terminal") ;
-        if (!sig_altignore(SIGHUP))
-          strerr_diefu1sys(111, "ignore SIGHUP") ;
-        if (write(p[1], "1", 1) < 1)  /* '1' == problem */
-          strerr_diefu1sys(111, "write to parent") ;
-      }
-      else if (write(p[1], "0", 1) < 1)  /* '0' == ok */
-        strerr_diefu1sys(111, "write to parent") ;
-      close(p[1]) ;
+    if (pid)
+    {
+      close(p[0][1]) ;
+      close(p[1][0]) ;
+      r = read(p[0][0], &c, 1) ;
+      if (r == -1) strerr_diefu2sys(111, "read from ", "child") ;
+      if (!r) strerr_dief2x(111, "child", " died") ;
+      close(p[0][0]) ;
+      if (ioctl(1, TIOCNOTTY) == -1) strerr_warnwu1sys("relinquish controlling terminal") ;
+      if (write(p[1][1], "", 1) < 1) strerr_diefu2sys(111, "write to ", "child") ;
+      close(p[1][1]) ;
     }
     else
-    { /* parent */
-      int r ;
-      char c ;
-      close(p[1]) ;
-      r = read(p[0], &c, 1) ;
-      if (r == -1)
-        strerr_diefu1sys(111, "read from child") ;
-      else if (!r)
-        strerr_dief1x(111, "child died") ;
-      else if (c == '1')
+    {
+      int fd ;
+      PROG = "s6-linux-init (child)" ;
+      close(p[1][1]) ;
+      close(p[0][0]) ;
+      if (setsid() == -1) strerr_diefu1sys(111, "setsid") ;
+      if (write(p[0][1], "", 1) < 1) strerr_diefu2sys(111, "write to ", "parent") ;
+      close(p[0][1]) ;
+      r = read(p[1][0], &c, 1) ;
+      if (r == -1) strerr_diefu2sys(111, "read from ", "parent") ;
+      if (!r) strerr_dief2x(111, "parent", " died") ;
+      close(p[1][0]) ;
+      fd = openb_read(tty) ;
+      if (fd == -1) strerr_warnwu2sys("open ", tty) ;
+      else if (fd_move(0, fd) == -1)
       {
-        if (ioctl(ttyfd, TIOCNOTTY) == -1)
-          strerr_warnwu1sys("relinquish controlling terminal") ;
+        strerr_warnwu3sys("make ", tty, " into new stdin") ;
+        close(fd) ;
       }
-      else if (c != '0')
-        strerr_dief1x(100, "bad parent/child protocol") ;
-      close(p[0]) ;
-      close(ttyfd) ;
     }
   }
   return pid ;
@@ -204,7 +200,7 @@ int main (int argc, char const **argv, char const *const *envp)
   char const *initdefault = "default" ;
   int mounttype = 1 ;
   int hasconsole = 1 ;
-  int ttyfd = -1 ;
+  char *tty = 0 ;
   stralloc envmodifs = STRALLOC_ZERO ;
   PROG = "s6-linux-init" ;
 
@@ -252,7 +248,11 @@ int main (int argc, char const **argv, char const *const *envp)
       if (r) strerr_warnw1x("parent wrote to fd 3!") ;
       close(3) ;
     }
-    if (isatty(0) && !slashdev) ttyfd = dup(0) ;
+    if (!slashdev && hasconsole && isatty(1))
+    {
+      tty = ttyname(1) ;
+      if (!tty) strerr_warnwu1sys("ttyname stdout") ;
+    }
   }
   else if (hasconsole) allwrite(1, BANNER, sizeof(BANNER) - 1) ;
   if (chdir("/") == -1) strerr_diefu1sys(111, "chdir to /") ;
@@ -347,7 +347,7 @@ int main (int argc, char const **argv, char const *const *envp)
       newenvp[0] = pathvar ;
     }
     if (nologger && pipe(notifpipe) < 0) strerr_diefu1sys(111, "pipe") ;
-    if (!fork_and_setup_session(ttyfd))
+    if (!fork_and_setup_session(tty))
       run_stage2(basedir, argv, argc, newenvp, !!path, envmodifs.s, envmodifs.len, initdefault) ;
     if (nologger)
     {

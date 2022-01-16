@@ -87,12 +87,24 @@ static void kbspecials (void)
     strerr_warnwu1sys("trap ctrl-alt-del") ;
 }
 
-static inline void run_stage2 (char const *basedir, char const **argv, unsigned int argc, char const *const *envp, size_t envlen, char const *modifs, size_t modiflen, char const *initdefault)
+static inline void run_stage2 (char const *basedir, char const **argv, unsigned int argc, char const *const *envp, size_t envlen, char const *modifs, size_t modiflen, char const *initdefault, char const *tty)
 {
   size_t dirlen = strlen(basedir) ;
   char const *childargv[argc + 3] ;
   char fn[dirlen + sizeof("/scripts/" STAGE2)] ;
   PROG = "s6-linux-init (child)" ;
+
+  if (setsid() == -1) strerr_diefu1sys(111, "setsid") ;
+  if (tty)
+  {
+    int fd = openb_read(tty) ;
+    if (fd == -1) strerr_warnwu2sys("open ", tty) ;
+    else if (fd_move(0, fd) == -1)
+    {
+      strerr_warnwu3sys("make ", tty, " into new stdin") ;
+      close(fd) ;
+    }
+  }
   memcpy(fn, basedir, dirlen) ;
   memcpy(fn + dirlen, "/scripts/" STAGE2, sizeof("/scripts/" STAGE2)) ;
   childargv[0] = fn ;
@@ -115,79 +127,6 @@ static inline void run_stage2 (char const *basedir, char const **argv, unsigned 
       strerr_diefu1sys(111, "fd_copy stdout to stderr") ;
   }
   xmexec_fm(childargv, envp, envlen, modifs, modiflen) ;
-}
-
-/*
-   This is ugly voodoo, keep away from innocent eyes.
-   If ttyfd exists, it means we're in a "docker run -it" container or
-equivalent, and tty (name of the original stdin) is a ctty. We don't
-want the supervision tree to have this ctty (else ^C kills everything)
-but we want stage 2 to keep it if possible, so that if we have a CMD run
-by stage 2 (as is the case with s6-overlay), it remains interactive, i.e.
-control sequences can be sent to it.
-   We cannot have the child (future stage 2) steal the ctty from the parent
-(future s6-svscan) via TIOCSCTTY because we may not have the permissions for
-it: Docker containers don't give CAP_SYS_ADMIN to pid 1, and user containers
-are a thing.
-   So instead, we have the parent relinquish the ctty, then the child reopen 
-it - which makes it a ctty for the child. This requires /dev/pts to be
-pre-mounted, but that's usually the case. Even if it's not, the child doesn't
-get its ctty, but at least the parent doesn't have it anymore.
-   Pipes are used for synchronization.
-*/
-
-static inline pid_t fork_and_setup_session (char const *tty)
-{
-  pid_t pid ;
-  if (!tty)
-  {
-    pid = fork() ;
-    if (pid == -1) strerr_diefu1sys(111, "fork") ;
-    setsid() ;
-  }
-  else
-  {
-    int p[2][2] ;
-    int r ;
-    char c ;
-    if (pipe(p[0]) == -1 || pipe(p[1])) strerr_diefu1sys(111, "pipe") ;
-    pid = fork() ;
-    if (pid == -1) strerr_diefu1sys(111, "fork") ;
-    if (pid)
-    {
-      close(p[0][1]) ;
-      close(p[1][0]) ;
-      r = read(p[0][0], &c, 1) ;
-      if (r == -1) strerr_diefu2sys(111, "read from ", "child") ;
-      if (!r) strerr_dief2x(111, "child", " died") ;
-      close(p[0][0]) ;
-      if (ioctl(1, TIOCNOTTY) == -1) strerr_warnwu1sys("relinquish controlling terminal") ;
-      if (write(p[1][1], "", 1) < 1) strerr_diefu2sys(111, "write to ", "child") ;
-      close(p[1][1]) ;
-    }
-    else
-    {
-      int fd ;
-      PROG = "s6-linux-init (child)" ;
-      close(p[1][1]) ;
-      close(p[0][0]) ;
-      if (setsid() == -1) strerr_diefu1sys(111, "setsid") ;
-      if (write(p[0][1], "", 1) < 1) strerr_diefu2sys(111, "write to ", "parent") ;
-      close(p[0][1]) ;
-      r = read(p[1][0], &c, 1) ;
-      if (r == -1) strerr_diefu2sys(111, "read from ", "parent") ;
-      if (!r) strerr_dief2x(111, "parent", " died") ;
-      close(p[1][0]) ;
-      fd = openb_read(tty) ;
-      if (fd == -1) strerr_warnwu2sys("open ", tty) ;
-      else if (fd_move(0, fd) == -1)
-      {
-        strerr_warnwu3sys("make ", tty, " into new stdin") ;
-        close(fd) ;
-      }
-    }
-  }
-  return pid ;
 }
 
 int main (int argc, char const **argv, char const *const *envp)
@@ -238,7 +177,7 @@ int main (int argc, char const **argv, char const *const *envp)
   if (inns)
   {
     char c ;
-    ssize_t r = read(3, &c, 1) ;
+    ssize_t r = read(3, &c, 1) ; /* Docker synchronization protocol */
     if (r < 0)
     {
       if (errno != EBADF) strerr_diefu1sys(111, "read from fd 3") ;
@@ -333,6 +272,7 @@ int main (int argc, char const **argv, char const *const *envp)
   }
 
   {
+    pid_t pid ;
     char const *newenvp[2] = { 0, 0 } ;
     size_t pathlen = path ? strlen(path) : 0 ;
     char fmtfd[2 + UINT_FMT] = "-" ;
@@ -347,8 +287,13 @@ int main (int argc, char const **argv, char const *const *envp)
       newenvp[0] = pathvar ;
     }
     if (nologger && pipe(notifpipe) < 0) strerr_diefu1sys(111, "pipe") ;
-    if (!fork_and_setup_session(tty))
-      run_stage2(basedir, argv, argc, newenvp, !!path, envmodifs.s, envmodifs.len, initdefault) ;
+    if (tty && ioctl(1, TIOCNOTTY) == -1) strerr_warnwu1sys("relinquish control terminal") ;
+
+    pid = fork() ;
+    if (pid == -1) strerr_diefu1sys(111, "fork") ;
+    if (!pid) run_stage2(basedir, argv, argc, newenvp, !!path, envmodifs.s, envmodifs.len, initdefault, tty) ;
+
+    setsid() ; /* just in case our caller is something weird */
     if (nologger)
     {
       close(notifpipe[0]) ;

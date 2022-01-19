@@ -1,5 +1,12 @@
 Changelog for s6-linux-init.
 
+In 1.0.7.1
+----------
+
+ - Bugfixes (for use in containers).
+ - Permissions are more relaxed, to help non-root management.
+
+
 In 1.0.7.0
 ----------
 

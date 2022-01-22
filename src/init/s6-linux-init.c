@@ -143,12 +143,6 @@ int main (int argc, char const **argv, char const *const *envp)
   stralloc envmodifs = STRALLOC_ZERO ;
   PROG = "s6-linux-init" ;
 
-  if (getpid() != 1)
-  {
-    argv[0] = S6_LINUX_INIT_BINPREFIX "s6-linux-init-telinit" ;
-    xexec_e(argv, envp) ;
-  }
-
   {
     subgetopt l = SUBGETOPT_ZERO ;
     for (;;)
@@ -171,6 +165,12 @@ int main (int argc, char const **argv, char const *const *envp)
       }
     }
     argc -= l.ind ; argv += l.ind ;
+  }
+
+  if (getpid() != 1)
+  {
+    argv[0] = S6_LINUX_INIT_BINPREFIX "s6-linux-init-telinit" ;
+    xexec_e(argv, envp) ;
   }
 
   if (fcntl(1, F_GETFD) < 0) hasconsole = 0 ;

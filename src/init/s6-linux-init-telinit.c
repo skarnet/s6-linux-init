@@ -15,12 +15,23 @@
 #include "initctl.h"
 
 #define USAGE "s6-linux-init-telinit runlevel"
-#define dieusage() strerr_dieusage(100, USAGE)
+#define USAGE1 "(as pid 1) s6-linux-init [ -c basedir ] [ -p initpath ] [ -s envdumpdir ] [ -m umask ] [ -d devtmpfs ] [ -D initdefault ] [ -n | -N ] [ -C ] [ -B ] stage2_args..."
 
 int main (int argc, char const *const *argv, char const *const *envp)
 {
   char const *newargv[8] = { S6_EXTBINPREFIX "s6-sudo", "-e", "-T", "3600000", "--", RUNLEVELD_PATH, 0, 0 } ;
-  PROG = "s6-linux-init-telinit" ;
+  char const *usage = strrchr(argv[0], '/') ;
+  if (usage) usage++ ; else usage = argv[0] ;
+  if (!strcmp(usage, "init") || !strcmp(usage, "s6-linux-init"))
+  {
+    usage = USAGE1 ;
+    PROG = "s6-linux-init" ;
+  }
+  else
+  {
+    usage = USAGE ;
+    PROG = "s6-linux-init-telinit" ;
+  }
   {
     subgetopt l = SUBGETOPT_ZERO ;
     for (;;)
@@ -40,13 +51,13 @@ int main (int argc, char const *const *argv, char const *const *envp)
         case 'C' :
         case 'B' :
           break ;
-        default : dieusage() ;
+        default : strerr_dieusage(100, usage) ;
       }
     }
     argc -= l.ind ; argv += l.ind ;
   }
 
-  if (!argc) dieusage() ;
+  if (!argc) strerr_dieusage(100, usage) ;
   newargv[6] = argv[0] ;
 
 

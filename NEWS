@@ -1,5 +1,11 @@
 Changelog for s6-linux-init.
 
+In 1.0.7.2
+----------
+
+ - Bugfixes (for use in containers).
+
+
 In 1.0.7.1
 ----------
 

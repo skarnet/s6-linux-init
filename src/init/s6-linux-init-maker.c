@@ -588,7 +588,7 @@ static inline void make_image (char const *base)
 
   if (inns)
   {
-    auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGTERM", &sig_script, "-p") ;
+    auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGTERM", &sig_script, "-h") ;
     auto_script(base, "run-image/" SCANDIR "/.s6-svscan/crash", &container_crash_script, 0) ;
     auto_script(base, "run-image/" SCANDIR "/.s6-svscan/finish", &container_exit_script, 0) ;
     auto_dir(base, "run-image/" CONTAINER_RESULTS, 0, 0, 0755) ;

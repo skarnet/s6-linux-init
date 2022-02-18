@@ -87,6 +87,24 @@ static void kbspecials (void)
     strerr_warnwu1sys("trap ctrl-alt-del") ;
 }
 
+static void opendevnull (void)
+{
+  if (open("/dev/null", O_RDONLY))
+  {  /* ghetto /dev/null to the rescue */
+    int p[2] ;
+    strerr_warnwu1sys("open /dev/null") ;
+    if (pipe(p) < 0) strerr_diefu1sys(111, "pipe") ;
+    close(p[1]) ;
+    if (fd_move(0, p[0]) < 0) strerr_diefu1sys(111, "fd_move to stdin") ;
+  }
+}
+
+static void reset_stdin (void)
+{
+  close(0) ;
+  opendevnull() ;
+}
+
 static inline void run_stage2 (char const *basedir, char const **argv, unsigned int argc, char const *const *envp, size_t envlen, char const *modifs, size_t modiflen, char const *initdefault, char const *tty)
 {
   size_t dirlen = strlen(basedir) ;
@@ -97,12 +115,11 @@ static inline void run_stage2 (char const *basedir, char const **argv, unsigned 
   if (setsid() == -1) strerr_diefu1sys(111, "setsid") ;
   if (tty)
   {
-    int fd = openb_read(tty) ;
-    if (fd == -1) strerr_warnwu2sys("open ", tty) ;
-    else if (fd_move(0, fd) == -1)
+    close(0) ;
+    if (openb_read(tty))
     {
-      strerr_warnwu3sys("make ", tty, " into new stdin") ;
-      close(fd) ;
+      strerr_warnwu2sys("open ", tty) ;
+      opendevnull() ;
     }
   }
   memcpy(fn, basedir, dirlen) ;
@@ -196,37 +213,33 @@ int main (int argc, char const **argv, char const *const *envp)
   else if (hasconsole) allwrite(1, BANNER, sizeof(BANNER) - 1) ;
   if (chdir("/") == -1) strerr_diefu1sys(111, "chdir to /") ;
   umask(mask) ;
-  close(0) ;
 
   if (slashdev)
   {
     int nope, e ;
+    close(0) ;
     close(1) ;
     close(2) ;
    /* at this point we're totally in the dark, hoping /dev/console will work */
     nope = mount("dev", slashdev, "devtmpfs", MS_NOSUID | MS_NOEXEC, "") < 0 ;
     e = errno ;
     if (open("/dev/console", O_WRONLY) && open("/dev/null", O_WRONLY)) return 111 ;
-    if (fd_move(2, 0) < 0 || fd_copy(1, 2) < 0) return 111 ;
+    if (fd_move(2, 0) < 0) return 111 ;
+    if (fd_copy(1, 2) < 0) strerr_diefu1sys(111, "fd_copy") ;
     if (nope)
     {
       errno = e ;
       strerr_diefu1sys(111, "mount a devtmpfs on /dev") ;
     }
-  }
-
-  if (open("/dev/null", O_RDONLY))
-  {  /* ghetto /dev/null to the rescue */
-    int p[2] ;
-    strerr_warnwu1sys("open /dev/null") ;
-    if (pipe(p) < 0) strerr_diefu1sys(111, "pipe") ;
-    close(p[1]) ;
-    if (fd_move(0, p[0]) < 0) strerr_diefu1sys(111, "fd_move to stdin") ;
+    if (open("/dev/console", O_RDONLY)) opendevnull() ;
   }
 
   if (!hasconsole)
+  {
+    if (!slashdev) reset_stdin() ;
     if (open("/dev/null", O_WRONLY) != 1 || fd_copy(2, 1) == -1)
       return 111 ;
+  }
 
   if (mounttype)
   {
@@ -256,7 +269,7 @@ int main (int argc, char const **argv, char const *const *envp)
     if (!hiercopy(fn, S6_LINUX_INIT_TMPFS))
       strerr_diefu3sys(111, "copy ", fn, " to " S6_LINUX_INIT_TMPFS) ;
     memcpy(fn + dirlen + 1, ENVSTAGE1, sizeof(ENVSTAGE1)) ;
-    if (envdir(fn, &envmodifs) == -1)
+    if (envdir_verbatim_chomp(fn, &envmodifs) == -1)
       strerr_warnwu2sys("envdir ", fn) ;
   }
   if (envdumpdir && !env_dump(envdumpdir, 0700, envp))
@@ -287,12 +300,13 @@ int main (int argc, char const **argv, char const *const *envp)
       newenvp[0] = pathvar ;
     }
     if (nologger && pipe(notifpipe) < 0) strerr_diefu1sys(111, "pipe") ;
-    if (tty && ioctl(1, TIOCNOTTY) == -1) strerr_warnwu1sys("relinquish control terminal") ;
+    if (tty && !slashdev && ioctl(1, TIOCNOTTY) == -1) strerr_warnwu1sys("relinquish control terminal") ;
 
     pid = fork() ;
     if (pid == -1) strerr_diefu1sys(111, "fork") ;
     if (!pid) run_stage2(basedir, argv, argc, newenvp, !!path, envmodifs.s, envmodifs.len, initdefault, tty) ;
 
+    reset_stdin() ;
     setsid() ; /* just in case our caller is something weird */
     if (nologger)
     {

@@ -4,6 +4,7 @@ In 1.0.7.2
 ----------
 
  - Bugfixes (for use in containers).
+ - The stage 1 initial envdir is read verbatim and noclamped.
 
 
 In 1.0.7.1

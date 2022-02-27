@@ -269,7 +269,7 @@ int main (int argc, char const **argv, char const *const *envp)
     if (!hiercopy(fn, S6_LINUX_INIT_TMPFS))
       strerr_diefu3sys(111, "copy ", fn, " to " S6_LINUX_INIT_TMPFS) ;
     memcpy(fn + dirlen + 1, ENVSTAGE1, sizeof(ENVSTAGE1)) ;
-    if (envdir_verbatim_chomp(fn, &envmodifs) == -1)
+    if (envdir_internal(fn, &envmodifs, SKALIBS_ENVDIR_VERBATIM | SKALIBS_ENVDIR_NOCLAMP, '\n') == -1)
       strerr_warnwu2sys("envdir ", fn) ;
   }
   if (envdumpdir && !env_dump(envdumpdir, 0700, envp))

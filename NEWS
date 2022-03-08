@@ -4,6 +4,7 @@ In 1.0.7.3
 ----------
 
  - The stage 1 initial envdir is read verbatim and noclamped.
+ - In containers, console is transmitted to stage 2.
 
 
 In 1.0.7.2

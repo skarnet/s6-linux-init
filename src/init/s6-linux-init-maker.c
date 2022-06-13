@@ -316,7 +316,7 @@ static void cleanup (char const *base)
   errno = e ;
 }
 
-static void auto_dir_internal (char const *base, char const *dir, uid_t uid, gid_t gid, unsigned int mode, int strict)
+static void auto_dir_internal (char const *base, char const *dir, uid_t uid, gid_t gid, unsigned int mode, unsigned int options)
 {
   size_t clen = strlen(base) ;
   size_t dlen = strlen(dir) ;
@@ -325,9 +325,21 @@ static void auto_dir_internal (char const *base, char const *dir, uid_t uid, gid
   fn[clen] = dlen ? '/' : 0 ;
   memcpy(fn + clen + 1, dir, dlen + 1) ;
 
+  if (options & 2)
+  {
+    for (size_t i = clen + 1 ; i < clen + 1 + dlen ; i++) if (fn[i] == '/')
+    {
+      fn[i] = 0 ;
+      if (mkdir(fn, 0755) < 0 && (errno != EEXIST || (options & 1))) goto err ;
+      fn[i] = '/' ;
+    }
+  }
+
+  if (options & 4) return ;
+
   if (mkdir(fn, mode) < 0)
   {
-    if (errno != EEXIST || strict) goto err ;
+    if (errno != EEXIST || (options & 1)) goto err ;
   }
   else
   {
@@ -500,21 +512,6 @@ static void getug (char const *base, char const *s, uid_t *uid, gid_t *gid)
 
 #ifdef S6_LINUX_INIT_UTMPD_PATH
 
-static inline void auto_basedir (char const *base, char const *dir, uid_t uid, gid_t gid, unsigned int mode)
-{
-  size_t n = strlen(dir) ;
-  char tmp[n + 1] ;
-  for (size_t i = 0 ; i < n ; i++)
-  {
-    if ((dir[i] == '/') && i)
-    {
-      tmp[i] = 0 ;
-      auto_dir_internal(base, tmp, uid, gid, mode, 0) ;
-    }
-    tmp[i] = dir[i] ;
-  }
-}
-
 static int utmpd_script (buffer *b, char const *aux)
 {
   size_t sabase = satmp.len ;
@@ -544,15 +541,15 @@ static int utmpd_script (buffer *b, char const *aux)
 
 static inline void make_utmps (char const *base)
 {
-  auto_dir(base, "run-image/" SCANDIR "/utmpd", 0, 0, 0755) ;
-  auto_file(base, "run-image/" SCANDIR "/utmpd/notification-fd", "3\n", 2) ;
-  auto_script(base, "run-image/" SCANDIR "/utmpd/run", &utmpd_script, 0) ;
+  auto_dir(base, "run-image/" S6_LINUX_INIT_SCANDIR "/utmpd", 0, 0, 0755) ;
+  auto_file(base, "run-image/" S6_LINUX_INIT_SCANDIR "/utmpd/notification-fd", "3\n", 2) ;
+  auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/utmpd/run", &utmpd_script, 0) ;
   {
     uid_t uid ;
     gid_t gid ;
     getug(base, utmp_user, &uid, &gid) ;
     auto_dir(base, "run-image/" UTMPS_DIR, uid, gid, 0755) ;
-    auto_basedir(base, "run-image/" S6_LINUX_INIT_UTMPD_PATH, uid, gid, 0755) ;
+    auto_dir_internal(base, "run-image/" S6_LINUX_INIT_UTMPD_PATH, uid, gid, 0755, 6) ;
   }
 }
 
@@ -560,15 +557,13 @@ static inline void make_utmps (char const *base)
 
 static inline void make_image (char const *base)
 {
-  auto_dir(base, "run-image", 0, 0, 0755) ;
-  auto_dir(base, "run-image/" SCANDIR, 0, 0, 0755) ;
-  auto_dir(base, "run-image/" SCANDIR "/.s6-svscan", 0, 0, 0755) ;
-  auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGQUIT", &put_shebang_options, 0) ;
-  auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGINT", &sig_script, "-r") ;
-  auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGUSR1", &sig_script, "-p") ;
-  auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGUSR2", &sig_script, "-h") ;
-  auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGPWR", &sig_script, "-p") ;
-  auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGWINCH", &put_shebang_options, 0) ;
+  auto_dir_internal(base, "run-image/" S6_LINUX_INIT_SCANDIR "/.s6-svscan", 0, 0, 0755, 3) ;
+  auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/.s6-svscan/SIGQUIT", &put_shebang_options, 0) ;
+  auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/.s6-svscan/SIGINT", &sig_script, "-r") ;
+  auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/.s6-svscan/SIGUSR1", &sig_script, "-p") ;
+  auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/.s6-svscan/SIGUSR2", &sig_script, "-h") ;
+  auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/.s6-svscan/SIGPWR", &sig_script, "-p") ;
+  auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/.s6-svscan/SIGWINCH", &put_shebang_options, 0) ;
 
   if (!nologger)
   {
@@ -576,45 +571,45 @@ static inline void make_image (char const *base)
     gid_t gid ;
     getug(base, log_user, &uid, &gid) ;
     auto_dir(base, "run-image/" UNCAUGHT_DIR, uid, gid, 02750) ;
-    auto_dir(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR, 0, 0, 0755) ;
-    auto_fifo(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR "/" LOGGER_FIFO) ;
-    auto_file(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR "/notification-fd", "3\n", 2) ;
-    auto_script(base, "run-image/" SCANDIR "/" LOGGER_SERVICEDIR "/run", &s6_svscan_log_script, 0) ;
+    auto_dir(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" LOGGER_SERVICEDIR, 0, 0, 0755) ;
+    auto_fifo(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" LOGGER_SERVICEDIR "/" LOGGER_FIFO) ;
+    auto_file(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" LOGGER_SERVICEDIR "/notification-fd", "3\n", 2) ;
+    auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" LOGGER_SERVICEDIR "/run", &s6_svscan_log_script, 0) ;
   }
 
-  auto_dir(base, "run-image/" SCANDIR "/" SHUTDOWND_SERVICEDIR, 0, 0, 0755) ;
-  auto_fifo(base, "run-image/" SCANDIR "/" SHUTDOWND_SERVICEDIR "/" SHUTDOWND_FIFO) ;
-  auto_script(base, "run-image/" SCANDIR "/" SHUTDOWND_SERVICEDIR "/run", &shutdownd_script, 0) ;
+  auto_dir(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" SHUTDOWND_SERVICEDIR, 0, 0, 0755) ;
+  auto_fifo(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" SHUTDOWND_SERVICEDIR "/" SHUTDOWND_FIFO) ;
+  auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" SHUTDOWND_SERVICEDIR "/run", &shutdownd_script, 0) ;
 
   if (inns)
   {
-    auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGTERM", &sig_script, "-h") ;
-    auto_script(base, "run-image/" SCANDIR "/.s6-svscan/crash", &container_crash_script, 0) ;
-    auto_script(base, "run-image/" SCANDIR "/.s6-svscan/finish", &container_exit_script, 0) ;
+    auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/.s6-svscan/SIGTERM", &sig_script, "-h") ;
+    auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/.s6-svscan/crash", &container_crash_script, 0) ;
+    auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/.s6-svscan/finish", &container_exit_script, 0) ;
     auto_dir(base, "run-image/" CONTAINER_RESULTS, 0, 0, 0755) ;
     auto_file(base, "run-image/" CONTAINER_RESULTS "/exitcode", "0\n", 2) ;
   }
   else
   {
-    auto_script(base, "run-image/" SCANDIR "/.s6-svscan/SIGTERM", &put_shebang_options, 0) ;
-    auto_script(base, "run-image/" SCANDIR "/.s6-svscan/crash", &death_script, "crashed") ;
-    auto_script(base, "run-image/" SCANDIR "/.s6-svscan/finish", &death_script, "exited") ;
-    auto_dir(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR, 0, 0, 0755) ;
-    auto_file(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/notification-fd", "3\n", 2) ;
-    auto_script(base, "run-image/" SCANDIR "/" RUNLEVELD_SERVICEDIR "/run", &runleveld_script, 0) ;
+    auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/.s6-svscan/SIGTERM", &put_shebang_options, 0) ;
+    auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/.s6-svscan/crash", &death_script, "crashed") ;
+    auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/.s6-svscan/finish", &death_script, "exited") ;
+    auto_dir(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" RUNLEVELD_SERVICEDIR, 0, 0, 0755) ;
+    auto_file(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" RUNLEVELD_SERVICEDIR "/notification-fd", "3\n", 2) ;
+    auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" RUNLEVELD_SERVICEDIR "/run", &runleveld_script, 0) ;
   }
 
   if (logouthookd)
   {
-    auto_dir(base, "run-image/" SCANDIR "/" LOGOUTHOOKD_SERVICEDIR, 0, 0, 0755) ;
-    auto_file(base, "run-image/" SCANDIR "/" LOGOUTHOOKD_SERVICEDIR "/notification-fd", "1\n", 2) ;
-    auto_script(base, "run-image/" SCANDIR "/" LOGOUTHOOKD_SERVICEDIR "/run", &logouthookd_script, 0) ;
+    auto_dir(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" LOGOUTHOOKD_SERVICEDIR, 0, 0, 0755) ;
+    auto_file(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" LOGOUTHOOKD_SERVICEDIR "/notification-fd", "1\n", 2) ;
+    auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" LOGOUTHOOKD_SERVICEDIR "/run", &logouthookd_script, 0) ;
   }
 
   if (early_getty)
   {
-    auto_dir(base, "run-image/" SCANDIR "/" EARLYGETTY_SERVICEDIR, 0, 0, 0755) ;
-    auto_script(base, "run-image/" SCANDIR "/" EARLYGETTY_SERVICEDIR "/run", &line_script, early_getty) ;
+    auto_dir(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" EARLYGETTY_SERVICEDIR, 0, 0, 0755) ;
+    auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" EARLYGETTY_SERVICEDIR "/run", &line_script, early_getty) ;
   }
 
 #ifdef S6_LINUX_INIT_UTMPD_PATH

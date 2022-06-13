@@ -36,7 +36,6 @@
 #include "hpr.h"
 
 #define STAGE4_FILE "stage 4"
-#define SCANDIRFULL S6_LINUX_INIT_TMPFS "/" SCANDIR
 #define SCANPREFIX SCANDIRFULL "/"
 #define SCANPREFIXLEN (sizeof(SCANPREFIX) - 1)
 #define DOTPREFIX ".s6-linux-init-shutdownd:"

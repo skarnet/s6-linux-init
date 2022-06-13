@@ -25,6 +25,7 @@ Fine tuning of the installation directories:
   --includedir=DIR              C header files [PREFIX/include]
   --skeldir=DIR                 script skeleton files [PREFIX/etc/s6-linux-init/skel]
   --tmpfsdir=DIR                assume the initial tmpfs will be mounted on DIR [/run]
+  --scandir=DIR                 use tmpfsdir/DIR as the s6-svscan directory [service]
 
  If no --prefix option is given, by default libdir (but not dynlibdir) will be
  /usr/lib/$package, and includedir will be /usr/include.
@@ -177,6 +178,7 @@ vpathd=''
 build=
 skeldir='$prefix/etc/s6-linux-init/skel'
 tmpfsdir=/run
+scandir=service
 utmps=false
 
 for arg ; do
@@ -212,6 +214,7 @@ for arg ; do
     --disable-nsss|--enable-nsss=no) usensss=false ;;
     --skeldir=*) skeldir=${arg#*=} ;;
     --tmpfsdir=*) tmpfsdir=${arg#*=} ;;
+    --scandir=*) scandir=${arg#*=} ;;
     --enable-utmps|--enable-utmps=yes) utmps=true ;;
     --disable-utmps|--enable-utmps=no) utmps=false ;;
     --enable-*|--disable-*|--with-*|--without-*|--*dir=*) ;;
@@ -525,6 +528,7 @@ fi
 echo "#define ${package_macro_name}_LIBEXECPREFIX \"$libexecdir/\""
 echo "#define ${package_macro_name}_SKELDIR \"$skeldir\""
 echo "#define ${package_macro_name}_TMPFS \"$tmpfsdir\""
+echo "#define ${package_macro_name}_SCANDIR \"$scandir\""
 echo
 if $utmps ; then
   echo "#define ${package_macro_name}_UTMPD_PATH \"$utmpd_path\""

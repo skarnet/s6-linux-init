@@ -289,7 +289,7 @@ int main (int argc, char const **argv, char const *const *envp)
     char const *newenvp[2] = { 0, 0 } ;
     size_t pathlen = path ? strlen(path) : 0 ;
     char fmtfd[2 + UINT_FMT] = "-" ;
-    char const *newargv[5] = { S6_EXTBINPREFIX "s6-svscan", fmtfd, "--", S6_LINUX_INIT_TMPFS "/" SCANDIR, 0 } ;
+    char const *newargv[5] = { S6_EXTBINPREFIX "s6-svscan", fmtfd, "--", SCANDIRFULL, 0 } ;
     char pathvar[6 + pathlen] ;
     if (path)
     {

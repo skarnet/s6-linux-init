@@ -1,5 +1,13 @@
 Changelog for s6-linux-init.
 
+In 1.0.8.0
+----------
+
+ - Adaptation to skalibs-2.12.0.0.
+ - The scandir is now compile-time configurable via --scandir=DIR
+(relative, under tmpfsdir). Default is still "service".
+
+
 In 1.0.7.3
 ----------
 

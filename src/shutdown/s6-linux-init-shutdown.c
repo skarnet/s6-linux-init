@@ -14,7 +14,7 @@
 #include <skalibs/uint64.h>
 #include <skalibs/types.h>
 #include <skalibs/allreadwrite.h>
-#include <skalibs/strerr2.h>
+#include <skalibs/strerr.h>
 #include <skalibs/sgetopt.h>
 #include <skalibs/sig.h>
 #include <skalibs/tai.h>
@@ -181,6 +181,7 @@ static inline void access_control (void)
     fmt[uint32_fmt(fmt, AC_BUFSIZE - 1)] = 0 ;
     strerr_dief4x(1, AC_FILE, " is too big: it needs to be ", fmt, " bytes or less") ;
   }
+  errno = EPIPE ;
   if (allread(fd, buf, st.st_size) < st.st_size)
     strerr_diefu2sys(111, "read ", AC_FILE) ;
   fd_close(fd) ;

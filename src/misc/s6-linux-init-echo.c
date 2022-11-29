@@ -2,7 +2,7 @@
 
 #include <skalibs/sgetopt.h>
 #include <skalibs/buffer.h>
-#include <skalibs/strerr2.h>
+#include <skalibs/strerr.h>
 
 #define USAGE "s6-linux-init-echo [ -n ] [ -s sep ] args..."
 

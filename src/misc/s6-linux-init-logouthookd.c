@@ -16,7 +16,7 @@
 #include <utmpx.h>
 
 #include <skalibs/allreadwrite.h>
-#include <skalibs/strerr2.h>
+#include <skalibs/strerr.h>
 
 #ifndef UT_NAMESIZE
 #define UT_NAMESIZE 32

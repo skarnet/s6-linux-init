@@ -9,7 +9,7 @@
 
 #include <skalibs/allreadwrite.h>
 #include <skalibs/bytestr.h>
-#include <skalibs/strerr2.h>
+#include <skalibs/strerr.h>
 
 #include "hpr.h"
 

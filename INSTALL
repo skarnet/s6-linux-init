@@ -9,7 +9,7 @@ Build Instructions
   - skalibs version 2.13.0.0 or later: https://skarnet.org/software/skalibs/
   - Optional: nsss version 0.2.0.2 or later: https://skarnet.org/software/nsss/
   - Optional: utmps version 0.1.2.1 or later: https://skarnet.org/software/utmps/
-  - execline version 2.9.0.2 or later: https://skarnet.org/software/execline/
+  - execline version 2.9.1.0 or later: https://skarnet.org/software/execline/
   - s6 version 2.11.2.0 or later: https://skarnet.org/software/s6/
 
  This software is Linux-specific. It will run on a Linux kernel,

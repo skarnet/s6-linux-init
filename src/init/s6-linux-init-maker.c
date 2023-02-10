@@ -26,13 +26,7 @@
 #include "defaults.h"
 #include "initctl.h"
 
-#ifdef S6_LINUX_INIT_UTMPD_PATH
-# include <utmps/config.h>
-# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] [ -f skeldir ] [ -U utmp_user ] [ -C ] [ -B ] dir"
-# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:U:CBS"
-# define UTMPS_DIR "utmps"
-#else
-# define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] [ -f skeldir ] [ -C ] [ -B ] dir"
+#define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] [ -f skeldir ] [ -C ] [ -B ] dir"
 # define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:CBS"
 #endif
 
@@ -60,10 +54,6 @@ static int innssync = 0 ;
 static int nologger = 0 ;
 static uid_t myuid = -1 ;
 static gid_t mygid = -1 ;
-
-#ifdef S6_LINUX_INIT_UTMPD_PATH
-static char const *utmp_user = 0 ;
-#endif
 
 typedef int writetobuf_func (buffer *, char const *) ;
 typedef writetobuf_func *writetobuf_func_ref ;
@@ -510,51 +500,6 @@ static void getug (char const *base, char const *s, uid_t *uid, gid_t *gid)
   }
 }
 
-#ifdef S6_LINUX_INIT_UTMPD_PATH
-
-static int utmpd_script (buffer *b, char const *aux)
-{
-  size_t sabase = satmp.len ;
-  if (!put_shebang(b)
-   || buffer_puts(b,
-    EXECLINE_EXTBINPREFIX "fdmove -c 2 1\n") < 0) return 0 ;
-  if (utmp_user)
-  {
-    if (buffer_puts(b, S6_EXTBINPREFIX "s6-setuidgid ") < 0
-     || !string_quote(&satmp, utmp_user, strlen(utmp_user))) return 0 ;
-    if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
-    satmp.len = sabase ;
-    if (buffer_put(b, "\n", 1) < 0) return 0 ;
-  }
-  if (buffer_puts(b,
-    EXECLINE_EXTBINPREFIX "cd " S6_LINUX_INIT_TMPFS "/" UTMPS_DIR "\n"
-    EXECLINE_EXTBINPREFIX "fdmove 1 3\n"
-    S6_EXTBINPREFIX "s6-ipcserver -1 -c 1000 -- " UTMPS_UTMPD_PATH "\n"
-    UTMPS_EXTBINPREFIX "utmps-utmpd\n") < 0) return 0 ;
-  (void)aux ;
-  return 1 ;
-
- err:
-  satmp.len = sabase ;
-  return 0 ;
-}
-
-static inline void make_utmps (char const *base)
-{
-  auto_dir(base, "run-image/" S6_LINUX_INIT_SCANDIR "/utmpd", 0, 0, 0755) ;
-  auto_file(base, "run-image/" S6_LINUX_INIT_SCANDIR "/utmpd/notification-fd", "3\n", 2) ;
-  auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/utmpd/run", &utmpd_script, 0) ;
-  {
-    uid_t uid ;
-    gid_t gid ;
-    getug(base, utmp_user, &uid, &gid) ;
-    auto_dir(base, "run-image/" UTMPS_DIR, uid, gid, 0755) ;
-    auto_dir_internal(base, "run-image/" S6_LINUX_INIT_UTMPD_PATH, uid, gid, 0755, 6) ;
-  }
-}
-
-#endif
-
 static inline void make_image (char const *base)
 {
   auto_dir_internal(base, "run-image/" S6_LINUX_INIT_SCANDIR "/.s6-svscan", 0, 0, 0755, 3) ;
@@ -611,10 +556,6 @@ static inline void make_image (char const *base)
     auto_dir(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" EARLYGETTY_SERVICEDIR, 0, 0, 0755) ;
     auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" EARLYGETTY_SERVICEDIR "/run", &line_script, early_getty) ;
   }
-
-#ifdef S6_LINUX_INIT_UTMPD_PATH
-  if (utmp_user) make_utmps(base) ;
-#endif
 }
 
 static inline void make_scripts (char const *base)
@@ -644,7 +585,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
     subgetopt l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, OPTION_STRING, &l) ;
+      int opt = subgetopt_r(argc, argv, "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:CBS", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
@@ -664,9 +605,6 @@ int main (int argc, char const *const *argv, char const *const *envp)
         case 'n' : mounttype = 2 ; break ;
         case 'N' : mounttype = 0 ; break ;
         case 'f' : skeldir = l.arg ; break ;
-#ifdef S6_LINUX_INIT_UTMPD_PATH
-        case 'U' : utmp_user = l.arg ; break ;
-#endif
         case 'C' : inns = 1 ; break ;
         case 'B' : nologger = 1 ; break ;
         case 'S' : innssync = 1 ; break ;

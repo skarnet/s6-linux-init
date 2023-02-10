@@ -33,7 +33,6 @@
 #include <s6-linux-init/config.h>
 #include "defaults.h"
 #include "initctl.h"
-#include "hpr.h"
 
 #define STAGE4_FILE "stage 4"
 #define SCANPREFIX SCANDIRFULL "/"

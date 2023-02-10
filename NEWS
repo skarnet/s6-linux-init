@@ -1,5 +1,11 @@
 Changelog for s6-linux-init.
 
+In 1.1.0.0
+----------
+
+ - Early utmpd script removed, for symmetry.
+
+
 In 1.0.8.1
 ----------
 

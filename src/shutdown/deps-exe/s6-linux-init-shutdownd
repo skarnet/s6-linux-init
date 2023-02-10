@@ -1,5 +1,4 @@
 -ls6
-${LIBUTMPS}
 -lskarnet
 ${SYSCLOCK_LIB}
 ${SOCKET_LIB}

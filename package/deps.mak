@@ -18,7 +18,7 @@ src/shutdown/hpr_wall.o src/shutdown/hpr_wall.lo: src/shutdown/hpr_wall.c src/sh
 src/shutdown/hpr_wallv.o src/shutdown/hpr_wallv.lo: src/shutdown/hpr_wallv.c src/shutdown/hpr.h
 src/shutdown/s6-linux-init-hpr.o src/shutdown/s6-linux-init-hpr.lo: src/shutdown/s6-linux-init-hpr.c src/include-local/defaults.h src/shutdown/hpr.h
 src/shutdown/s6-linux-init-shutdown.o src/shutdown/s6-linux-init-shutdown.lo: src/shutdown/s6-linux-init-shutdown.c src/include-local/defaults.h src/shutdown/hpr.h src/include-local/initctl.h
-src/shutdown/s6-linux-init-shutdownd.o src/shutdown/s6-linux-init-shutdownd.lo: src/shutdown/s6-linux-init-shutdownd.c src/include-local/defaults.h src/shutdown/hpr.h src/include-local/initctl.h src/include/s6-linux-init/config.h
+src/shutdown/s6-linux-init-shutdownd.o src/shutdown/s6-linux-init-shutdownd.lo: src/shutdown/s6-linux-init-shutdownd.c src/include-local/defaults.h src/include-local/initctl.h src/include/s6-linux-init/config.h
 
 s6-linux-init: EXTRA_LIBS := -lskarnet
 s6-linux-init: src/init/s6-linux-init.o
@@ -51,5 +51,5 @@ s6-linux-init-hpr: src/shutdown/s6-linux-init-hpr.o libhpr.a.xyzzy ${LIBUTMPS}
 s6-linux-init-shutdown: EXTRA_LIBS := -lskarnet ${SYSCLOCK_LIB} ${SOCKET_LIB}
 s6-linux-init-shutdown: src/shutdown/s6-linux-init-shutdown.o libhpr.a.xyzzy ${LIBUTMPS}
 s6-linux-init-shutdownd: EXTRA_LIBS := -ls6 -lskarnet ${SYSCLOCK_LIB} ${SOCKET_LIB}
-s6-linux-init-shutdownd: src/shutdown/s6-linux-init-shutdownd.o ${LIBUTMPS}
+s6-linux-init-shutdownd: src/shutdown/s6-linux-init-shutdownd.o
 INTERNAL_LIBS := libhpr.a.xyzzy

@@ -27,9 +27,6 @@
 #include "initctl.h"
 
 #define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] [ -f skeldir ] [ -C ] [ -B ] dir"
-# define OPTION_STRING "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:CBS"
-#endif
-
 #define dieusage() strerr_dieusage(100, USAGE)
 #define dienomem() strerr_diefu1sys(111, "stralloc_catb") ;
 

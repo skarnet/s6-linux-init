@@ -1,0 +1,27 @@
+s6-l-i-m -R argument parser:
+
+class	|	0	1	2	3	4	5
+st\ev	|	\0	letter	=	0-9	,	other
+
+
+START	|		g
+0	|	END	ARG	X	X	START	X
+
+ARG	|			=	m
+1	|	X	X	WAIT	SCAN	X	X
+
+SCAN	|	s				s
+2	|	END	X	X	SCAN	START	X
+
+WAIT	|
+3	|	END	X	X	X	START	X
+
+END = 4, X = 5
+
+3 bits state
+4 bits action
+
+0x10	g	print letter
+0x20	=	set max
+0x40	m	mark
+0x80	s	scan from mark

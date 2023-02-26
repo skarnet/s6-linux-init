@@ -1,5 +1,12 @@
 Changelog for s6-linux-init.
 
+In 1.1.1.0
+----------
+
+ - s6-linux-init-maker can now set global resource limits in the
+prepared system, via the -R option.
+
+
 In 1.1.0.0
 ----------
 

@@ -61,6 +61,7 @@ machine</em>. If it is not the case, the system will fail to boot.
        [ -D <em>initdefault</em> ] \
        [ -n | -N ] \
        [ -f <em>skeldir</em> ] \
+       [ -R <em>resource_limit_list</em> ] \
        [ -C ] \
        [ -B ] \
        [ -S ] \
@@ -318,6 +319,22 @@ given as an argument to the <tt>--skeldir</tt> configure option at
 build time. This option is typically useful when distributions run
 <tt>s6-linux-init-maker</tt> in packaging scripts, when preparing
 files in a staging directory. </li> <br />
+
+ <li> <tt>-R</tt>&nbsp;<em>resource_limit_list</em>&nbsp;: declare
+global resource limits (a.k.a. "hard limits") for the system to be
+booted. <em>resource_limit_list</em> is a comma-separated list of
+instructions such as <tt>o2000</tt>, <tt>d=</tt> or <tt>c0</tt>:
+a letter followed by either the character <tt>=</tt>, which means
+unlimited, or a number, which is the value of the resource limit.
+The letter specifies the resource being addressed, as defined by
+the option letters used by
+<a href="//skarnet.org/software/s6/s6-softlimit.html">s6-softlimit</a>:
+for instance, <tt>c</tt> means core file size limit, and <tt>o</tt>
+means open fds limit. Note that unlike s6-softlimit, which only sets
+<em>soft limits</em>, i.e. process hierarchy-wide limits, the values
+given here declare <em>hard limits</em> that will be enforced for the
+whole system to be booted: it will be impossible to raise soft limits
+above these values. </li> <br />
 
  <li> <tt>-C</tt>&nbsp;: create a set of scripts that is suitable
 for running <em>in a container</em>. This modifies some behaviours:

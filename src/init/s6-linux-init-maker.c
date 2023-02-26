@@ -26,7 +26,7 @@
 #include "defaults.h"
 #include "initctl.h"
 
-#define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] [ -f skeldir ] [ -C ] [ -B ] dir"
+#define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] [ -f skeldir ] [ -R resourcelimits ] [ -C ] [ -B ] [ -S ] dir"
 #define dieusage() strerr_dieusage(100, USAGE)
 #define dienomem() strerr_diefu1sys(111, "stralloc_catb") ;
 
@@ -51,6 +51,7 @@ static int innssync = 0 ;
 static int nologger = 0 ;
 static uid_t myuid = -1 ;
 static gid_t mygid = -1 ;
+static stralloc ressa = STRALLOC_ZERO ;
 
 typedef int writetobuf_func (buffer *, char const *) ;
 typedef writetobuf_func *writetobuf_func_ref ;
@@ -238,8 +239,13 @@ static int sig_script (buffer *b, char const *option)
 static inline int stage1_script (buffer *b, char const *data)
 {
   size_t sabase = satmp.len ;
-  if (!put_shebang_options(b, "-S0")
-   || buffer_puts(b, S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init -c ") < 0
+  if (!put_shebang_options(b, "-S0")) return 0 ;
+  if (ressa.len)
+  {
+    if (buffer_puts(b, S6_EXTBINPREFIX "s6-softlimit -h ") < 0
+     || buffer_put(b, ressa.s, ressa.len) < 0) goto err ;
+  }
+  if (buffer_puts(b, S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init -c ") < 0
    || !string_quote(&satmp, robase, strlen(robase))) return 0 ;
   if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
@@ -575,6 +581,80 @@ static inline void make_bins (char const *base)
   if (!inns) auto_exec(base, "bin/telinit", "s6-linux-init-telinit") ;
 }
 
+static uint8_t rclass (char c)
+{
+  switch (c)
+  {
+    case 0 : return 0 ;
+    case 'a' :
+    case 'c' :
+    case 'd' :
+    case 'f' :
+    case 'l' :
+    case 'm' :
+    case 'o' :
+    case 'p' :
+    case 'r' :
+    case 's' :
+    case 't' : return 1 ;
+    case '=' : return 2 ;
+    case '0' :
+    case '1' :
+    case '2' :
+    case '3' :
+    case '4' :
+    case '5' :
+    case '6' :
+    case '7' :
+    case '8' :
+    case '9' : return 3 ;
+    case ',' :
+    case ';' :
+    case ' ' : return 4 ;
+    default : return 5 ;
+  }
+}
+
+static void parse_resources (stralloc *sa, char const *s)
+{
+  static uint8_t const table[4][6] =
+  {
+    { 0x04, 0x11, 0x05, 0x05, 0x00, 0x05 },
+    { 0x05, 0x05, 0x23, 0x42, 0x05, 0x05 },
+    { 0x84, 0x05, 0x05, 0x02, 0x80, 0x05 },
+    { 0x04, 0x05, 0x05, 0x05, 0x00, 0x05 }
+  } ;
+  char const *m = s ;
+  uint8_t state = 0 ;
+  char tmp[UINT64_FMT] ;
+  sa->len = 0 ;
+  while (state < 4)
+  {
+    uint8_t c = table[state][rclass(*s)] ;
+    state = c & 0x07 ;
+    if (c & 0x10)
+    {
+      tmp[0] = '-' ; tmp[1] = *s ;
+      if (!stralloc_catb(sa, tmp, 2)) dienomem() ;
+    }
+    if (c & 0x20) if (!stralloc_catb(sa, "= ", 2)) dienomem() ;
+    if (c & 0x40) m = s ;
+    if (c & 0x80)
+    {
+      uint64_t u ;
+      if (s - m >= UINT64_FMT) strerr_dief1x(100, "resource limit out of range") ;
+      memcpy(tmp, m, s - m) ;
+      tmp[s - m] = 0 ;
+      if (!uint640_scan(tmp, &u)) strerr_dief1x(100, "resource limit out of range") ;
+      tmp[s - m] = ' ' ;
+      if (!stralloc_catb(sa, tmp, s - m + 1)) dienomem() ;
+    }
+    s++ ;
+  }
+  if (state > 4) strerr_dief1x(100, "syntax error in resource limit string") ;
+  if (sa->len) if (!stralloc_catb(sa, "--\n", 3)) dienomem() ;
+}
+
 int main (int argc, char const *const *argv, char const *const *envp)
 {
   PROG = "s6-linux-init-maker" ;
@@ -582,7 +662,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
     subgetopt l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:CBS", &l) ;
+      int opt = subgetopt_r(argc, argv, "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:R:CBS", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
@@ -602,6 +682,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
         case 'n' : mounttype = 2 ; break ;
         case 'N' : mounttype = 0 ; break ;
         case 'f' : skeldir = l.arg ; break ;
+        case 'R' : parse_resources(&ressa, l.arg) ; break ;
         case 'C' : inns = 1 ; break ;
         case 'B' : nologger = 1 ; break ;
         case 'S' : innssync = 1 ; break ;

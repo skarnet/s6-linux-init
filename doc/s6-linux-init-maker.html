@@ -334,7 +334,10 @@ means open fds limit. Note that unlike s6-softlimit, which only sets
 <em>soft limits</em>, i.e. process hierarchy-wide limits, the values
 given here declare <em>hard limits</em> that will be enforced for the
 whole system to be booted: it will be impossible to raise soft limits
-above these values. </li> <br />
+above these values. <strong>Warning:</strong> misuse of this option is
+likely to make your system unbootable; make sure you don't prevent
+process 1 and the whole process hierarchy from allocating enough
+resources. </li> <br />
 
  <li> <tt>-C</tt>&nbsp;: create a set of scripts that is suitable
 for running <em>in a container</em>. This modifies some behaviours:

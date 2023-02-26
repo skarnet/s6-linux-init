@@ -242,7 +242,7 @@ static inline int stage1_script (buffer *b, char const *data)
   if (!put_shebang_options(b, "-S0")) return 0 ;
   if (ressa.len)
   {
-    if (buffer_puts(b, S6_EXTBINPREFIX "s6-softlimit -h ") < 0
+    if (buffer_puts(b, S6_EXTBINPREFIX "s6-softlimit -H ") < 0
      || buffer_put(b, ressa.s, ressa.len) < 0) goto err ;
   }
   if (buffer_puts(b, S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init -c ") < 0

@@ -56,7 +56,7 @@ will definitely not do it.
  Some distributions use versions of <tt>login</tt> that fork the user's
 shell instead of execing it. When the user logs out, the <tt>login</tt>
 program cleans up after itself. This is a better model, but it's not
-always easy to patch <tt>login</tt> to go from a "exec the shell" model to a
+always easy to patch <tt>login</tt> to go from an "exec the shell" model to a
 "fork the shell as a child" model.
 </p>
 
@@ -78,7 +78,7 @@ no program uses it. However, here's the list for completeness:
 </p>
 
 <ul>
- <li> 0: success, whether or not there was an utmp record to clean up. </li>
+ <li> 0: success, whether or not there was a utmp record to clean up. </li>
  <li> 1: connection attempt from a non-root user. </li>
  <li> 2: write attempt from a (misprogrammed) client. </li>
  <li> 111: system call failed. </li>

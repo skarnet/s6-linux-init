@@ -44,17 +44,17 @@ add the <tt>-d /dev</tt> option to the <tt>s6-linux-init-maker</tt> command line
  <li> Reboot. Warning: use your <em>old</em> reboot command, that you saved, not the new one
 that has just been created by <tt>s6-linux-init-maker</tt>, because you're still running on
 your old init system and need to use a reboot command that matches it. </li>
- <li> After the reboot: congratulations! your machine is now running a s6-based init system. </li>
+ <li> After the reboot: congratulations! your machine is now running an s6-based init system. </li>
  <li> To shut the machine down, use <tt>/sbin/shutdown</tt>, <tt>/sbin/halt</tt>,
 <tt>/sbin/poweroff</tt> or <tt>/sbin/reboot</tt> as usual. </li>
 </ol>
 
 <h2> FAQ </h2>
 
-<h3> How do I convert a runit setup to a s6 one ? </h3>
+<h3> How do I convert a runit setup to an s6 one ? </h3>
 
 <p>
- A runit and a s6 setup are very similar. There are just three things you
+ A runit and an s6 setup are very similar. There are just three things you
 need to pay attention to:
 </p>
 
@@ -105,7 +105,7 @@ filesystems will be unmounted and the machine will be rebooted and/or stopped.
 </p>
 
 <p>
- So, the quickest way to port a runit setup to a s6-linux-init one is to:
+ So, the quickest way to port a runit setup to an s6-linux-init one is to:
 </p>
 
 <ul>

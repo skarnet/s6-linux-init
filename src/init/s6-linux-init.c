@@ -204,10 +204,10 @@ int main (int argc, char const **argv, char const *const *envp)
       if (r) strerr_warnw1x("parent wrote to fd 3!") ;
       close(3) ;
     }
-    if (!slashdev && hasconsole && isatty(1))
+    if (!slashdev && hasconsole && isatty(2 - nologger))
     {
-      tty = ttyname(1) ;
-      if (!tty) strerr_warnwu1sys("ttyname stdout") ;
+      tty = ttyname(2 - nologger) ;
+      if (!tty) strerr_warnwu2sys("ttyname std", nologger ? "err" : "out") ;
     }
   }
   else if (hasconsole) allwrite(1, BANNER, sizeof(BANNER) - 1) ;
@@ -300,7 +300,7 @@ int main (int argc, char const **argv, char const *const *envp)
       newenvp[0] = pathvar ;
     }
     if (nologger && pipe(notifpipe) < 0) strerr_diefu1sys(111, "pipe") ;
-    if (tty && !slashdev && ioctl(1, TIOCNOTTY) == -1) strerr_warnwu1sys("relinquish control terminal") ;
+    if (tty && !slashdev && ioctl(2 - nologger, TIOCNOTTY) == -1) strerr_warnwu1sys("relinquish control terminal") ;
 
     pid = fork() ;
     if (pid == -1) strerr_diefu1sys(111, "fork") ;

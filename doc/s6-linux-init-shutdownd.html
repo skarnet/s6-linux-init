@@ -27,7 +27,7 @@ directly by the user.
 <h2> Interface </h2>
 
 <pre>
-     s6-linux-init-shutdownd [ -c <em>basedir</em> ] [ -g <em>gracetime</em> ] [ -C ] [ -B ]
+     s6-linux-init-shutdownd [ -d <em>notif</em> ] [ -c <em>basedir</em> ] [ -g <em>gracetime</em> ] [ -C ] [ -B ]
 </pre>
 
 <ul>
@@ -51,6 +51,13 @@ machine. </li>
 <h2> Options </h2>
 
 <ul>
+ <li> <tt>-d</tt>&nbsp;<em>notif</em>&nbsp;: when ready
+(actually listening to its named pipe),
+write a newline to file descriptor <em>notif</em> then close it.
+This allows s6-linux-init-shutdownd to use the
+<a href="//skarnet.org/software/s6/notifywhenup.html">s6 mechanism to notify
+readiness</a>. <em>notif</em> cannot be lesser than 3.
+If this option is not given, no readiness notification is sent. </li>
  <li> <tt>-c&nbsp;<em>basedir</em></tt>&nbsp;: look for the
 <em>rc.shutdown</em> script in the <em>basedir</em><tt>/scripts</tt>
 directory. Default is <tt>/etc/s6-linux-init/current</tt>. </li>

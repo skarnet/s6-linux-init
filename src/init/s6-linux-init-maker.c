@@ -186,7 +186,7 @@ static int shutdownd_script (buffer *b, char const *data)
   size_t sabase = satmp.len ;
   char fmt[UINT_FMT] ;
   if (!put_shebang(b)
-   || buffer_puts(b, S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-shutdownd -c ") < 0
+   || buffer_puts(b, S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-shutdownd -d3 -c ") < 0
    || !string_quote(&satmp, robase, strlen(robase))) return 0 ;
   if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
@@ -527,6 +527,7 @@ static inline void make_image (char const *base)
 
   auto_dir(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" SHUTDOWND_SERVICEDIR, 0, 0, 0755) ;
   auto_fifo(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" SHUTDOWND_SERVICEDIR "/" SHUTDOWND_FIFO) ;
+  auto_file(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" SHUTDOWND_SERVICEDIR "/notification-fd", "3\n", 2) ;
   auto_script(base, "run-image/" S6_LINUX_INIT_SCANDIR "/" SHUTDOWND_SERVICEDIR "/run", &shutdownd_script, 0) ;
 
   if (inns)

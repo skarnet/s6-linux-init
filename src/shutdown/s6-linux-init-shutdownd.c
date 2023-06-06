@@ -43,7 +43,7 @@
 #define DOTSUFFIXLEN (sizeof(DOTSUFFIX) - 1)
 #define CONTAINERDIR S6_LINUX_INIT_TMPFS "/" CONTAINER_RESULTS
 
-#define USAGE "s6-linux-init-shutdownd [ -c basedir ] [ -g gracetime ] [ -C ] [ -B ]"
+#define USAGE "s6-linux-init-shutdownd [ -d notif ] [ -c basedir ] [ -g gracetime ] [ -C ] [ -B ]"
 #define dieusage() strerr_dieusage(100, USAGE)
 
 static char const *basedir = BASEDIR ;
@@ -255,6 +255,7 @@ int main (int argc, char const *const *argv)
   unsigned int grace_time = 3000 ;
   tain deadline ;
   int fdr, fdw ;
+  unsigned int notif = 0 ;
   buffer b ;
   char what = 'S' ;
   char buf[64] ;
@@ -264,10 +265,11 @@ int main (int argc, char const *const *argv)
     subgetopt l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "c:g:CB", &l) ;
+      int opt = subgetopt_r(argc, argv, "d:c:g:CB", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
+        case 'd' : if (!uint0_scan(l.arg, &notif)) dieusage() ; break ;
         case 'c' : basedir = l.arg ; break ;
         case 'g' : if (!uint0_scan(l.arg, &grace_time)) dieusage() ; break ;
         case 'C' : inns = 1 ; break ;
@@ -279,6 +281,11 @@ int main (int argc, char const *const *argv)
   }
   if (basedir[0] != '/')
     strerr_dief2x(100, "basedir", " must be an absolute path") ;
+  if (notif)
+  {
+    if (notif < 3) strerr_dief1x(100, "notification fd must be 3 or more") ;
+    if (fcntl(notif, F_GETFD) < 0) strerr_dief1sys(100, "invalid notification fd") ;
+  }
   if (grace_time > 300000) grace_time = 300000 ;
 
  /* if we're in stage 4, exec it immediately */
@@ -315,6 +322,12 @@ int main (int argc, char const *const *argv)
   buffer_init(&b, &buffer_read, fdr, buf, 64) ;
   tain_now_set_stopwatch_g() ;
   tain_add_g(&deadline, &tain_infinite_relative) ;
+  if (notif)
+  {
+    write(notif, "\n", 1) ;
+    close(notif) ;
+    notif = 0 ;
+  }
 
   for (;;)
   {

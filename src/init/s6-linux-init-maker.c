@@ -26,7 +26,7 @@
 #include "defaults.h"
 #include "initctl.h"
 
-#define USAGE "s6-linux-init-maker [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] [ -f skeldir ] [ -R resourcelimits ] [ -C ] [ -B ] [ -S ] dir"
+#define USAGE "s6-linux-init-maker [ -V boot_verbosity ] [ -c basedir ] [ -u log_user ] [ -G early_getty_cmd ] [ -1 ] [ -L ] [ -p initial_path ] [ -m initial_umask ] [ -t timestamp_style ] [ -d slashdev ] [ -s env_store ] [ -e initial_envvar ... ] [ -q default_grace_time ] [ -D initdefault ] [ -n | -N ] [ -f skeldir ] [ -R resourcelimits ] [ -C ] [ -B ] [ -S ] dir"
 #define dieusage() strerr_dieusage(100, USAGE)
 #define dienomem() strerr_diefu1sys(111, "stralloc_catb") ;
 
@@ -43,6 +43,7 @@ static char const *skeldir = S6_LINUX_INIT_SKELDIR ;
 static unsigned int initial_umask = 0022 ;
 static unsigned int timestamp_style = 1 ;
 static unsigned int finalsleep = 3000 ;
+static unsigned int boot_verbosity = 1 ;
 static int mounttype = 1 ;
 static int console = 0 ;
 static int logouthookd = 0 ;
@@ -239,47 +240,47 @@ static int sig_script (buffer *b, char const *option)
 static inline int stage1_script (buffer *b, char const *data)
 {
   size_t sabase = satmp.len ;
+  char fmt[UINT_OFMT] ;
   if (!put_shebang_options(b, "-S0")) return 0 ;
   if (ressa.len)
   {
     if (buffer_puts(b, S6_EXTBINPREFIX "s6-softlimit -H ") < 0
      || buffer_put(b, ressa.s, ressa.len) < 0) goto err ;
   }
-  if (buffer_puts(b, S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init -c ") < 0
-   || !string_quote(&satmp, robase, strlen(robase))) return 0 ;
-  if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
+  if (buffer_puts(b, S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init -v ") < 0
+   || buffer_put(b, fmt, uint_fmt(fmt, boot_verbosity)) < 0
+   || buffer_puts(b, " -m 00") < 0
+   || buffer_put(b, fmt, uint_ofmt(fmt, initial_umask)) < 0
+   || buffer_puts(b, " -c ") < 0
+   || !string_quote(&satmp, robase, strlen(robase))
+   || buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
   satmp.len = sabase ;
-  {
-    char fmt[UINT_OFMT] ;
-    if (buffer_puts(b, " -m 00") < 0
-     || buffer_put(b, fmt, uint_ofmt(fmt, initial_umask)) < 0) return 0 ;
-  }
   if (initial_path)
   {
     if (buffer_puts(b, " -p ") < 0
-     || !string_quote(&satmp, initial_path, strlen(initial_path))) return 0 ;
-    if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
+     || !string_quote(&satmp, initial_path, strlen(initial_path))
+     || buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
     satmp.len = sabase ;
   }
   if (env_store)
   {
     if (buffer_puts(b, " -s ") < 0
-     || !string_quote(&satmp, env_store, strlen(env_store))) return 0 ;
-    if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
+     || !string_quote(&satmp, env_store, strlen(env_store))
+     || buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
     satmp.len = sabase ;
   }
   if (slashdev)
   {
     if (buffer_puts(b, " -d ") < 0
-     || !string_quote(&satmp, slashdev, strlen(slashdev))) return 0 ;
-    if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
+     || !string_quote(&satmp, slashdev, strlen(slashdev))
+     || buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
     satmp.len = sabase ;
   }
   if (initdefault)
   {
     if (buffer_puts(b, " -D ") < 0
-     || !string_quote(&satmp, initdefault, strlen(initdefault))) return 0 ;
-    if (buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
+     || !string_quote(&satmp, initdefault, strlen(initdefault))
+     || buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
     satmp.len = sabase ;
   }
   if (mounttype == 2)
@@ -663,10 +664,11 @@ int main (int argc, char const *const *argv, char const *const *envp)
     subgetopt l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:R:CBS", &l) ;
+      int opt = subgetopt_r(argc, argv, "V:c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:R:CBS", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
+        case 'V' : if (!uint0_scan(l.arg, &boot_verbosity)) dieusage() ; break ;
         case 'c' : robase = l.arg ; break ;
         case 'u' : log_user = l.arg ; break ;
         case 'G' : early_getty = l.arg ; break ;

@@ -30,7 +30,7 @@
 #include "defaults.h"
 #include "initctl.h"
 
-#define USAGE "s6-linux-init [ -c basedir ] [ -p initpath ] [ -s envdumpdir ] [ -m umask ] [ -d devtmpfs ] [ -D initdefault ] [ -n | -N ] [ -C ] [ -B ]"
+#define USAGE "s6-linux-init [ -v verbosity ] [ -c basedir ] [ -p initpath ] [ -s envdumpdir ] [ -m umask ] [ -d devtmpfs ] [ -D initdefault ] [ -n | -N ] [ -C ] [ -B ]"
 #define dieusage() strerr_dieusage(100, USAGE)
 
 #define BANNER "\n  s6-linux-init version " S6_LINUX_INIT_VERSION "\n\n"
@@ -38,6 +38,7 @@
 static int inns = 0 ;
 static int nologger = 0 ;
 static int notifpipe[2] ;
+static unsigned int verbosity = 1 ;
 
 static inline char const *scan_cmdline (char const *initdefault, char const *const *argv, unsigned int argc)
 {
@@ -60,7 +61,7 @@ static inline void wait_for_notif (int fd)
     if (r < 0) strerr_diefu1sys(111, "read from notification pipe") ;
     if (!r)
     {
-      strerr_warnw1x("s6-svscan failed to send a notification byte!") ;
+      if (verbosity) strerr_warnw1x("s6-svscan failed to send a notification byte!") ;
       break ;
     }
     if (memchr(buf, '\n', r)) break ;
@@ -74,17 +75,23 @@ static void kbspecials (void)
   if (inns) return ;
   fd = open("/dev/tty0", O_RDONLY | O_NOCTTY) ;
   if (fd < 0)
-    strerr_warnwu2sys("open /dev/", "tty0 (kbrequest will not be handled)") ;
+  {
+    if (errno == ENOENT)
+    {
+      if (verbosity >= 2) strerr_warni1x("headless system detected") ;
+    }
+    else if (verbosity) strerr_warnwu2sys("open", " tty0 (kbrequest will not be handled)") ;
+  }
   else
   {
     if (ioctl(fd, KDSIGACCEPT, SIGWINCH) < 0)
-      strerr_warnwu2sys("ioctl KDSIGACCEPT on ", "tty0 (kbrequest will not be handled)") ;
+      if (verbosity) strerr_warnwu2sys("ioctl KDSIGACCEPT on", " tty0 (kbrequest will not be handled)") ;
     close(fd) ;
   }
 
   sig_block(SIGINT) ; /* don't panic on early cad before s6-svscan catches it */
   if (reboot(RB_DISABLE_CAD) == -1)
-    strerr_warnwu1sys("trap ctrl-alt-del") ;
+    if (verbosity) strerr_warnwu1sys("trap ctrl-alt-del") ;
 }
 
 static void opendevnull (void)
@@ -92,7 +99,7 @@ static void opendevnull (void)
   if (open("/dev/null", O_RDONLY))
   {  /* ghetto /dev/null to the rescue */
     int p[2] ;
-    strerr_warnwu1sys("open /dev/null") ;
+    if (verbosity) strerr_warnwu1sys("open /dev/null") ;
     if (pipe(p) < 0) strerr_diefu1sys(111, "pipe") ;
     close(p[1]) ;
     if (fd_move(0, p[0]) < 0) strerr_diefu1sys(111, "fd_move to stdin") ;
@@ -118,7 +125,7 @@ static inline void run_stage2 (char const *basedir, char const **argv, unsigned 
     close(0) ;
     if (openb_read(tty))
     {
-      strerr_warnwu2sys("open ", tty) ;
+      if (verbosity) strerr_warnwu2sys("open ", tty) ;
       opendevnull() ;
     }
   }
@@ -170,10 +177,11 @@ int main (int argc, char const **argv, char const *const *envp)
     subgetopt l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "c:p:s:m:d:D:nNCB", &l) ;
+      int opt = subgetopt_r(argc, argv, "v:c:p:s:m:d:D:nNCB", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
+        case 'v' : if (!uint0_scan(l.arg, &verbosity)) dieusage() ; break ;
         case 'c' : basedir = l.arg ; break ;
         case 'p' : path = l.arg ; break ;
         case 's' : envdumpdir = l.arg ; break ;
@@ -201,13 +209,13 @@ int main (int argc, char const **argv, char const *const *envp)
     }
     else
     {
-      if (r) strerr_warnw1x("parent wrote to fd 3!") ;
+      if (r) if (verbosity) strerr_warnw1x("parent wrote to fd 3!") ;
       close(3) ;
     }
     if (!slashdev && hasconsole && isatty(2 - nologger))
     {
       tty = ttyname(2 - nologger) ;
-      if (!tty) strerr_warnwu2sys("ttyname std", nologger ? "err" : "out") ;
+      if (!tty) if (verbosity) strerr_warnwu2sys("ttyname std", nologger ? "err" : "out") ;
     }
   }
   else if (hasconsole) allwrite(1, BANNER, sizeof(BANNER) - 1) ;
@@ -253,7 +261,7 @@ int main (int argc, char const **argv, char const *const *envp)
       if (umount(S6_LINUX_INIT_TMPFS) == -1)
       {
         if (errno != EINVAL)
-          strerr_warnwu1sys("umount " S6_LINUX_INIT_TMPFS) ;
+          if (verbosity) strerr_warnwu1sys("umount " S6_LINUX_INIT_TMPFS) ;
       }
       if (mount("tmpfs", S6_LINUX_INIT_TMPFS, "tmpfs", MS_NODEV | MS_NOSUID, "mode=0755") == -1)
         strerr_diefu1sys(111, "mount tmpfs on " S6_LINUX_INIT_TMPFS) ;
@@ -270,10 +278,10 @@ int main (int argc, char const **argv, char const *const *envp)
       strerr_diefu3sys(111, "copy ", fn, " to " S6_LINUX_INIT_TMPFS) ;
     memcpy(fn + dirlen + 1, ENVSTAGE1, sizeof(ENVSTAGE1)) ;
     if (envdir_internal(fn, &envmodifs, SKALIBS_ENVDIR_VERBATIM | SKALIBS_ENVDIR_NOCLAMP, '\n') == -1)
-      strerr_warnwu2sys("envdir ", fn) ;
+      if (verbosity) strerr_warnwu2sys("envdir ", fn) ;
   }
   if (envdumpdir && !env_dump(envdumpdir, 0700, envp))
-    strerr_warnwu2sys("dump kernel environment to ", envdumpdir) ;
+    if (verbosity) strerr_warnwu2sys("dump kernel environment to ", envdumpdir) ;
 
   if (!nologger)
   {
@@ -300,7 +308,8 @@ int main (int argc, char const **argv, char const *const *envp)
       newenvp[0] = pathvar ;
     }
     if (nologger && pipe(notifpipe) < 0) strerr_diefu1sys(111, "pipe") ;
-    if (tty && !slashdev && ioctl(2 - nologger, TIOCNOTTY) == -1) strerr_warnwu1sys("relinquish control terminal") ;
+    if (tty && !slashdev && ioctl(2 - nologger, TIOCNOTTY) == -1)
+      if (verbosity) strerr_warnwu1sys("relinquish control terminal") ;
 
     pid = fork() ;
     if (pid == -1) strerr_diefu1sys(111, "fork") ;

@@ -1,9 +1,11 @@
 Changelog for s6-linux-init.
 
-In 1.1.1.2
+In 1.1.2.0
 ----------
 
  - Bugfixes.
+ - New -v verbosity option to s6-l-i.
+ - To leverage it: new -V boot_verbosity option to s6-l-i-m.
 
 
 In 1.1.1.1

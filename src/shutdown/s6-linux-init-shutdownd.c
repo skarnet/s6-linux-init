@@ -248,6 +248,7 @@ static inline void unsupervise_tree (void)
   if (errno)
     strerr_diefu1sys(111, "readdir " SCANDIRFULL) ;
   dir_close(dir) ;
+  s6_svc_write(SCANDIRFULL S6_SVSCAN_CTLDIR "/control", "a", 1) ;
 }
 
 int main (int argc, char const *const *argv)

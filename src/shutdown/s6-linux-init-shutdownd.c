@@ -242,13 +242,13 @@ static inline void unsupervise_tree (void)
         unlinkat(fdd, d->d_name, 0) ;
         /* if it still fails, too bad, it will restart in stage 4 and race */
       }
-      s6_svc_writectl(fn, S6_SUPERVISE_CTLDIR, "dx", 2) ;
+      s6_svc_writectl(fn, S6_SUPERVISE_CTLDIR, "d", 1) ;
     }
   }
   if (errno)
     strerr_diefu1sys(111, "readdir " SCANDIRFULL) ;
   dir_close(dir) ;
-  s6_svc_write(SCANDIRFULL S6_SVSCAN_CTLDIR "/control", "a", 1) ;
+  s6_svc_write(SCANDIRFULL S6_SVSCAN_CTLDIR "/control", "an", 2) ;
 }
 
 int main (int argc, char const *const *argv)

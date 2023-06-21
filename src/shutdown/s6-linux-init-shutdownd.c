@@ -24,6 +24,7 @@
 #include <skalibs/djbunix.h>
 #include <skalibs/iopause.h>
 #include <skalibs/skamisc.h>
+#include <skalibs/lolstdio.h>
 
 #include <execline/config.h>
 
@@ -174,11 +175,11 @@ static inline void prepare_stage4 (char const *basedir, char what)
     if (buffer_puts(&b, "#!"
        EXECLINE_SHEBANGPREFIX "execlineb -P\n\n"
        EXECLINE_EXTBINPREFIX "foreground { "
-       S6_EXTBINPREFIX "s6-svc -x -- . }\n"
+       S6_EXTBINPREFIX "s6-svc -Ox -- . }\n"
        EXECLINE_EXTBINPREFIX "background\n{\n  ") < 0
      || (!nologger && buffer_puts(&b,
        EXECLINE_EXTBINPREFIX "foreground { "
-       S6_EXTBINPREFIX "s6-svc -xc -- " SCANPREFIX LOGGER_SERVICEDIR " }\n  ") < 0)
+       S6_EXTBINPREFIX "s6-svc -Oxc -- " SCANPREFIX LOGGER_SERVICEDIR " }\n  ") < 0)
      || buffer_putsflush(&b,
        S6_EXTBINPREFIX "s6-svscanctl -b -- " SCANDIRFULL "\n}\n") < 0)
       strerr_diefu2sys(111, "write to ", STAGE4_FILE ".new") ;
@@ -242,13 +243,17 @@ static inline void unsupervise_tree (void)
         unlinkat(fdd, d->d_name, 0) ;
         /* if it still fails, too bad, it will restart in stage 4 and race */
       }
+      LOLDEBUG("unsupervise_tree: renamed %s to %s", d->d_name, fn) ;
       s6_svc_writectl(fn, S6_SUPERVISE_CTLDIR, "d", 1) ;
     }
+#if DEBUG
+    else LOLDEBUG("unsupervise_tree: found %s, not touching", *p) ;
+#endif
   }
   if (errno)
     strerr_diefu1sys(111, "readdir " SCANDIRFULL) ;
   dir_close(dir) ;
-  s6_svc_write(SCANDIRFULL S6_SVSCAN_CTLDIR "/control", "an", 2) ;
+  s6_svc_write(SCANDIRFULL "/" S6_SVSCAN_CTLDIR "/control", "an", 2) ;
 }
 
 int main (int argc, char const *const *argv)
@@ -337,7 +342,9 @@ int main (int argc, char const *const *argv)
     if (r == -1) strerr_diefu1sys(111, "iopause") ;
     if (!r)
     {
+      LOLDEBUG("run_stage3: starting") ;
       run_stage3(basedir) ;
+      LOLDEBUG("run_stage3: done") ;
       tain_now_g() ;
       if (what != 'S') break ;
       tain_add_g(&deadline, &tain_infinite_relative) ;
@@ -355,13 +362,16 @@ int main (int argc, char const *const *argv)
  /* The end is coming! */
 
   prepare_stage4(basedir, what) ;
+  LOLDEBUG("unsupervise_tree: starting") ;
   unsupervise_tree() ;
+  LOLDEBUG("unsupervise_tree: done") ;
   if (!sig_ignore(SIGTERM)) strerr_warnwu1sys("ignore SIGTERM") ;
   if (!inns)
   {
     sync() ;
     strerr_warni1x("sending all processes the TERM signal...") ;
   }
+  LOLDEBUG("sending SIGTERM and SIGCONT") ;
   kill(-1, SIGTERM) ;
   kill(-1, SIGCONT) ;
   tain_from_millisecs(&deadline, grace_time) ;
@@ -373,6 +383,7 @@ int main (int argc, char const *const *argv)
     sync() ;
     strerr_warni1x("sending all processes the KILL signal...") ;
   }
+  LOLDEBUG("sending SIGKILL") ;
   kill(-1, SIGKILL) ;
   return 0 ;
 }

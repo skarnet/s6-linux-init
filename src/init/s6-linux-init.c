@@ -73,8 +73,8 @@ static void kbspecials (void)
 {
   int fd ;
   if (inns) return ;
-  fd = open("/dev/tty0", O_RDONLY | O_NOCTTY) ;
-  if (fd < 0)
+  fd = open2("/dev/tty0", O_RDONLY | O_NOCTTY) ;
+  if (fd == -1)
   {
     if (errno == ENOENT)
     {
@@ -96,7 +96,7 @@ static void kbspecials (void)
 
 static void opendevnull (void)
 {
-  if (open("/dev/null", O_RDONLY))
+  if (open2("/dev/null", O_RDONLY))
   {  /* ghetto /dev/null to the rescue */
     int p[2] ;
     if (verbosity) strerr_warnwu1sys("open /dev/null") ;
@@ -145,7 +145,7 @@ static inline void run_stage2 (char const *basedir, char const **argv, unsigned 
   {
    /* block on opening the log fifo until the catch-all logger is up */
     close(1) ;
-    if (open(LOGFIFO, O_WRONLY) != 1)
+    if (open2(LOGFIFO, O_WRONLY) != 1)
       strerr_diefu1sys(111, "open " LOGFIFO " for writing") ;
     if (fd_copy(2, 1) == -1)
       strerr_diefu1sys(111, "fd_copy stdout to stderr") ;
@@ -231,7 +231,7 @@ int main (int argc, char const **argv, char const *const *envp)
    /* at this point we're totally in the dark, hoping /dev/console will work */
     nope = mount("dev", slashdev, "devtmpfs", MS_NOSUID | MS_NOEXEC, "") < 0 ;
     e = errno ;
-    if (open("/dev/console", O_WRONLY) && open("/dev/null", O_WRONLY)) return 111 ;
+    if (open2("/dev/console", O_WRONLY) && open2("/dev/null", O_WRONLY)) return 111 ;
     if (fd_move(2, 0) < 0) return 111 ;
     if (fd_copy(1, 2) < 0) strerr_diefu1sys(111, "fd_copy") ;
     if (nope)
@@ -239,13 +239,13 @@ int main (int argc, char const **argv, char const *const *envp)
       errno = e ;
       strerr_diefu1sys(111, "mount a devtmpfs on /dev") ;
     }
-    if (open("/dev/console", O_RDONLY)) opendevnull() ;
+    if (open2("/dev/console", O_RDONLY)) opendevnull() ;
   }
 
   if (!hasconsole)
   {
     if (!slashdev) reset_stdin() ;
-    if (open("/dev/null", O_WRONLY) != 1 || fd_copy(2, 1) == -1)
+    if (open2("/dev/null", O_WRONLY) != 1 || fd_copy(2, 1) == -1)
       return 111 ;
   }
 
@@ -288,7 +288,7 @@ int main (int argc, char const **argv, char const *const *envp)
     int fdr = open_read(LOGFIFO) ;
     if (fdr == -1) strerr_diefu1sys(111, "open " LOGFIFO) ;
     fd_close(1) ;
-    if (open(LOGFIFO, O_WRONLY) != 1) strerr_diefu1sys(111, "open " LOGFIFO) ;
+    if (open2(LOGFIFO, O_WRONLY) != 1) strerr_diefu1sys(111, "open " LOGFIFO) ;
     fd_close(fdr) ;
   }
 

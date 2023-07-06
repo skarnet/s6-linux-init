@@ -146,7 +146,7 @@ static inline void handle_fifo (buffer *b, char *what, tain *deadline, unsigned 
 static void restore_console (void)
 {
   fd_close(1) ;
-  if (open("/dev/console", O_WRONLY) != 1 && open("/dev/null", O_WRONLY) != 1)
+  if (open2("/dev/console", O_WRONLY) != 1 && open2("/dev/null", O_WRONLY) != 1)
     strerr_warnwu1sys("open /dev/console for writing") ;
   else if (fd_copy(2, 1) < 0)
     strerr_warnwu1sys("fd_copy") ;

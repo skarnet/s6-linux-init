@@ -6,6 +6,7 @@
 #include <skalibs/types.h>
 #include <skalibs/sgetopt.h>
 #include <skalibs/strerr.h>
+#include <skalibs/cspawn.h>
 #include <skalibs/djbunix.h>
 #include <skalibs/exec.h>
 
@@ -66,7 +67,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
   if (!strcmp(argv[0], "0") || !strcmp(argv[0], "6"))
   {
     int wstat ;
-    pid_t pid = child_spawn0(newargv[0], newargv, envp) ;
+    pid_t pid = cspawn(newargv[0], newargv, envp, 0, 0, 0) ;
     if (!pid) strerr_diefu2sys(111, "spawn ", newargv[0]) ;
     if (wait_pid(pid, &wstat) < 0) strerr_diefu1sys(111, "wait_pid") ;
     if (WIFSIGNALED(wstat))

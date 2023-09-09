@@ -21,6 +21,7 @@
 #include <skalibs/sig.h>
 #include <skalibs/tai.h>
 #include <skalibs/direntry.h>
+#include <skalibs/cspawn.h>
 #include <skalibs/djbunix.h>
 #include <skalibs/iopause.h>
 #include <skalibs/skamisc.h>
@@ -78,7 +79,7 @@ static inline void run_stage3 (char const *basedir)
   char const *stage3_argv[2] = { stage3, 0 } ;
   memcpy(stage3, basedir, basedirlen) ;
   memcpy(stage3 + basedirlen, "/scripts/" STAGE3, sizeof("/scripts/" STAGE3)) ;
-  pid = child_spawn0(stage3_argv[0], stage3_argv, (char const *const *)environ) ;
+  pid = cspawn(stage3_argv[0], stage3_argv, (char const *const *)environ, CSPAWN_FLAGS_SIGBLOCKNONE, 0, 0) ;
   if (pid)
   {
     int wstat ;

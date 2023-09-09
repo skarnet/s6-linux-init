@@ -3,6 +3,7 @@ Changelog for s6-linux-init.
 In 1.1.2.0
 ----------
 
+ - Adaptation to skalibs-2.14.0.0.
  - Bugfixes.
  - New -v verbosity option to s6-l-i.
  - To leverage it: new -V boot_verbosity option to s6-l-i-m.

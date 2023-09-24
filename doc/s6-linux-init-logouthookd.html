@@ -31,11 +31,11 @@
 <p>
  s6-linux-init-logouthookd implements a
 <a href="//skarnet.org/software/s6/localservice.html">local service</a>
-for getty programs that add an utmp record when a user logs in.
+for getty programs that add a utmp record when a user logs in.
 </p>
 
 <p>
- In the sysvinit model, <tt>getty</tt>/<tt>login</tt> and similar programs add an utmp
+ In the sysvinit model, <tt>getty</tt>/<tt>login</tt> and similar programs add a utmp
 record for every user that logs in, then exec into the user's shell.
 At logout time, the shell dies; sysvinit is supervising the <tt>getty</tt>
 program, so it's watching the pid, and respawns the <tt>getty</tt> when the

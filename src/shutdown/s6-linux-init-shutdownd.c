@@ -191,7 +191,7 @@ static inline void prepare_stage4 (char const *basedir, char what)
       EXECLINE_SHEBANGPREFIX "execlineb -P\n\n"
       EXECLINE_EXTBINPREFIX "foreground { "
       S6_LINUX_INIT_BINPREFIX "s6-linux-init-umountall }\n"
-      EXECLINE_EXTBINPREFIX "foreground { tryexec {") < 0
+      EXECLINE_EXTBINPREFIX "foreground { tryexec { ") < 0
      || !string_quote(&satmp, basedir, strlen(basedir))
      || buffer_put(&b, satmp.s + sabase, satmp.len - sabase) < 0
      || buffer_puts(&b, "/scripts/" STAGE4 " } }\n"

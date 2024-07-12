@@ -130,11 +130,13 @@ static int container_exit_script (buffer *b, char const *data)
       EXECLINE_EXTBINPREFIX "fdclose 1\n"
       EXECLINE_EXTBINPREFIX "fdclose 2\n"
       EXECLINE_EXTBINPREFIX "wait { }\n"
-      EXECLINE_EXTBINPREFIX "ifelse -X { test $HALTCODE = r } { "
+      EXECLINE_EXTBINPREFIX "ifelse -X { "
+      EXECLINE_EXTBINPREFIX "eltest $HALTCODE = r } { "
       S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -fr") < 0
    || (!innssync && buffer_puts(b, "n") < 0)
    || buffer_puts(b, " }\n"
-      EXECLINE_EXTBINPREFIX "ifelse -X { test $HALTCODE = p } { "
+      EXECLINE_EXTBINPREFIX "ifelse -X { "
+      EXECLINE_EXTBINPREFIX "eltest $HALTCODE = p } { "
       S6_LINUX_INIT_EXTBINPREFIX "s6-linux-init-hpr -fp") < 0
    || (!innssync && buffer_puts(b, "n") < 0)
    || buffer_puts(b, " }\n"

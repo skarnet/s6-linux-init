@@ -4,6 +4,7 @@ In 1.1.2.1
 ----------
 
  - Bugfixes.
+ - Install static libraries in /usr/lib.
 
 
 In 1.1.2.0

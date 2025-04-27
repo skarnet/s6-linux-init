@@ -1,0 +1,5 @@
+skeldir='$prefix/etc/s6-linux-init/skel'
+tmpfsdir=/run
+scandir=service
+usensss=false
+utmps=false

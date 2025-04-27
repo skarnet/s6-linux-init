@@ -1,0 +1,10 @@
+echo "#define ${package_macro_name}_SKELDIR \"$skeldir\""
+echo "#define ${package_macro_name}_TMPFS \"$tmpfsdir\""
+echo "#define ${package_macro_name}_SCANDIR \"$scandir\""
+echo
+echo "#undef ${package_macro_name}_UTMPD_PATH"
+echo "#undef ${package_macro_name}_WTMPD_PATH"
+if $utmps ; then
+  echo "#define ${package_macro_name}_UTMPD_PATH \"$utmpd_path\""
+  echo "#define ${package_macro_name}_WTMPD_PATH \"$wtmpd_path\""
+fi

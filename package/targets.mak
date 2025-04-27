@@ -11,6 +11,7 @@ s6-linux-init-umountall \
 s6-linux-init-maker
 
 LIB_DEFS := S6_LINUX_INIT=s6_linux_init
+S6_LINUX_INIT_DESCRIPTION := The s6-linux-init library (small helpers nothing uses at this moment)
 
 SKELFILES := $(wildcard skel/*)
 

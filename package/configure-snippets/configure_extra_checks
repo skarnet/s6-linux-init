@@ -1,0 +1,28 @@
+isprefix () {
+  case "$1" in "$2"*) return 0 ;; *) return 1 ;; esac ;
+}
+
+getmacro () {
+  echo "#include <$1>" | $CC_AUTO $CPPFLAGS_AUTO $CPPFLAGS $CPPFLAGS_POST $CFLAGS_AUTO $CFLAGS $CFLAGS_POST -E -dM - | grep -F -- "$2" | cut -d' ' -f3-
+}
+
+getmacrostring () {
+  getmacro "$1" "$2" | sed -e 's/^"//' -e 's/"$//'
+}
+
+if $utmps ; then
+  echo "Sanity checking cross-package configuration..."
+  p=`getmacrostring utmps/config.h UTMPS_UTMPD_PATH`
+  if isprefix "$p" "$tmpfsdir"/ ; then : ; else
+    echo "UTMPS_UTMPD_PATH has been configured as $p which is not located under $tmpfsdir"
+    exit 1
+  fi
+  utmpd_path=${p##${tmpfsdir}/}
+  p=`getmacrostring utmps/config.h UTMPS_WTMPD_PATH`
+  if isprefix "$p" "$tmpfsdir"/ ; then : ; else
+    echo "UTMPS_WTMPD_PATH has been configured as $p which is not located under $tmpfsdir"
+    exit 1
+  fi
+  wtmpd_path=${p##${tmpfsdir}/}
+  echo "  ... ok"
+fi

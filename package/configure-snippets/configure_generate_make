@@ -1,0 +1,12 @@
+if $usensss ; then
+  echo "LIBNSSS := -lnsss"
+  echo "MAYBEPTHREAD_LIB := -lpthread"
+else
+  echo "LIBNSSS :="
+  echo "MAYBEPTHREAD_LIB :="
+fi
+if $utmps ; then
+  echo "LIBUTMPS := -lutmps"
+else
+  echo "LIBUTMPS :="
+fi

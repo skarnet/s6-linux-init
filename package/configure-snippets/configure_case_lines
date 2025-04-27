@@ -1,0 +1,7 @@
+    --skeldir=*) skeldir=${arg#*=} ;;
+    --tmpfsdir=*) tmpfsdir=${arg#*=} ;;
+    --scandir=*) scandir=${arg#*=} ;;
+    --enable-nsss|--enable-nsss=yes) usensss=true ;;
+    --disable-nsss|--enable-nsss=no) usensss=false ;;
+    --enable-utmps|--enable-utmps=yes) utmps=true ;;
+    --disable-utmps|--enable-utmps=no) utmps=false ;;

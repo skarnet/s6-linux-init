@@ -1,0 +1,4 @@
+  --skeldir=DIR                 script skeleton files [PREFIX/etc/s6-linux-init/skel]
+  --tmpfsdir=DIR                assume the initial tmpfs will be mounted on DIR [/run]
+  --scandir=DIR                 use tmpfsdir/DIR as the s6-svscan directory [service]
+

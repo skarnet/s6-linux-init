@@ -1,3 +1,4 @@
+echo "skeldir := $skeldir"
 if $usensss ; then
   echo "LIBNSSS := -lnsss"
   echo "MAYBEPTHREAD_LIB := -lpthread"

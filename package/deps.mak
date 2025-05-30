@@ -34,6 +34,8 @@ endif
 libs6_linux_init.pc: EXTRA_LIBS := -lskarnet ${SOCKET_LIB} ${SYSCLOCK_LIB}
 libs6_linux_init.so.xyzzy: EXTRA_LIBS := -lskarnet ${SOCKET_LIB} ${SYSCLOCK_LIB}
 libs6_linux_init.so.xyzzy:src/lib/s6_linux_init_logouthook.lo
+libs6_linux_init.dylib.xyzzy: EXTRA_LIBS := -lskarnet ${SOCKET_LIB} ${SYSCLOCK_LIB}
+libs6_linux_init.dylib.xyzzy:src/lib/s6_linux_init_logouthook.lo
 s6-linux-init-echo: EXTRA_LIBS :=
 s6-linux-init-echo: src/misc/s6-linux-init-echo.o -lskarnet
 s6-linux-init-logouthookd: EXTRA_LIBS := ${SYSCLOCK_LIB} ${SOCKET_LIB}

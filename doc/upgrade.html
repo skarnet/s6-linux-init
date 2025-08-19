@@ -18,6 +18,30 @@
 
 <h1> What has changed in s6-linux-init </h1>
 
+<h2> in 1.2.0.0 </h2>
+
+<ul>
+ <li> <a href="//skarnet.org/software/skalibs/">skalibs</a>
+dependency bumped to 2.14.5.0. </li>
+ <li> <a href="//skarnet.org/software/nsss/">nsss</a>
+optional dependency bumped to 0.2.1.1. </li>
+ <li> <a href="//skarnet.org/software/utmps/">utmps</a>
+optional dependency bumped to 0.1.3.2. </li>
+ <li> <a href="//skarnet.org/software/execline/">execline</a>
+dependency bumped to 2.9.7.1. </li>
+ <li> <a href="//skarnet.org/software/s6/">s6</a>
+dependency bumped to 2.13.3.0. </li>
+ <li> The format of the envdir created by the <tt>-s</tt> option to
+<a href="s6-linux-init.html">s6-linux-init</a> (and indirectly
+<a href="s6-linux-init-maker.html">s6-linux-init-maker</a>) has
+changed: it is now meant to be read by
+<a href="//skarnet.org/software/s6/s6-envdir.html">s6-envdir -f</a>,
+without the <tt>-n</tt> option. The change should normally not
+impact you, but if you're using the <tt>-s</tt> functionality, be
+aware of it the next time you run
+<a href="s6-linux-init-maker.html">s6-linux-init-maker</a>. </li>
+</ul>
+
 <h2> in 1.1.3.0 </h2>
 
 <ul>

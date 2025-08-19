@@ -1,5 +1,11 @@
 Changelog for s6-linux-init.
 
+In 1.2.0.0
+----------
+
+ - s6-linux-init -s now dumps env without nochomp.
+
+
 In 1.1.3.0
 ----------
 

@@ -280,7 +280,7 @@ int main (int argc, char const **argv, char const *const *envp)
     if (envdir_internal(fn, &envmodifs, SKALIBS_ENVDIR_VERBATIM | SKALIBS_ENVDIR_NOCLAMP, '\n') == -1)
       if (verbosity) strerr_warnwu2sys("envdir ", fn) ;
   }
-  if (envdumpdir && !env_dump(envdumpdir, 0700, envp))
+  if (envdumpdir && !env_dump4(envdumpdir, 0700, envp, 0))
     if (verbosity) strerr_warnwu2sys("dump kernel environment to ", envdumpdir) ;
 
   if (!nologger)

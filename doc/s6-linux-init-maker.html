@@ -249,7 +249,7 @@ needed at a later time; in that case, giving the <tt>-s</tt> option
 to <tt>s6-linux-init-maker</tt> makes stage 1 init dump the "kernel" environment
 variables into the <em>env_store</em> directory (under a format that is
 later readable with
-<a href="//skarnet.org/software/s6/s6-envdir.html">s6-envdir -fn</a>)
+<a href="//skarnet.org/software/s6/s6-envdir.html">s6-envdir -f</a>)
 before erasing them. <em>env_store</em> should obviously be
 a writable directory, so it should be located under <tt>/run</tt>
 (or your chosen tmpfsdir)!

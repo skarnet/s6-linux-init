@@ -7,22 +7,20 @@
 #include <errno.h>
 #include <signal.h>
 #include <termios.h>
-#include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/reboot.h>
 #include <sys/ioctl.h>
 
 #include <linux/kd.h>
 
+#include <skalibs/stat.h>
+#include <skalibs/uint64.h>
 #include <skalibs/types.h>
 #include <skalibs/allreadwrite.h>
-#include <skalibs/sgetopt.h>
-#include <skalibs/strerr.h>
-#include <skalibs/stralloc.h>
+#include <skalibs/envexec.h>
 #include <skalibs/sig.h>
-#include <skalibs/env.h>
+#include <skalibs/stralloc.h>
 #include <skalibs/djbunix.h>
-#include <skalibs/exec.h>
 
 #include <s6/config.h>
 
@@ -35,12 +33,30 @@
 
 #define BANNER "\n  s6-linux-init version " S6_LINUX_INIT_VERSION "\n\n"
 
-static int inns = 0 ;
-static int nologger = 0 ;
+enum golb_e
+{
+  GOLB_HANDSOFFRUN = 0x01,
+  GOLB_NOUNMOUNTRUN = 0x02,
+  GOLB_INNS = 0x04,
+  GOLB_NOLOGGER = 0x08,
+} ;
+
+enum gola_e
+{
+  GOLA_VERBOSITY,
+  GOLA_BASEDIR,
+  GOLA_PATH,
+  GOLA_ENVDUMPDIR,
+  GOLA_MASK,
+  GOLA_SLASHDEV,
+  GOLA_INITDEFAULT,
+  GOLA_N
+} ;
+
 static int notifpipe[2] ;
 static unsigned int verbosity = 1 ;
 
-static inline char const *scan_cmdline (char const *initdefault, char const *const *argv, unsigned int argc)
+static inline char const *scan_cmdline (char const *initdefault, char const *const *argv, unsigned int argc, int inns)
 {
   if (!inns)
   {
@@ -71,9 +87,7 @@ static inline void wait_for_notif (int fd)
 
 static void kbspecials (void)
 {
-  int fd ;
-  if (inns) return ;
-  fd = open2("/dev/tty0", O_RDONLY | O_NOCTTY) ;
+  int fd = open2("/dev/tty0", O_RDONLY | O_NOCTTY) ;
   if (fd == -1)
   {
     if (errno == ENOENT)
@@ -112,7 +126,7 @@ static void reset_stdin (void)
   opendevnull() ;
 }
 
-static inline void run_stage2 (char const *basedir, char const **argv, unsigned int argc, char const *const *envp, size_t envlen, char const *modifs, size_t modiflen, char const *initdefault, char const *tty)
+static inline void run_stage2 (char const *basedir, char const **argv, unsigned int argc, char const *const *envp, size_t envlen, char const *modifs, size_t modiflen, char const *initdefault, char const *tty, uint64_t wgolb)
 {
   size_t dirlen = strlen(basedir) ;
   char const *childargv[argc + 3] ;
@@ -132,11 +146,11 @@ static inline void run_stage2 (char const *basedir, char const **argv, unsigned 
   memcpy(fn, basedir, dirlen) ;
   memcpy(fn + dirlen, "/scripts/" STAGE2, sizeof("/scripts/" STAGE2)) ;
   childargv[0] = fn ;
-  childargv[1] = scan_cmdline(initdefault, argv, argc) ;
+  childargv[1] = scan_cmdline(initdefault, argv, argc, wgolb & GOLB_INNS) ;
   for (unsigned int i = 0 ; i < argc ; i++)
     childargv[i+2] = argv[i] ;
   childargv[argc + 2] = 0 ;
-  if (nologger)
+  if (wgolb & GOLB_NOLOGGER)
   {
     close(notifpipe[1]) ;
     wait_for_notif(notifpipe[0]) ;
@@ -155,16 +169,39 @@ static inline void run_stage2 (char const *basedir, char const **argv, unsigned 
 
 int main (int argc, char const **argv, char const *const *envp)
 {
+  static gol_bool const rgolb[] =
+  {
+    { .so = 'n', .lo = "no-unmount-slashrun", .clear = GOLB_HANDSOFFRUN, .set = GOLB_NOUNMOUNTRUN },
+    { .so = 'N', .lo = "hands-off-slashrun", .clear = 0, .set = GOLB_HANDSOFFRUN },
+    { .so = 'C', .lo = "container", .clear = 0, .set = GOLB_INNS },
+    { .so = 'B', .lo = "no-logger", .clear = 0, .set = GOLB_NOLOGGER },
+  } ;
+  static gol_arg const rgola[] =
+  {
+    { .so = 'v', .lo = "verbosity", .i = GOLA_VERBOSITY },
+    { .so = 'c', .lo = "basedir", .i = GOLA_BASEDIR },
+    { .so = 'p', .lo = "initial-path", .i = GOLA_PATH },
+    { .so = 's', .lo = "envdumpdir", .i = GOLA_ENVDUMPDIR },
+    { .so = 'm', .lo = "umask", .i = GOLA_MASK },
+    { .so = 'd', .lo = "slashdev", .i = GOLA_SLASHDEV },
+    { .so = 'D', .lo = "default-runlevel", .i = GOLA_INITDEFAULT },
+  } ;
+  char const *wgola[GOLA_N] =
+  {
+    [GOLA_VERBOSITY] = 0,
+    [GOLA_BASEDIR] = BASEDIR,
+    [GOLA_PATH] = INITPATH,
+    [GOLA_ENVDUMPDIR] = 0,
+    [GOLA_MASK] = 0,
+    [GOLA_SLASHDEV] = 0,
+    [GOLA_INITDEFAULT] = "default",
+  } ;
+  uint64_t wgolb = 0 ;
   mode_t mask = 0022 ;
-  char const *basedir = BASEDIR ;
-  char const *path = INITPATH ;
-  char const *slashdev = 0 ;
-  char const *envdumpdir = 0 ;
-  char const *initdefault = "default" ;
-  int mounttype = 1 ;
-  int hasconsole = 1 ;
-  char *tty = 0 ;
   stralloc envmodifs = STRALLOC_ZERO ;
+  char *tty = 0 ;
+  unsigned int golc ;
+  int hasconsole ;
   PROG = "s6-linux-init" ;
 
   if (getpid() != 1)
@@ -173,33 +210,13 @@ int main (int argc, char const **argv, char const *const *envp)
     xexec_e(argv, envp) ;
   }
 
-  {
-    subgetopt l = SUBGETOPT_ZERO ;
-    for (;;)
-    {
-      int opt = subgetopt_r(argc, argv, "v:c:p:s:m:d:D:nNCB", &l) ;
-      if (opt == -1) break ;
-      switch (opt)
-      {
-        case 'v' : if (!uint0_scan(l.arg, &verbosity)) dieusage() ; break ;
-        case 'c' : basedir = l.arg ; break ;
-        case 'p' : path = l.arg ; break ;
-        case 's' : envdumpdir = l.arg ; break ;
-        case 'm' : if (!uint0_oscan(l.arg, &mask)) dieusage() ; break ;
-        case 'd' : slashdev = l.arg ; break ;
-        case 'D' : initdefault = l.arg ; break ;
-        case 'n' : mounttype = 2 ; break ;
-        case 'N' : mounttype = 0 ; break ;
-        case 'C' : inns = 1 ; break ;
-        case 'B' : nologger = 1 ; break ;
-        default : dieusage() ;
-      }
-    }
-    argc -= l.ind ; argv += l.ind ;
-  }
+  golc = GOL_main(argc, argv, rgolb, rgola, &wgolb, wgola) ;
+  argc -= golc ; argv += golc ;
+  if (wgola[GOLA_VERBOSITY] && !uint0_scan(wgola[GOLA_VERBOSITY], &verbosity)) dieusage() ;
+  if (wgola[GOLA_MASK] && !uint0_oscan(wgola[GOLA_MASK], &mask)) dieusage() ;
 
-  if (fcntl(1, F_GETFD) < 0) hasconsole = 0 ;
-  if (inns)
+  hasconsole = fcntl(1, F_GETFD) >= 0 ;
+  if (wgolb & GOLB_INNS)
   {
     char c ;
     ssize_t r = read(3, &c, 1) ; /* Docker synchronization protocol */
@@ -212,24 +229,24 @@ int main (int argc, char const **argv, char const *const *envp)
       if (r) if (verbosity) strerr_warnw1x("parent wrote to fd 3!") ;
       close(3) ;
     }
-    if (!slashdev && hasconsole && isatty(2 - nologger))
+    if (!wgola[GOLA_SLASHDEV] && hasconsole && isatty(1 + !(wgolb & GOLB_NOLOGGER)))
     {
-      tty = ttyname(2 - nologger) ;
-      if (!tty) if (verbosity) strerr_warnwu2sys("ttyname std", nologger ? "err" : "out") ;
+      tty = ttyname(1 + !(wgolb & GOLB_NOLOGGER)) ;
+      if (!tty) if (verbosity) strerr_warnwu2sys("ttyname std", wgolb & GOLB_NOLOGGER ? "err" : "out") ;
     }
   }
   else if (hasconsole) allwrite(1, BANNER, sizeof(BANNER) - 1) ;
   if (chdir("/") == -1) strerr_diefu1sys(111, "chdir to /") ;
   umask(mask) ;
 
-  if (slashdev)
+  if (wgola[GOLA_SLASHDEV])
   {
     int nope, e ;
     close(0) ;
     close(1) ;
     close(2) ;
    /* at this point we're totally in the dark, hoping /dev/console will work */
-    nope = mount("dev", slashdev, "devtmpfs", MS_NOSUID | MS_NOEXEC, "") < 0 ;
+    nope = mount("dev", wgola[GOLA_SLASHDEV], "devtmpfs", MS_NOSUID | MS_NOEXEC, "") < 0 ;
     e = errno ;
     if (open2("/dev/console", O_WRONLY) && open2("/dev/null", O_WRONLY)) return 111 ;
     if (fd_move(2, 0) < 0) return 111 ;
@@ -244,14 +261,14 @@ int main (int argc, char const **argv, char const *const *envp)
 
   if (!hasconsole)
   {
-    if (!slashdev) reset_stdin() ;
+    if (!wgola[GOLA_SLASHDEV]) reset_stdin() ;
     if (open2("/dev/null", O_WRONLY) != 1 || fd_copy(2, 1) == -1)
       return 111 ;
   }
 
-  if (mounttype)
+  if (!(wgolb & GOLB_HANDSOFFRUN))
   {
-    if (mounttype == 2)
+    if (wgolb & GOLB_NOUNMOUNTRUN)
     {
       if (mount("tmpfs", S6_LINUX_INIT_TMPFS, "tmpfs", MS_REMOUNT | MS_NODEV | MS_NOSUID, "mode=0755") == -1)
         strerr_diefu1sys(111, "remount " S6_LINUX_INIT_TMPFS) ;
@@ -269,9 +286,9 @@ int main (int argc, char const **argv, char const *const *envp)
   }
 
   {
-    size_t dirlen = strlen(basedir) ;
+    size_t dirlen = strlen(wgola[GOLA_BASEDIR]) ;
     char fn[dirlen + 1 + (sizeof(RUNIMAGE) > sizeof(ENVSTAGE1) ? sizeof(RUNIMAGE) : sizeof(ENVSTAGE1))] ;
-    memcpy(fn, basedir, dirlen) ;
+    memcpy(fn, wgola[GOLA_BASEDIR], dirlen) ;
     fn[dirlen] = '/' ;
     memcpy(fn + dirlen + 1, RUNIMAGE, sizeof(RUNIMAGE)) ;
     if (!hiercopy_loose(fn, S6_LINUX_INIT_TMPFS))
@@ -280,10 +297,10 @@ int main (int argc, char const **argv, char const *const *envp)
     if (envdir_internal(fn, &envmodifs, SKALIBS_ENVDIR_VERBATIM | SKALIBS_ENVDIR_NOCLAMP, '\n') == -1)
       if (verbosity) strerr_warnwu2sys("envdir ", fn) ;
   }
-  if (envdumpdir && !env_dump4(envdumpdir, 0700, envp, 0))
-    if (verbosity) strerr_warnwu2sys("dump kernel environment to ", envdumpdir) ;
+  if (wgola[GOLA_ENVDUMPDIR] && !env_dump4(wgola[GOLA_ENVDUMPDIR], 0700, envp, 0))
+    if (verbosity) strerr_warnwu2sys("dump kernel environment to ", wgola[GOLA_ENVDUMPDIR]) ;
 
-  if (!nologger)
+  if (!(wgolb & GOLB_NOLOGGER))
   {
     int fdr = open_read(LOGFIFO) ;
     if (fdr == -1) strerr_diefu1sys(111, "open " LOGFIFO) ;
@@ -295,34 +312,34 @@ int main (int argc, char const **argv, char const *const *envp)
   {
     pid_t pid ;
     char const *newenvp[2] = { 0, 0 } ;
-    size_t pathlen = path ? strlen(path) : 0 ;
+    size_t pathlen = wgola[GOLA_PATH] ? strlen(wgola[GOLA_PATH]) : 0 ;
     char fmtfd[2 + UINT_FMT] = "-" ;
     char const *newargv[5] = { S6_EXTBINPREFIX "s6-svscan", fmtfd, "--", SCANDIRFULL, 0 } ;
     char pathvar[6 + pathlen] ;
-    if (path)
+    if (wgola[GOLA_PATH])
     {
-      if (setenv("PATH", path, 1) == -1)
+      if (setenv("PATH", wgola[GOLA_PATH], 1) == -1)
         strerr_diefu1sys(111, "set initial PATH") ;
       memcpy(pathvar, "PATH=", 5) ;
-      memcpy(pathvar + 5, path, pathlen + 1) ;
+      memcpy(pathvar + 5, wgola[GOLA_PATH], pathlen + 1) ;
       newenvp[0] = pathvar ;
     }
-    if (nologger && pipe(notifpipe) < 0) strerr_diefu1sys(111, "pipe") ;
-    if (tty && !slashdev && ioctl(2 - nologger, TIOCNOTTY) == -1)
+    if (wgolb & GOLB_NOLOGGER && pipe(notifpipe) < 0) strerr_diefu1sys(111, "pipe") ;
+    if (tty && !wgola[GOLA_SLASHDEV] && ioctl(1 + !(wgolb & GOLB_NOLOGGER), TIOCNOTTY) == -1)
       if (verbosity) strerr_warnwu1sys("relinquish control terminal") ;
 
     pid = fork() ;
     if (pid == -1) strerr_diefu1sys(111, "fork") ;
-    if (!pid) run_stage2(basedir, argv, argc, newenvp, !!path, envmodifs.s, envmodifs.len, initdefault, tty) ;
+    if (!pid) run_stage2(wgola[GOLA_BASEDIR], argv, argc, newenvp, !!wgola[GOLA_PATH], envmodifs.s, envmodifs.len, wgola[GOLA_INITDEFAULT], tty, wgolb) ;
 
     reset_stdin() ;
     setsid() ; /* just in case our caller is something weird */
-    if (nologger)
+    if (wgolb & GOLB_NOLOGGER)
     {
       close(notifpipe[0]) ;
       fmtfd[1] = 'd' ;
       fmtfd[2 + uint_fmt(fmtfd + 2, notifpipe[1])] = 0 ;
-      kbspecials() ;
+      if (!(wgolb & GOLB_INNS)) kbspecials() ;
     }
     else
     {
@@ -330,10 +347,10 @@ int main (int argc, char const **argv, char const *const *envp)
       if (fd < 0) strerr_diefu1sys(111, "dup stderr") ;
       fmtfd[1] = 'X' ;
       fmtfd[2 + uint_fmt(fmtfd + 2, (unsigned int)fd)] = 0 ;
-      kbspecials() ;
+      if (!(wgolb & GOLB_INNS)) kbspecials() ;
       if (fd_copy(2, 1) == -1)
         strerr_diefu1sys(111, "redirect output file descriptor") ;
     }
-    xmexec_fm(newargv, newenvp, !!path, envmodifs.s, envmodifs.len) ;
+    xmexec_fm(newargv, newenvp, !!wgola[GOLA_PATH], envmodifs.s, envmodifs.len) ;
   }
 }

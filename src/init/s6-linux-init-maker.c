@@ -44,6 +44,7 @@ static unsigned int initial_umask = 0022 ;
 static unsigned int timestamp_style = 1 ;
 static unsigned int finalsleep = 3000 ;
 static unsigned int boot_verbosity = 1 ;
+static unsigned int readyfd = 0 ;
 static int mounttype = 1 ;
 static int console = 0 ;
 static int logouthookd = 0 ;
@@ -284,6 +285,12 @@ static inline int stage1_script (buffer *b, char const *data)
      || !string_quote(&satmp, initdefault, strlen(initdefault))
      || buffer_put(b, satmp.s + sabase, satmp.len - sabase) < 0) goto err ;
     satmp.len = sabase ;
+  }
+  if (readyfd)
+  {
+    char fmtw[UINT_FMT] ;
+    if (buffer_puts(b, " -W ") < 0
+     || buffer_put(b, fmtw, uint_fmt(fmtw, readyfd)) < 0) return 0 ;
   }
   if (mounttype == 2)
   {
@@ -666,7 +673,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
     subgetopt l = SUBGETOPT_ZERO ;
     for (;;)
     {
-      int opt = subgetopt_r(argc, argv, "V:c:u:G:1Lp:m:t:d:s:e:E:q:D:nNf:R:CBS", &l) ;
+      int opt = subgetopt_r(argc, argv, "V:c:u:G:1Lp:m:t:d:s:e:E:q:D:W:nNf:R:CBS", &l) ;
       if (opt == -1) break ;
       switch (opt)
       {
@@ -691,6 +698,7 @@ int main (int argc, char const *const *argv, char const *const *envp)
         case 'C' : inns = 1 ; break ;
         case 'B' : nologger = 1 ; break ;
         case 'S' : innssync = 1 ; break ;
+        case 'W' : if (!uint0_scan(l.arg, &readyfd)) dieusage() ; break ;
         default : dieusage() ;
       }
     }
@@ -702,6 +710,8 @@ int main (int argc, char const *const *argv, char const *const *envp)
     strerr_dief3x(100, "base directory ", robase, " is not absolute") ;
   if (slashdev && slashdev[0] != '/')
     strerr_dief3x(100, "devtmpfs directory ", slashdev, " is not absolute") ;
+  if (readyfd && readyfd < 3)
+    strerr_dief1x(100, "readyfd cannot be 1 or 2") ;
   if (env_store)
   {
     if (env_store[0] != '/')

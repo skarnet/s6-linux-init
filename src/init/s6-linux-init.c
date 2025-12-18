@@ -28,7 +28,7 @@
 #include "defaults.h"
 #include "initctl.h"
 
-#define USAGE "s6-linux-init [ -v verbosity ] [ -c basedir ] [ -p initpath ] [ -s envdumpdir ] [ -m umask ] [ -d devtmpfs ] [ -D initdefault ] [ -n | -N ] [ -C ] [ -B ]"
+#define USAGE "s6-linux-init [ -v verbosity ] [ -c basedir ] [ -p initpath ] [ -s envdumpdir ] [ -m umask ] [ -d devtmpfs ] [ -D initdefault ] [ -n | -N ] [ -C ] [ -B ] [ -W readyfd ]"
 #define dieusage() strerr_dieusage(100, USAGE)
 
 #define BANNER "\n  s6-linux-init version " S6_LINUX_INIT_VERSION "\n\n"
@@ -50,6 +50,7 @@ enum gola_e
   GOLA_MASK,
   GOLA_SLASHDEV,
   GOLA_INITDEFAULT,
+  GOLA_READYFD,
   GOLA_N
 } ;
 
@@ -185,6 +186,7 @@ int main (int argc, char const **argv, char const *const *envp)
     { .so = 'm', .lo = "umask", .i = GOLA_MASK },
     { .so = 'd', .lo = "slashdev", .i = GOLA_SLASHDEV },
     { .so = 'D', .lo = "default-runlevel", .i = GOLA_INITDEFAULT },
+    { .so = 'W', .lo = "readiness-fd", .i = GOLA_READYFD },
   } ;
   char const *wgola[GOLA_N] =
   {
@@ -195,9 +197,11 @@ int main (int argc, char const **argv, char const *const *envp)
     [GOLA_MASK] = 0,
     [GOLA_SLASHDEV] = 0,
     [GOLA_INITDEFAULT] = "default",
+    [GOLA_READYFD] = 0,
   } ;
   uint64_t wgolb = 0 ;
-  mode_t mask = 0022 ;
+  unsigned int mask = 0022 ;
+  unsigned int readyfd = 0 ;
   stralloc envmodifs = STRALLOC_ZERO ;
   char *tty = 0 ;
   unsigned int golc ;
@@ -214,21 +218,29 @@ int main (int argc, char const **argv, char const *const *envp)
   argc -= golc ; argv += golc ;
   if (wgola[GOLA_VERBOSITY] && !uint0_scan(wgola[GOLA_VERBOSITY], &verbosity)) dieusage() ;
   if (wgola[GOLA_MASK] && !uint0_oscan(wgola[GOLA_MASK], &mask)) dieusage() ;
+  if (wgola[GOLA_READYFD])
+  {
+    if (!uint0_scan(wgola[GOLA_READYFD], &readyfd)) dieusage() ;
+    if (readyfd && readyfd < 3) dieusage() ;
+  }
 
   hasconsole = fcntl(1, F_GETFD) >= 0 ;
-  if (wgolb & GOLB_INNS)
+  if (readyfd)
   {
     char c ;
-    ssize_t r = read(3, &c, 1) ; /* Docker synchronization protocol */
-    if (r < 0)
+    ssize_t r = read(readyfd, &c, 1) ; /* Docker synchronization protocol */
+    if (r == -1)
     {
-      if (errno != EBADF) strerr_diefu1sys(111, "read from fd 3") ;
+      if (errno != EBADF) strerr_diefu1sys(111, "read from readiness fd") ;
     }
     else
     {
-      if (r) if (verbosity) strerr_warnw1x("parent wrote to fd 3!") ;
-      close(3) ;
+      if (r) if (verbosity) strerr_warnw1x("parent wrote to readiness fd!") ;
+      close(readyfd) ;
     }
+  }
+  if (wgolb & GOLB_INNS)
+  {
     if (!wgola[GOLA_SLASHDEV] && hasconsole && isatty(1 + !(wgolb & GOLB_NOLOGGER)))
     {
       tty = ttyname(1 + !(wgolb & GOLB_NOLOGGER)) ;
@@ -248,8 +260,8 @@ int main (int argc, char const **argv, char const *const *envp)
    /* at this point we're totally in the dark, hoping /dev/console will work */
     nope = mount("dev", wgola[GOLA_SLASHDEV], "devtmpfs", MS_NOSUID | MS_NOEXEC, "") < 0 ;
     e = errno ;
-    if (open2("/dev/console", O_WRONLY) && open2("/dev/null", O_WRONLY)) return 111 ;
-    if (fd_move(2, 0) < 0) return 111 ;
+    if (open2("/dev/console", O_WRONLY) && open2("/dev/null", O_WRONLY)) _exit(111) ;
+    if (fd_move(2, 0) < 0) _exit(111) ;
     if (fd_copy(1, 2) < 0) strerr_diefu1sys(111, "fd_copy") ;
     if (nope)
     {
@@ -263,7 +275,7 @@ int main (int argc, char const **argv, char const *const *envp)
   {
     if (!wgola[GOLA_SLASHDEV]) reset_stdin() ;
     if (open2("/dev/null", O_WRONLY) != 1 || fd_copy(2, 1) == -1)
-      return 111 ;
+      _exit(111) ;
   }
 
   if (!(wgolb & GOLB_HANDSOFFRUN))

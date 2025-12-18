@@ -406,7 +406,17 @@ not be the default, but might be useful in some cases. </li> <br>
 the container so the disks are <tt>sync</tt>ed on container halt. By
 default, no sync is performed. This option has no effect when the <tt>-C</tt>
 option is not present: on real machines, a <tt>sync</tt> is <em>always</em>
-performed just before a system halt. </li>
+performed just before a system halt. </li> <br>
+
+ <li> <tt>-W</tt>&nbsp;<em>readyfd</em>&nbsp;: ensure that at boot time,
+before doing anything, s6-linux-init waits
+for file descriptor <em>readyfd</em> to signal EOF. This is typically useful in
+containers that implement the Docker synchronization mechanism, where the
+container manager starts the container with a pipe open to the container's
+descriptor 3, does its preparation, and closes the pipe to tell the container's
+init that it can proceed. If this option is not given, or <em>readyfd</em> is 0,
+s6-linux-init-maker makes no provision for synchronization and s6-linux-init
+will boot without waiting. </li>
 </ul>
 
 <h2> Organization of the created directory </h2>

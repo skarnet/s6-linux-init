@@ -27,7 +27,7 @@ and execs into <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>.
 <h2> Interface </h2>
 
 <pre>
-     s6-linux-init [ -c <em>basedir</em> ] [ -p <em>initial_path</em> ] [ -s <em>env_store</em> ] [ -m <em>umask</em> ] [ -d <em>slashdev</em> ] [ -D <em>initdefault</em> ] [ -n | -N ] [ -C ] [ -B ] [ <em>args...</em> ]
+     s6-linux-init [ -c <em>basedir</em> ] [ -p <em>initial_path</em> ] [ -s <em>env_store</em> ] [ -m <em>umask</em> ] [ -d <em>slashdev</em> ] [ -D <em>initdefault</em> ] [ -n | -N ] [ -C ] [ -B ] [ -W <em>readyfd</em> ] [ <em>args...</em> ]
 </pre>
 
 <ul>
@@ -69,16 +69,20 @@ a tmpfs on it, just remount <tt>/run</tt>. </li>
  <li> <tt>-C</tt>&nbsp;: run in a container. This option modifies a few
 of the operations described below, to accommodate running in a container
 instead of on real hardware. For instance: it does not scan the command
-line for a specific runlevel, it does not trap ctrl-alt-del, and before
-anything else it waits for its descriptor 3, if present, to close.
-(Docker uses this fd 3 mechanism as synchronization between the Docker
-daemon and the container's <tt>init</tt>.) </li>
+line for a specific runlevel, and it does not trap ctrl-alt-del. </li>
  <li> <tt>-B</tt>&nbsp;: do not run the catch-all logger. This option
 removes the catch-all-logger-related operations from the list below;
 <tt>s6-linux-init</tt> will not redirect output descriptors, and will
 use a different synchronization mechanism to ensure <tt>rc.init</tt>
 only runs when <a href="//skarnet.org/software/s6/s6-svscan.html">s6-svscan</a>
 is ready. </li>
+ <li> <tt>-W</tt>&nbsp;<em>readyfd</em>&nbsp;: before doing anything, wait
+for file descriptor <em>readyfd</em> to signal EOF. This is typically useful in
+containers that implement the Docker synchronization mechanism, where the
+container manager starts the container with a pipe open to the container's
+descriptor 3, does its preparation, and closes the pipe to tell the container's
+init that it can proceed. If this option is not given, or <em>readyfd</em> is 0,
+no synchronization occurs and s6-linux-init boots without waiting. </li>
 </ul>
 
 <h2> Early preparation </h2>

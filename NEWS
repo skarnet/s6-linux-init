@@ -1,5 +1,12 @@
 Changelog for s6-linux-init.
 
+In 1.2.0.1
+----------
+
+ - Support for disabling RPATH at configure time.
+ - Adaptation to skalibs-2.15.0.0.
+
+
 In 1.2.0.0
 ----------
 

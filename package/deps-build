@@ -1,5 +1,5 @@
-true		true	/package/prog/skalibs	2.14.5.0	libskarnet
-$usensss	false	/package/admin/nsss     0.2.1.1         libnsss
-$utmps		false	/package/admin/utmps	0.1.3.2		libutmps
-true		false	/package/admin/execline	2.9.8.0		libexecline
-true		false	/package/admin/s6	2.14.0.0	libs6
+true		true	/package/prog/skalibs	2.15.0.0	libskarnet
+$usensss	false	/package/admin/nsss     0.2.1.2         libnsss
+$utmps		false	/package/admin/utmps	0.1.3.3		libutmps
+true		false	/package/admin/execline	2.9.9.0		libexecline
+true		false	/package/admin/s6	2.15.0.0	libs6

@@ -1,5 +1,11 @@
 Changelog for s6-linux-init.
 
+In 1.2.0.2
+----------
+
+ - Remount fses read-only if they cannot be unmounted
+
+
 In 1.2.0.1
 ----------
 

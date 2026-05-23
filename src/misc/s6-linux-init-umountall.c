@@ -55,8 +55,19 @@ int main (int argc, char const *const *argv)
   while (line--)
     if (umount(sa.s + mountpoints[line]) == -1)
     {
-      e++ ;
-      strerr_warnwu2sys("umount ", sa.s + mountpoints[line]) ;
+      if (errno == EBUSY)
+      {
+        if (mount(0, sa.s + mountpoints[line], 0, MS_REMOUNT | MS_RDONLY, 0) == -1)
+        {
+          e++ ;
+          strerr_warnwusys("read-only remount ", sa.s + mountpoints[line]) ;
+        }
+      }
+      else
+      {
+        e++ ;
+        strerr_warnwu2sys("umount ", sa.s + mountpoints[line]) ;
+      }
     }
   stralloc_free(&sa) ;
   return e ;

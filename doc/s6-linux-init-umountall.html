@@ -57,7 +57,9 @@ when attempting to unmount the filesystems listed in <tt>/proc/mounts</tt>.
 in "stage 4", i.e. after a SIGKILL has been sent to all the processes on the system, and
 right before the system reboots (or halts, or is powered off). By that point, there is
 no possible process that could prevent real file systems from being unmounted. </li>
- <li> It is likely that some filesystems will still fail to unmount, typically
+ <li> If a filesystem cannot be unmounted because it is busy, <tt>s6-linux-init-umountall</tt>
+attempts to remount it read-only instead. </li>
+ <li> It is likely that some filesystems will still fail, typically
 cgroups or tmpfses. That's okay: those are pseudo-filesystems, and
 will not cause data loss or a fsck if the system shuts down while they are still mounted. </li>
  <li> Distributions usually provide a <tt>umount</tt> command with a <tt>-a</tt> option
